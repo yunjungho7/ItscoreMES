@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.location">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt FROM TBL_COM_LOCATION
+        <where>
+            <if test="search != null">
+                LOCATIONNAME LIKE #{search}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT * FROM TBL_COM_LOCATION
+        <where>
+            <if test="search != null">
+                LOCATIONNAME LIKE #{search}
+            </if>
+        </where>
+        ORDER BY LOCATIONCODE
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_LOCATION WHERE LOCATIONCODE = #{LOCATIONCODE}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_LOCATION (
+            LOCATIONCODE, WAREHOUSECODE, LOCATIONNAME,
+            RACKCODE, [ROW], [FLOOR], USEYN,
+            PAR_LOCATIONCD, FAILLOCYN,
+            REGUSERID, REGDTM, EDITUSERID, EDITDTM
+        ) VALUES (
+            #{LOCATIONCODE}, #{WAREHOUSECODE}, #{LOCATIONNAME},
+            #{RACKCODE}, #{ROW}, #{FLOOR}, #{USEYN},
+            #{PAR_LOCATIONCD}, #{FAILLOCYN},
+            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_LOCATION
+        <set>
+            <if test="WAREHOUSECODE != null">WAREHOUSECODE = #{WAREHOUSECODE},</if>
+            <if test="LOCATIONNAME != null">LOCATIONNAME = #{LOCATIONNAME},</if>
+            <if test="RACKCODE != null">RACKCODE = #{RACKCODE},</if>
+            <if test="ROW != null">[ROW] = #{ROW},</if>
+            <if test="FLOOR != null">[FLOOR] = #{FLOOR},</if>
+            <if test="USEYN != null">USEYN = #{USEYN},</if>
+            <if test="PAR_LOCATIONCD != null">PAR_LOCATIONCD = #{PAR_LOCATIONCD},</if>
+            <if test="FAILLOCYN != null">FAILLOCYN = #{FAILLOCYN},</if>
+            <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
+            EDITDTM = GETDATE()
+        </set>
+        WHERE LOCATIONCODE = #{LOCATIONCODE}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_COM_LOCATION SET USEYN = 0, EDITDTM = GETDATE()
+        WHERE LOCATIONCODE = #{LOCATIONCODE}
+    </delete>
+
+</mapper>

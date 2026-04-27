@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.plant">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt FROM TBL_COM_PLANT
+        <where>
+            <if test="search != null">
+                PLANTNM LIKE #{search}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT * FROM TBL_COM_PLANT
+        <where>
+            <if test="search != null">
+                PLANTNM LIKE #{search}
+            </if>
+        </where>
+        ORDER BY PLANTCD
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_PLANT WHERE PLANTCD = #{PLANTCD}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_PLANT (
+            PLANTCD, PAR_PLANTCD, PLANTNM, PLANTTYPE, ZIPCD,
+            ADDR1, ADDR2, TEL, FAX, BUSINESSNO,
+            BOSSNM, PERSON_CHARGE, BOSSTEL, USEYN,
+            INFAILLOCCD, PRODFAILLOCCD, OUTFAILLOCCD,
+            REGUSERID, REGDTM, EDITUSERID, EDITDTM
+        ) VALUES (
+            #{PLANTCD}, #{PAR_PLANTCD}, #{PLANTNM}, #{PLANTTYPE}, #{ZIPCD},
+            #{ADDR1}, #{ADDR2}, #{TEL}, #{FAX}, #{BUSINESSNO},
+            #{BOSSNM}, #{PERSON_CHARGE}, #{BOSSTEL}, #{USEYN},
+            #{INFAILLOCCD}, #{PRODFAILLOCCD}, #{OUTFAILLOCCD},
+            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_PLANT
+        <set>
+            <if test="PAR_PLANTCD != null">PAR_PLANTCD = #{PAR_PLANTCD},</if>
+            <if test="PLANTNM != null">PLANTNM = #{PLANTNM},</if>
+            <if test="PLANTTYPE != null">PLANTTYPE = #{PLANTTYPE},</if>
+            <if test="ZIPCD != null">ZIPCD = #{ZIPCD},</if>
+            <if test="ADDR1 != null">ADDR1 = #{ADDR1},</if>
+            <if test="ADDR2 != null">ADDR2 = #{ADDR2},</if>
+            <if test="TEL != null">TEL = #{TEL},</if>
+            <if test="FAX != null">FAX = #{FAX},</if>
+            <if test="BUSINESSNO != null">BUSINESSNO = #{BUSINESSNO},</if>
+            <if test="BOSSNM != null">BOSSNM = #{BOSSNM},</if>
+            <if test="PERSON_CHARGE != null">PERSON_CHARGE = #{PERSON_CHARGE},</if>
+            <if test="BOSSTEL != null">BOSSTEL = #{BOSSTEL},</if>
+            <if test="USEYN != null">USEYN = #{USEYN},</if>
+            <if test="INFAILLOCCD != null">INFAILLOCCD = #{INFAILLOCCD},</if>
+            <if test="PRODFAILLOCCD != null">PRODFAILLOCCD = #{PRODFAILLOCCD},</if>
+            <if test="OUTFAILLOCCD != null">OUTFAILLOCCD = #{OUTFAILLOCCD},</if>
+            <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
+            EDITDTM = GETDATE()
+        </set>
+        WHERE PLANTCD = #{PLANTCD}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_COM_PLANT SET USEYN = 0, EDITDTM = GETDATE()
+        WHERE PLANTCD = #{PLANTCD}
+    </delete>
+
+</mapper>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<mapper namespace="purchase">
+    <select id="countPlan">
+        SELECT COUNT(DISTINCT PP.PARTNO) AS cnt
+        FROM TBL_PROD_PRODUCEPLAN PP
+        LEFT JOIN TBL_COM_GOODS G ON PP.PARTNO = G.PARTNO
+        <where>
+            <if test="plant_cd != null">PP.PLANTCD = #{plant_cd}</if>
+            <if test="search != null">AND (PP.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
+        </where>
+    </select>
+
+    <select id="selectPlanList">
+        SELECT PP.PRODUCEDT, PP.PLANTCD, PP.PARTNO, G.PARTNM, G.STANDARD,
+               PP.ORDERNUM, PP.ORDERSEQ, PP.PRODUCEQTY,
+               ISNULL(S.STOCKQTY, 0) AS STOCKQTY
+        FROM TBL_PROD_PRODUCEPLAN PP
+        LEFT JOIN TBL_COM_GOODS G ON PP.PARTNO = G.PARTNO
+        LEFT JOIN (SELECT PARTNO, SUM(STOCKQTY) AS STOCKQTY FROM TBL_PROD_STOCK SK
+                   JOIN TBL_PROD_LOTSTATE LS ON SK.LOTNO = LS.LOTNO
+                   GROUP BY PARTNO) S ON PP.PARTNO = S.PARTNO
+        <where>
+            <if test="plant_cd != null">PP.PLANTCD = #{plant_cd}</if>
+            <if test="start_date != null">AND PP.PRODUCEDT &gt;= #{start_date}</if>
+            <if test="end_date != null">AND PP.PRODUCEDT &lt;= #{end_date}</if>
+            <if test="search != null">AND (PP.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
+        </where>
+        ORDER BY PP.PARTNO, PP.PRODUCEDT
+    </select>
+
+    <insert id="insertPlan">
+        INSERT INTO TBL_PROD_PRODUCEPLAN (PRODUCEDT, PLANTCD, PARTNO, ORDERNUM, ORDERSEQ, PRODUCEQTY, REGUSERID, REGDTM)
+        VALUES (#{PRODUCEDT}, #{PLANTCD}, #{PARTNO}, #{ORDERNUM}, #{ORDERSEQ}, #{PRODUCEQTY}, #{REGUSERID}, GETDATE())
+    </insert>
+
+    <select id="selectBomChildren">
+        SELECT B.CHILD_PARTNO AS PARTNO, G.PARTNM, G.STANDARD, G.UNIT,
+               G.UNIT_PRICE, G.COMPANYCD, C.COMPANYNM,
+               B.REQQTY,
+               ISNULL(S.STOCKQTY, 0) AS STOCKQTY
+        FROM TBL_COM_BOM B
+        LEFT JOIN TBL_COM_GOODS G ON B.CHILD_PARTNO = G.PARTNO
+        LEFT JOIN TBL_COM_COMPANY C ON G.COMPANYCD = C.COMPANYCD
+        LEFT JOIN (SELECT LS.PARTNO, SUM(SK.STOCKQTY) AS STOCKQTY
+                   FROM TBL_PROD_STOCK SK
+                   JOIN TBL_PROD_LOTSTATE LS ON SK.LOTNO = LS.LOTNO
+                   GROUP BY LS.PARTNO) S ON B.CHILD_PARTNO = S.PARTNO
+        WHERE B.PAR_PARTNO = #{par_partno} AND B.USEYN = 1
+        ORDER BY B.ORD
+    </select>
+</mapper>

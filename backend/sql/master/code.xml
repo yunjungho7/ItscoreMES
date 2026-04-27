@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.code">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt FROM TBL_COM_CODE
+        <where>
+            <if test="par_codecd != null">
+                PAR_CODECD = #{par_codecd}
+            </if>
+            <if test="search != null">
+                AND CODENM LIKE #{search}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT * FROM TBL_COM_CODE
+        <where>
+            <if test="par_codecd != null">
+                PAR_CODECD = #{par_codecd}
+            </if>
+            <if test="search != null">
+                AND CODENM LIKE #{search}
+            </if>
+        </where>
+        ORDER BY CODECD
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_CODE WHERE CODECD = #{CODECD}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_CODE (
+            CODECD, PAR_CODECD, CODENM, ORD, TEXTVAL, NUMVAL,
+            USEYN, SYS_CONST,
+            REGUSERID, REGDTM, EDITUSERID, EDITDTM
+        ) VALUES (
+            #{CODECD}, #{PAR_CODECD}, #{CODENM}, #{ORD}, #{TEXTVAL}, #{NUMVAL},
+            #{USEYN}, #{SYS_CONST},
+            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_CODE
+        <set>
+            <if test="PAR_CODECD != null">PAR_CODECD = #{PAR_CODECD},</if>
+            <if test="CODENM != null">CODENM = #{CODENM},</if>
+            <if test="ORD != null">ORD = #{ORD},</if>
+            <if test="TEXTVAL != null">TEXTVAL = #{TEXTVAL},</if>
+            <if test="NUMVAL != null">NUMVAL = #{NUMVAL},</if>
+            <if test="USEYN != null">USEYN = #{USEYN},</if>
+            <if test="SYS_CONST != null">SYS_CONST = #{SYS_CONST},</if>
+            <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
+            EDITDTM = GETDATE()
+        </set>
+        WHERE CODECD = #{CODECD}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_COM_CODE SET USEYN = 0, EDITDTM = GETDATE()
+        WHERE CODECD = #{CODECD}
+    </delete>
+
+</mapper>

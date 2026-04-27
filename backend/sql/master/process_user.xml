@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.process_user">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt FROM TBL_COM_PROCESS_USER
+        <where>
+            <if test="search != null">
+                USER_ID LIKE #{search}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT * FROM TBL_COM_PROCESS_USER
+        <where>
+            <if test="search != null">
+                USER_ID LIKE #{search}
+            </if>
+        </where>
+        ORDER BY USER_ID, PROCESS_ID
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_PROCESS_USER
+        WHERE USER_ID = #{USER_ID} AND PROCESS_ID = #{PROCESS_ID}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_PROCESS_USER (
+            USER_ID, PROCESS_ID, GRANTED_FUNCS, EXCEPTED_FUNCS
+        ) VALUES (
+            #{USER_ID}, #{PROCESS_ID}, #{GRANTED_FUNCS}, #{EXCEPTED_FUNCS}
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_PROCESS_USER
+        <set>
+            <if test="GRANTED_FUNCS != null">GRANTED_FUNCS = #{GRANTED_FUNCS},</if>
+            <if test="EXCEPTED_FUNCS != null">EXCEPTED_FUNCS = #{EXCEPTED_FUNCS}</if>
+        </set>
+        WHERE USER_ID = #{USER_ID} AND PROCESS_ID = #{PROCESS_ID}
+    </update>
+
+    <delete id="hardDelete">
+        DELETE FROM TBL_COM_PROCESS_USER
+        WHERE USER_ID = #{USER_ID} AND PROCESS_ID = #{PROCESS_ID}
+    </delete>
+
+</mapper>

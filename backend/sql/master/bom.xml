@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.bom">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt FROM TBL_COM_BOM
+        <where>
+            <if test="search != null">
+                PAR_PARTNO LIKE #{search}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT * FROM TBL_COM_BOM
+        <where>
+            <if test="search != null">
+                PAR_PARTNO LIKE #{search}
+            </if>
+        </where>
+        ORDER BY PAR_PARTNO, CHILD_PARTNO
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_BOM
+        WHERE PAR_PARTNO = #{PAR_PARTNO} AND CHILD_PARTNO = #{CHILD_PARTNO}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_BOM (
+            PAR_PARTNO, CHILD_PARTNO, REQQTY, ORD, USEYN,
+            REGUSERID, REGDTM, EDITUSERID, EDITDTM
+        ) VALUES (
+            #{PAR_PARTNO}, #{CHILD_PARTNO}, #{REQQTY}, #{ORD}, #{USEYN},
+            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_BOM
+        <set>
+            <if test="REQQTY != null">REQQTY = #{REQQTY},</if>
+            <if test="ORD != null">ORD = #{ORD},</if>
+            <if test="USEYN != null">USEYN = #{USEYN},</if>
+            <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
+            EDITDTM = GETDATE()
+        </set>
+        WHERE PAR_PARTNO = #{PAR_PARTNO} AND CHILD_PARTNO = #{CHILD_PARTNO}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_COM_BOM SET USEYN = 0, EDITDTM = GETDATE()
+        WHERE PAR_PARTNO = #{PAR_PARTNO} AND CHILD_PARTNO = #{CHILD_PARTNO}
+    </delete>
+
+    <delete id="deleteByParent">
+        DELETE FROM TBL_COM_BOM
+        WHERE PAR_PARTNO = #{PAR_PARTNO}
+    </delete>
+
+</mapper>

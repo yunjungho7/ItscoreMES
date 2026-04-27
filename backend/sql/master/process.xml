@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.process">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt FROM TBL_COM_PROCESS
+        <where>
+            <if test="search != null">
+                PROCESSNM LIKE #{search}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT * FROM TBL_COM_PROCESS
+        <where>
+            <if test="search != null">
+                PROCESSNM LIKE #{search}
+            </if>
+        </where>
+        ORDER BY PROCESSCD
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_PROCESS WHERE PROCESSCD = #{PROCESSCD}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_PROCESS (
+            PROCESSCD, LINECD, FACTORYCD, PROCESSNM, CONTENTS, USEYN,
+            MOLDYN, OEMYN, EXTERNALBARCODEYN, MANUALGENERATEYN,
+            INSPECT_CREATEREPORTYN, INSPECT_APPLYFAILYN,
+            REGUSERID, REGDTM, EDITUSERID, EDITDTM
+        ) VALUES (
+            #{PROCESSCD}, #{LINECD}, #{FACTORYCD}, #{PROCESSNM}, #{CONTENTS}, #{USEYN},
+            #{MOLDYN}, #{OEMYN}, #{EXTERNALBARCODEYN}, #{MANUALGENERATEYN},
+            #{INSPECT_CREATEREPORTYN}, #{INSPECT_APPLYFAILYN},
+            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_PROCESS
+        <set>
+            <if test="LINECD != null">LINECD = #{LINECD},</if>
+            <if test="FACTORYCD != null">FACTORYCD = #{FACTORYCD},</if>
+            <if test="PROCESSNM != null">PROCESSNM = #{PROCESSNM},</if>
+            <if test="CONTENTS != null">CONTENTS = #{CONTENTS},</if>
+            <if test="USEYN != null">USEYN = #{USEYN},</if>
+            <if test="MOLDYN != null">MOLDYN = #{MOLDYN},</if>
+            <if test="OEMYN != null">OEMYN = #{OEMYN},</if>
+            <if test="EXTERNALBARCODEYN != null">EXTERNALBARCODEYN = #{EXTERNALBARCODEYN},</if>
+            <if test="MANUALGENERATEYN != null">MANUALGENERATEYN = #{MANUALGENERATEYN},</if>
+            <if test="INSPECT_CREATEREPORTYN != null">INSPECT_CREATEREPORTYN = #{INSPECT_CREATEREPORTYN},</if>
+            <if test="INSPECT_APPLYFAILYN != null">INSPECT_APPLYFAILYN = #{INSPECT_APPLYFAILYN},</if>
+            <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
+            EDITDTM = GETDATE()
+        </set>
+        WHERE PROCESSCD = #{PROCESSCD}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_COM_PROCESS SET USEYN = 0, EDITDTM = GETDATE()
+        WHERE PROCESSCD = #{PROCESSCD}
+    </delete>
+
+</mapper>

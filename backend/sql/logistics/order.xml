@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<mapper namespace="order">
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt
+        FROM TBL_INOUT_ORDERS O
+        LEFT JOIN TBL_COM_PLANT P ON O.PLANTCD = P.PLANTCD
+        LEFT JOIN TBL_COM_COMPANY C ON O.COMPANYCD = C.COMPANYCD
+        <where>
+            O.USEYN = 1
+            <if test="start_date != null">AND O.ORDERDT &gt;= #{start_date}</if>
+            <if test="end_date != null">AND O.ORDERDT &lt;= #{end_date}</if>
+            <if test="plant_cd != null">AND O.PLANTCD = #{plant_cd}</if>
+            <if test="company_cd != null">AND O.COMPANYCD = #{company_cd}</if>
+            <if test="search != null">AND (C.COMPANYNM LIKE #{search})</if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT O.ORDERNO, O.PLANTCD, P.PLANTNM, O.COMPANYCD, C.COMPANYNM,
+               O.ORDERDT, O.ADOFREQDT, O.ORDERSTATE, O.REMARK, O.USEYN,
+               (SELECT ISNULL(SUM(D.REQQTY * ISNULL(D.UNIT_PRICE,0)),0) FROM TBL_INOUT_ORDER_DETAIL D WHERE D.ORDERNO = O.ORDERNO) AS TOTALAMT
+        FROM TBL_INOUT_ORDERS O
+        LEFT JOIN TBL_COM_PLANT P ON O.PLANTCD = P.PLANTCD
+        LEFT JOIN TBL_COM_COMPANY C ON O.COMPANYCD = C.COMPANYCD
+        <where>
+            O.USEYN = 1
+            <if test="start_date != null">AND O.ORDERDT &gt;= #{start_date}</if>
+            <if test="end_date != null">AND O.ORDERDT &lt;= #{end_date}</if>
+            <if test="plant_cd != null">AND O.PLANTCD = #{plant_cd}</if>
+            <if test="company_cd != null">AND O.COMPANYCD = #{company_cd}</if>
+            <if test="search != null">AND (C.COMPANYNM LIKE #{search})</if>
+        </where>
+        ORDER BY O.ORDERNO DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT O.*, P.PLANTNM, C.COMPANYNM
+        FROM TBL_INOUT_ORDERS O
+        LEFT JOIN TBL_COM_PLANT P ON O.PLANTCD = P.PLANTCD
+        LEFT JOIN TBL_COM_COMPANY C ON O.COMPANYCD = C.COMPANYCD
+        WHERE O.ORDERNO = #{ORDERNO}
+    </select>
+
+    <select id="selectDetails">
+        SELECT D.*, G.PARTNM, G.STANDARD, G.UNIT,
+               ISNULL(D.REQQTY * ISNULL(D.UNIT_PRICE,0), 0) AS AMT
+        FROM TBL_INOUT_ORDER_DETAIL D
+        LEFT JOIN TBL_COM_GOODS G ON D.PARTNO = G.PARTNO
+        WHERE D.ORDERNO = #{ORDERNO}
+        ORDER BY D.SEQ
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_INOUT_ORDERS (PLANTCD, COMPANYCD, ADOFREQDT, ORDERDT, ORDERSTATE, REGUSERID, REGDTM, EDITUSERID, EDITDTM, USEYN, REMARK)
+        OUTPUT INSERTED.ORDERNO
+        VALUES (#{PLANTCD}, #{COMPANYCD}, #{ADOFREQDT}, #{ORDERDT}, #{ORDERSTATE}, #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE(), 1, #{REMARK})
+    </insert>
+
+    <insert id="insertDetail">
+        INSERT INTO TBL_INOUT_ORDER_DETAIL (ORDERNO, PARTNO, SEQ, ADOFREQDT, REQQTY, UNIT_PRICE, REMARK, CUSTOM1, CUSTOM2, CUSTOM3, CUSTOM4, CUSTOM5)
+        VALUES (#{ORDERNO}, #{PARTNO}, #{SEQ}, #{ADOFREQDT}, #{REQQTY}, #{UNIT_PRICE}, #{REMARK}, '', '', '', '', '')
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_INOUT_ORDERS
+        <set>
+            <if test="PLANTCD != null">PLANTCD = #{PLANTCD},</if>
+            <if test="COMPANYCD != null">COMPANYCD = #{COMPANYCD},</if>
+            <if test="ADOFREQDT != null">ADOFREQDT = #{ADOFREQDT},</if>
+            <if test="ORDERDT != null">ORDERDT = #{ORDERDT},</if>
+            <if test="ORDERSTATE != null">ORDERSTATE = #{ORDERSTATE},</if>
+            <if test="REMARK != null">REMARK = #{REMARK},</if>
+            EDITUSERID = #{EDITUSERID}, EDITDTM = GETDATE(),
+        </set>
+        WHERE ORDERNO = #{ORDERNO}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_INOUT_ORDERS SET USEYN = 0, EDITUSERID = 1, EDITDTM = GETDATE() WHERE ORDERNO = #{ORDERNO}
+    </delete>
+
+    <delete id="deleteDetails">
+        DELETE FROM TBL_INOUT_ORDER_DETAIL WHERE ORDERNO = #{ORDERNO}
+    </delete>
+</mapper>

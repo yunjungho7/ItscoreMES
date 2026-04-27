@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.line">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt FROM TBL_COM_LINE
+        <where>
+            <if test="search != null">
+                LINENM LIKE #{search}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT * FROM TBL_COM_LINE
+        <where>
+            <if test="search != null">
+                LINENM LIKE #{search}
+            </if>
+        </where>
+        ORDER BY LINECD
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_LINE WHERE LINECD = #{LINECD}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_LINE (
+            LINECD, PAR_LINECD, FACTORYCD, LINENM, LINEDIV, USEYN,
+            REGUSERID, REGDTM, EDITUSERID, EDITDTM
+        ) VALUES (
+            #{LINECD}, #{PAR_LINECD}, #{FACTORYCD}, #{LINENM}, #{LINEDIV}, #{USEYN},
+            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_LINE
+        <set>
+            <if test="PAR_LINECD != null">PAR_LINECD = #{PAR_LINECD},</if>
+            <if test="FACTORYCD != null">FACTORYCD = #{FACTORYCD},</if>
+            <if test="LINENM != null">LINENM = #{LINENM},</if>
+            <if test="LINEDIV != null">LINEDIV = #{LINEDIV},</if>
+            <if test="USEYN != null">USEYN = #{USEYN},</if>
+            <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
+            EDITDTM = GETDATE()
+        </set>
+        WHERE LINECD = #{LINECD}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_COM_LINE SET USEYN = 0, EDITDTM = GETDATE()
+        WHERE LINECD = #{LINECD}
+    </delete>
+
+</mapper>

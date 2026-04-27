@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="system.user">
+
+    <select id="selectList">
+        SELECT 
+            U.ID,
+            U.PLANT,
+            U.GUBUN,
+            U.EMPID,
+            U.NAME,
+            U.EMAIL,
+            U.DEPTCD,
+            D.DEPTNM AS DEPT_NAME,
+            U.JIKGUB,
+            U.PASS,
+            U.TEL,
+            U.MOBILE,
+            U.USEAREA,
+            U.SHOWYN
+        FROM TBL_COM_MEMBERS U
+        LEFT JOIN TBL_COM_DEPT D ON U.DEPTCD = D.DEPTCD
+        WHERE 1=1
+        <if test="PLANT">
+            AND U.PLANT = #{PLANT}
+        </if>
+        <if test="NAME">
+            AND U.NAME LIKE '%' + #{NAME} + '%'
+        </if>
+        <if test="DEPTCD">
+            AND U.DEPTCD = #{DEPTCD}
+        </if>
+        <if test="SHOWYN != null">
+            AND U.SHOWYN = #{SHOWYN}
+        </if>
+        ORDER BY U.EMPID ASC
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_MEMBERS (
+            PLANT, GUBUN, EMPID, NAME, EMAIL, DEPTCD, JIKGUB,
+            PASS, SECURE_GRADE, USEAREA, PARTNERSHOWYN, TEL, MOBILE,
+            PASSYN, PASSWRITERID, SHOWYN, LOGINYN,
+            SESSIONTIME, OUTERACCESSYN, CHIEFYN, PASSWD,
+            PLANTAREA, FROMTODAY, PARTNERGUBUN, MANAGERYN
+        ) VALUES (
+            #{PLANT}, #{GUBUN}, #{EMPID}, #{NAME}, #{EMAIL}, #{DEPTCD}, #{JIKGUB},
+            #{PASS}, #{SECURE_GRADE}, #{USEAREA}, #{PARTNERSHOWYN}, #{TEL}, #{MOBILE},
+            #{PASSYN}, #{PASSWRITERID}, #{SHOWYN}, #{LOGINYN},
+            #{SESSIONTIME}, #{OUTERACCESSYN}, #{CHIEFYN}, #{PASSWD},
+            #{PLANTAREA}, #{FROMTODAY}, #{PARTNERGUBUN}, #{MANAGERYN}
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_MEMBERS
+        SET
+            PLANT = #{PLANT},
+            GUBUN = #{GUBUN},
+            NAME = #{NAME},
+            EMAIL = #{EMAIL},
+            DEPTCD = #{DEPTCD},
+            JIKGUB = #{JIKGUB},
+            PASS = #{PASS},
+            TEL = #{TEL},
+            MOBILE = #{MOBILE},
+            SHOWYN = #{SHOWYN}
+        WHERE EMPID = #{EMPID}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM TBL_COM_MEMBERS
+        WHERE EMPID = #{EMPID}
+    </delete>
+
+</mapper>

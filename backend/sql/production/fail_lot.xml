@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="fail_lot">
+
+  <!-- 불량 목록 건수 -->
+  <select id="countFailLot">
+    SELECT COUNT(*) 
+    FROM TBL_PROD_FAILQTY F
+    LEFT JOIN TBL_COM_GOODS G ON F.PARTNO = G.PARTNO
+    <where>
+      1=1
+      <if test="start_date != null">AND F.REGDTM &gt;= #{start_date}</if>
+      <if test="end_date != null">AND F.REGDTM &lt;= #{end_date} + ' 23:59:59'</if>
+      <if test="plant_cd != null">AND F.PLANTCD = #{plant_cd}</if>
+      <if test="lot_no != null">AND F.LOTNO LIKE #{lot_no}</if>
+      <!-- FAILGUBUN 필터 (동적 IN 절 처리가 복잡하므로 간단히 OR 사용) -->
+      <if test="fail_gubun_list != null">
+        AND F.FAILGUBUN IN (${fail_gubun_list})
+      </if>
+    </where>
+  </select>
+
+  <!-- 불량 목록 조회 -->
+  <select id="selectFailLot">
+    SELECT 
+      F.LOTNO,
+      ISNULL(F.FAILGUBUN, '') AS FAILGUBUN,
+      F.PARTNO,
+      G.PARTNM,
+      G.STANDARD,
+      ISNULL(F.FAILQTY, 0) AS FAILQTY,
+      F.FAILTYPE,
+      F.FAILBREAKDOWN,
+      0 AS CONVERT_QTY,
+      ISNULL(F.REMARK, '') AS REMARK,
+      '' AS IN_WAREHOUSE,
+      CONVERT(VARCHAR(10), F.REGDTM, 120) AS REGDATE,
+      '' AS CUSTOMPARTNO,
+      F.WORKORDNO,
+      F.LINECD
+    FROM TBL_PROD_FAILQTY F
+    LEFT JOIN TBL_COM_GOODS G ON F.PARTNO = G.PARTNO
+    <where>
+      1=1
+      <if test="start_date != null">AND F.REGDTM &gt;= #{start_date}</if>
+      <if test="end_date != null">AND F.REGDTM &lt;= #{end_date} + ' 23:59:59'</if>
+      <if test="plant_cd != null">AND F.PLANTCD = #{plant_cd}</if>
+      <if test="lot_no != null">AND F.LOTNO LIKE #{lot_no}</if>
+      <if test="fail_gubun_list != null">
+        AND F.FAILGUBUN IN (${fail_gubun_list})
+      </if>
+    </where>
+    ORDER BY F.REGDTM DESC, F.LOTNO DESC
+    OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+  </select>
+
+  <!-- 양품/폐기 처리 시 HISTORY 로 이동 -->
+  <insert id="insertFailQtyHistory">
+    INSERT INTO TBL_PROD_FAILQTY_HISTORY
+      (LOTNO, FAILTYPE, FAILBREAKDOWN, WORKORDNO, PLANTCD, LINECD, PROCESSCD, SHIFT, PARTNO, FAILQTY, REGUSERID, REGDTM, EDITUSERID, EDITDTM, REMARK, FAILGUBUN)
+    SELECT 
+      LOTNO, FAILTYPE, FAILBREAKDOWN, WORKORDNO, PLANTCD, LINECD, PROCESSCD, SHIFT, PARTNO, FAILQTY, REGUSERID, REGDTM, 1, GETDATE(), #{REMARK}, FAILGUBUN
+    FROM TBL_PROD_FAILQTY
+    WHERE LOTNO = #{LOTNO} AND FAILTYPE = #{FAILTYPE} AND FAILBREAKDOWN = #{FAILBREAKDOWN}
+  </insert>
+
+  <!-- 불량 삭제 (처리 후) -->
+  <delete id="deleteFailQty">
+    DELETE FROM TBL_PROD_FAILQTY
+    WHERE LOTNO = #{LOTNO} AND FAILTYPE = #{FAILTYPE} AND FAILBREAKDOWN = #{FAILBREAKDOWN}
+  </delete>
+
+</mapper>

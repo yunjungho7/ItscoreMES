@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="shipment">
+
+  <!-- 출하지시 목록 건수 -->
+  <select id="countAll">
+    SELECT COUNT(*) FROM TBL_INOUT_SHIPMENT_INDICATION A
+    LEFT JOIN TBL_COM_PLANT B ON A.PLANTCD = B.PLANTCD
+    LEFT JOIN TBL_COM_COMPANY C ON A.COMPANYCD = C.COMPANYCD
+    <where>
+      A.USEYN = 1
+      <if test="start_date != null">AND A.SHIPMENTPLANDAY &gt;= #{start_date}</if>
+      <if test="end_date != null">AND A.SHIPMENTPLANDAY &lt;= #{end_date}</if>
+      <if test="plant_cd != null">AND A.PLANTCD = #{plant_cd}</if>
+      <if test="company_cd != null">AND A.COMPANYCD = #{company_cd}</if>
+      <if test="search != null">AND (C.COMPANYNM LIKE #{search})</if>
+      <if test="order_no != null">AND A.ORDERNO = #{order_no}</if>
+      <if test="include_done != null">AND 1=1</if>
+    </where>
+  </select>
+
+  <!-- 출하지시 목록 -->
+  <select id="selectAll">
+    SELECT A.SHIPMENTINDICATIONNO, B.PLANTNM, C.COMPANYNM, A.COMPANYCD, A.PLANTCD,
+           A.SHIPMENTPLANDAY, A.SHIPMENTDAY, A.SHIPMENTGUBUN, A.SHIPMENTSTATUS,
+           A.ORDERNO, A.REMARK
+    FROM TBL_INOUT_SHIPMENT_INDICATION A
+    LEFT JOIN TBL_COM_PLANT B ON A.PLANTCD = B.PLANTCD
+    LEFT JOIN TBL_COM_COMPANY C ON A.COMPANYCD = C.COMPANYCD
+    <where>
+      A.USEYN = 1
+      <if test="start_date != null">AND A.SHIPMENTPLANDAY &gt;= #{start_date}</if>
+      <if test="end_date != null">AND A.SHIPMENTPLANDAY &lt;= #{end_date}</if>
+      <if test="plant_cd != null">AND A.PLANTCD = #{plant_cd}</if>
+      <if test="company_cd != null">AND A.COMPANYCD = #{company_cd}</if>
+      <if test="search != null">AND (C.COMPANYNM LIKE #{search})</if>
+      <if test="order_no != null">AND A.ORDERNO = #{order_no}</if>
+    </where>
+    ORDER BY A.SHIPMENTINDICATIONNO DESC
+    OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+  </select>
+
+  <!-- 출하지시 상세 품목 -->
+  <select id="selectDetails">
+    SELECT D.SHIPMENTINDICATIONNO, D.PARTNO, D.SEQ, D.ORDERNO,
+           G.PARTNM, G.STANDARD, G.UNIT, D.UNIT_PRICE,
+           D.ADOFREQDT, D.SHIPMENTINDICATIONQTY, D.SHIPMENTQTY,
+           D.SHIPMENTSTATUS, D.REMARK
+    FROM TBL_INOUT_SHIPMENT_INDICATION_DTL D
+    LEFT JOIN TBL_COM_GOODS G ON D.PARTNO = G.PARTNO
+    WHERE D.SHIPMENTINDICATIONNO = #{SHIPMENTINDICATIONNO}
+    ORDER BY D.SEQ
+  </select>
+
+  <!-- 채번 (SH + YYYYMMDD + NNN) -->
+  <select id="selectNextNum">
+    SELECT 'SH' + CONVERT(VARCHAR(8), GETDATE(), 112) + '-' +
+           RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(SHIPMENTINDICATIONNO,3) AS INT)),0) + 1 AS VARCHAR), 3)
+    FROM TBL_INOUT_SHIPMENT_INDICATION
+    WHERE SHIPMENTINDICATIONNO LIKE 'SH' + CONVERT(VARCHAR(8), GETDATE(), 112) + '%'
+  </select>
+
+  <!-- 수주 품목 조회 (출하등록 시 수주기반 조회) -->
+  <select id="selectOrderItems">
+    SELECT OD.ORDERNO, OD.PARTNO, OD.SEQ, G.PARTNM, G.STANDARD, G.UNIT,
+           OD.UNIT_PRICE, OD.ADOFREQDT, OD.REQQTY AS ORDERQTY,
+           ISNULL((SELECT SUM(SD.SHIPMENTINDICATIONQTY) FROM TBL_INOUT_SHIPMENT_INDICATION_DTL SD
+                   WHERE SD.ORDERNO = CAST(OD.ORDERNO AS VARCHAR) AND SD.PARTNO = OD.PARTNO), 0) AS PREV_SHIPQTY
+    FROM TBL_INOUT_ORDER_DETAIL OD
+    LEFT JOIN TBL_COM_GOODS G ON OD.PARTNO = G.PARTNO
+    LEFT JOIN TBL_INOUT_ORDERS O ON OD.ORDERNO = O.ORDERNO
+    WHERE O.USEYN = 1
+    <if test="company_cd != null">AND O.COMPANYCD = #{company_cd}</if>
+    <if test="plant_cd != null">AND O.PLANTCD = #{plant_cd}</if>
+    <if test="start_date != null">AND OD.ADOFREQDT &gt;= #{start_date}</if>
+    <if test="end_date != null">AND OD.ADOFREQDT &lt;= #{end_date}</if>
+    ORDER BY OD.ORDERNO, OD.SEQ
+  </select>
+
+  <!-- 등록 -->
+  <insert id="insert">
+    INSERT INTO TBL_INOUT_SHIPMENT_INDICATION
+    (SHIPMENTINDICATIONNO, PLANTCD, COMPANYCD, SHIPMENTGUBUN, SHIPMENTPLANDAY,
+     ORDERNO, SHIPMENTSTATUS, REGUSERID, REGDTM, USEYN, REMARK)
+    VALUES (#{SHIPMENTINDICATIONNO}, #{PLANTCD}, #{COMPANYCD}, #{SHIPMENTGUBUN}, #{SHIPMENTPLANDAY},
+            #{ORDERNO}, #{SHIPMENTSTATUS}, #{REGUSERID}, GETDATE(), 1, #{REMARK})
+  </insert>
+
+  <insert id="insertDetail">
+    INSERT INTO TBL_INOUT_SHIPMENT_INDICATION_DTL
+    (SHIPMENTINDICATIONNO, PARTNO, SEQ, SHIPMENTINDICATIONQTY, SHIPMENTSTATUS,
+     SHIPMENTPLANDAY, ORDERNO, ADOFREQDT, UNIT_PRICE, REMARK)
+    VALUES (#{SHIPMENTINDICATIONNO}, #{PARTNO}, #{SEQ}, #{SHIPMENTINDICATIONQTY}, #{SHIPMENTSTATUS},
+            #{SHIPMENTPLANDAY}, #{ORDERNO}, #{ADOFREQDT}, #{UNIT_PRICE}, #{REMARK})
+  </insert>
+
+  <!-- 출하완료 -->
+  <update id="completeShipment">
+    UPDATE TBL_INOUT_SHIPMENT_INDICATION
+    SET SHIPMENTSTATUS = 'DONE', SHIPMENTDAY = GETDATE(), EDITDTM = GETDATE(), EDITUSERID = #{EDITUSERID}
+    WHERE SHIPMENTINDICATIONNO = #{SHIPMENTINDICATIONNO}
+  </update>
+
+  <!-- 삭제(소프트) -->
+  <update id="softDelete">
+    UPDATE TBL_INOUT_SHIPMENT_INDICATION
+    SET USEYN = 0, EDITDTM = GETDATE(), EDITUSERID = #{EDITUSERID}
+    WHERE SHIPMENTINDICATIONNO = #{SHIPMENTINDICATIONNO}
+  </update>
+
+  <select id="selectSummary">
+    SELECT 
+        (SELECT COUNT(*) FROM TBL_INOUT_SHIPMENT_INDICATION WHERE SHIPMENTPLANDAY = FORMAT(GETDATE(), 'yyyy-MM-dd') AND USEYN=1) as expected_today,
+        (SELECT COUNT(*) FROM TBL_INOUT_SHIPMENT_INDICATION WHERE SHIPMENTSTATUS = 'DONE' AND SHIPMENTDAY = FORMAT(GETDATE(), 'yyyy-MM-dd') AND USEYN=1) as completed_today,
+        (SELECT COUNT(*) FROM TBL_INOUT_SHIPMENT_INDICATION WHERE SHIPMENTSTATUS = 'PENDING' AND USEYN=1) as pending_all
+  </select>
+
+</mapper>

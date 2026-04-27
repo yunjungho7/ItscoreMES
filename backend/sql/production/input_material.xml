@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="input_material">
+
+  <!-- 작업지시번호에 해당하는 자재투입 이력 조회 -->
+  <select id="selectInputMaterials">
+    SELECT H.REF_NO AS WORKORDNO,
+           ISNULL(H.REMARK, '') AS WORKLOTNO,
+           W.PROCESSCD AS PROCESSCD,
+           S.PARTNO AS MAT_PARTNO,
+           G.PARTNM AS MAT_PARTNM,
+           H.LOTNO AS MAT_LOTNO,
+           ABS(H.QTY) AS INPUT_QTY,
+           G.UNIT AS UNIT
+    FROM TBL_PROD_STOCK_HISTORY H
+    LEFT JOIN TBL_PROD_LOTSTATE S ON H.LOTNO = S.LOTNO
+    LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    LEFT JOIN TBL_PROD_WORKORDER W ON H.REF_NO = W.WORKORDNO
+    WHERE H.REF_NO = #{WORKORDNO}
+      AND (H.STOCKCHANGEGUBUN = '투입' OR H.STOCKCHANGEGUBUN = 'USE' OR H.QTY &lt; 0)
+    ORDER BY H.CHANGEDAY DESC, H.STOCKHISTORYNO DESC
+  </select>
+
+  <!-- 자재 투입 등록 (재고 이력 추가) -->
+  <insert id="insertInputMaterial">
+    INSERT INTO TBL_PROD_STOCK_HISTORY (
+        LOTNO, LOCATIONCODE, STOCKHISTORYNO, QTY, 
+        STOCKCHANGEGUBUN, CHANGEDAY, REMARK, REF_NO, 
+        REGUSERID, REGDTM
+    ) VALUES (
+        #{MAT_LOTNO}, #{LOCATIONCODE}, #{STOCKHISTORYNO}, #{INPUT_QTY} * -1,
+        '투입', CONVERT(VARCHAR(10), GETDATE(), 23), #{REMARK}, #{WORKORDNO},
+        1, GETDATE()
+    )
+  </insert>
+
+</mapper>

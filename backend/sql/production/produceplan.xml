@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="produceplan">
+
+  <!-- 생산계획 목록 (기준월 기반, 일자별 수량) -->
+  <select id="selectPlanList">
+    SELECT PP.PRODUCEDT, PP.PLANTCD, PP.PARTNO, PP.ORDERNUM, PP.ORDERSEQ,
+           PP.PRODUCEQTY, G.PARTNM, G.STANDARD, G.UNIT
+    FROM TBL_PROD_PRODUCEPLAN PP
+    LEFT JOIN TBL_COM_GOODS G ON PP.PARTNO = G.PARTNO
+    <where>
+      <if test="plant_cd != null">PP.PLANTCD = #{plant_cd}</if>
+      <if test="start_date != null">AND PP.PRODUCEDT &gt;= #{start_date}</if>
+      <if test="end_date != null">AND PP.PRODUCEDT &lt;= #{end_date}</if>
+      <if test="search != null">AND (PP.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
+    </where>
+    ORDER BY PP.PARTNO, PP.PRODUCEDT
+  </select>
+
+  <!-- 생산계획 등록/수정 (MERGE) -->
+  <insert id="upsert">
+    MERGE TBL_PROD_PRODUCEPLAN AS T
+    USING (SELECT #{PRODUCEDT} AS PRODUCEDT, #{PLANTCD} AS PLANTCD, #{PARTNO} AS PARTNO,
+                  #{ORDERNUM} AS ORDERNUM, #{ORDERSEQ} AS ORDERSEQ) AS S
+    ON T.PRODUCEDT = S.PRODUCEDT AND T.PLANTCD = S.PLANTCD AND T.PARTNO = S.PARTNO
+       AND T.ORDERNUM = S.ORDERNUM AND T.ORDERSEQ = S.ORDERSEQ
+    WHEN MATCHED THEN
+      UPDATE SET PRODUCEQTY = #{PRODUCEQTY}, EDITUSERID = #{EDITUSERID}, EDITDTM = GETDATE()
+    WHEN NOT MATCHED THEN
+      INSERT (PRODUCEDT, PLANTCD, PARTNO, ORDERNUM, ORDERSEQ, PRODUCEQTY, REGUSERID, REGDTM)
+      VALUES (#{PRODUCEDT}, #{PLANTCD}, #{PARTNO}, #{ORDERNUM}, #{ORDERSEQ}, #{PRODUCEQTY}, #{REGUSERID}, GETDATE());
+  </insert>
+
+  <!-- 생산계획 삭제 -->
+  <delete id="deletePlan">
+    DELETE FROM TBL_PROD_PRODUCEPLAN
+    WHERE PRODUCEDT = #{PRODUCEDT} AND PLANTCD = #{PLANTCD} AND PARTNO = #{PARTNO}
+          AND ORDERNUM = #{ORDERNUM} AND ORDERSEQ = #{ORDERSEQ}
+  </delete>
+
+</mapper>

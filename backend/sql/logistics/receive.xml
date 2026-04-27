@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<mapper namespace="receive">
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt
+        FROM TBL_INOUT_WAREHOUSE W
+        LEFT JOIN TBL_COM_PLANT P ON W.PLANTCD = P.PLANTCD
+        LEFT JOIN TBL_COM_COMPANY C ON W.COMPANYCD = C.COMPANYCD
+        <where>
+            W.USEYN = 1
+            <if test="start_date != null">AND W.INDAY &gt;= #{start_date}</if>
+            <if test="end_date != null">AND W.INDAY &lt;= #{end_date}</if>
+            <if test="plant_cd != null">AND W.PLANTCD = #{plant_cd}</if>
+            <if test="company_cd != null">AND W.COMPANYCD = #{company_cd}</if>
+            <if test="order_num != null">AND W.ORDERNUM = #{order_num}</if>
+            <if test="search != null">AND (C.COMPANYNM LIKE #{search})</if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT W.WAREHOUSENUM, W.PLANTCD, P.PLANTNM, W.COMPANYCD, C.COMPANYNM,
+               W.ORDERNUM, W.INDAY, W.INGUBUN, W.WHSTATE,
+               (SELECT ISNULL(SUM(D.INLOTQTY * ISNULL(D.UNIT_PRICE,0)),0) FROM TBL_INOUT_WAREHOUSE_DETAIL D WHERE D.WAREHOUSENUM = W.WAREHOUSENUM AND D.USEYN=1) AS TOTALAMT
+        FROM TBL_INOUT_WAREHOUSE W
+        LEFT JOIN TBL_COM_PLANT P ON W.PLANTCD = P.PLANTCD
+        LEFT JOIN TBL_COM_COMPANY C ON W.COMPANYCD = C.COMPANYCD
+        <where>
+            W.USEYN = 1
+            <if test="start_date != null">AND W.INDAY &gt;= #{start_date}</if>
+            <if test="end_date != null">AND W.INDAY &lt;= #{end_date}</if>
+            <if test="plant_cd != null">AND W.PLANTCD = #{plant_cd}</if>
+            <if test="company_cd != null">AND W.COMPANYCD = #{company_cd}</if>
+            <if test="order_num != null">AND W.ORDERNUM = #{order_num}</if>
+            <if test="search != null">AND (C.COMPANYNM LIKE #{search})</if>
+        </where>
+        ORDER BY W.WAREHOUSENUM DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+    </select>
+
+    <select id="selectDetails">
+        SELECT D.*, G.PARTNM, G.STANDARD, G.UNIT,
+               ISNULL(D.INLOTQTY * ISNULL(D.UNIT_PRICE,0), 0) AS AMT,
+               L.LOCATIONNAME
+        FROM TBL_INOUT_WAREHOUSE_DETAIL D
+        LEFT JOIN TBL_COM_GOODS G ON D.PARTNO = G.PARTNO
+        LEFT JOIN TBL_COM_LOCATION L ON D.LOCATIONCODE = L.LOCATIONCODE
+        WHERE D.WAREHOUSENUM = #{WAREHOUSENUM} AND D.USEYN = 1
+        ORDER BY D.WHDETAILNO
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_INOUT_WAREHOUSE (WAREHOUSENUM, ORDERNUM, COMPANYCD, INGUBUN, INDAY, INTIME, REGUSERID, REGDTM, PLANTCD, WHSTATE, USEYN)
+        VALUES (#{WAREHOUSENUM}, #{ORDERNUM}, #{COMPANYCD}, #{INGUBUN}, #{INDAY}, #{INTIME}, #{REGUSERID}, GETDATE(), #{PLANTCD}, #{WHSTATE}, 1)
+    </insert>
+
+    <insert id="insertDetail">
+        INSERT INTO TBL_INOUT_WAREHOUSE_DETAIL (WAREHOUSENUM, WHDETAILNO, PARTNO, LOTNO, INLOTQTY, USEYN, LOCATIONCODE, INDAY, UNIT_PRICE, FAILQTY, TESTQTY)
+        VALUES (#{WAREHOUSENUM}, #{WHDETAILNO}, #{PARTNO}, #{LOTNO}, #{INLOTQTY}, 1, #{LOCATIONCODE}, #{INDAY}, #{UNIT_PRICE}, 0, 0)
+    </insert>
+
+    <delete id="softDelete">
+        UPDATE TBL_INOUT_WAREHOUSE SET USEYN = 0, EDITUSERID = #{EDITUSERID}, EDITDTM = GETDATE() WHERE WAREHOUSENUM = #{WAREHOUSENUM}
+    </delete>
+
+    <select id="selectNextNum">
+        SELECT 'WH' + FORMAT(GETDATE(),'yyyyMMdd') + '-' + RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(WAREHOUSENUM,3) AS INT)),0)+1 AS VARCHAR), 3) AS NEXTNUM
+        FROM TBL_INOUT_WAREHOUSE
+        WHERE WAREHOUSENUM LIKE 'WH' + FORMAT(GETDATE(),'yyyyMMdd') + '%'
+    </select>
+
+    <select id="selectSummary">
+        SELECT 
+            (SELECT COUNT(*) FROM TBL_INOUT_WAREHOUSE WHERE INDAY = FORMAT(GETDATE(), 'yyyy-MM-dd') AND USEYN=1) as expected_today,
+            (SELECT COUNT(*) FROM TBL_INOUT_WAREHOUSE WHERE WHSTATE = 'RECEIVED' AND USEYN=1) as in_progress,
+            (SELECT COUNT(*) FROM TBL_INOUT_WAREHOUSE WHERE WHSTATE = 'QUALITY' AND USEYN=1) as quality_pending
+    </select>
+</mapper>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.dept">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt
+        FROM TBL_COM_DEPT D
+        LEFT JOIN TBL_COM_FACTORY F ON D.FACTORYCD = F.FACTORYCD
+        <where>
+            <if test="search != null">
+                D.DEPTNM LIKE #{search}
+            </if>
+            <if test="factory_cd != null">
+                AND D.FACTORYCD = #{factory_cd}
+            </if>
+            <if test="plant_cd != null">
+                AND F.PLANTCD = #{plant_cd}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT D.*, F.PLANTCD, F.FACTORYNM, P.PLANTNM
+        FROM TBL_COM_DEPT D
+        LEFT JOIN TBL_COM_FACTORY F ON D.FACTORYCD = F.FACTORYCD
+        LEFT JOIN TBL_COM_PLANT P ON F.PLANTCD = P.PLANTCD
+        <where>
+            <if test="search != null">
+                D.DEPTNM LIKE #{search}
+            </if>
+            <if test="factory_cd != null">
+                AND D.FACTORYCD = #{factory_cd}
+            </if>
+            <if test="plant_cd != null">
+                AND F.PLANTCD = #{plant_cd}
+            </if>
+        </where>
+        ORDER BY D.DEPTCD
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_DEPT WHERE DEPTCD = #{DEPTCD}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_DEPT (
+            DEPTCD, FACTORYCD, PAR_DEPTCD, DEPTNM, USEYN,
+            REGUSERID, REGDTM, EDITUSERID, EDITDTM
+        ) VALUES (
+            #{DEPTCD}, #{FACTORYCD}, #{PAR_DEPTCD}, #{DEPTNM}, #{USEYN},
+            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_DEPT
+        <set>
+            <if test="FACTORYCD != null">FACTORYCD = #{FACTORYCD},</if>
+            <if test="PAR_DEPTCD != null">PAR_DEPTCD = #{PAR_DEPTCD},</if>
+            <if test="DEPTNM != null">DEPTNM = #{DEPTNM},</if>
+            <if test="USEYN != null">USEYN = #{USEYN},</if>
+            <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
+            EDITDTM = GETDATE()
+        </set>
+        WHERE DEPTCD = #{DEPTCD}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_COM_DEPT SET USEYN = 0, EDITDTM = GETDATE()
+        WHERE DEPTCD = #{DEPTCD}
+    </delete>
+
+</mapper>

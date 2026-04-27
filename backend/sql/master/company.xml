@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.company">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt FROM TBL_COM_COMPANY
+        <where>
+            <if test="search != null">
+                COMPANYNM LIKE #{search}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT * FROM TBL_COM_COMPANY
+        <where>
+            <if test="search != null">
+                COMPANYNM LIKE #{search}
+            </if>
+        </where>
+        ORDER BY COMPANYCD
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_COMPANY WHERE COMPANYCD = #{COMPANYCD}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_COMPANY (
+            COMPANYCD, PLANTCD, COMPANYTYPE, COMPANYNM, COMPANYNM2,
+            BSNO, OPENYEAR, BSSECTORS, ZIPCD, ADDR1, ADDR2,
+            CEONM, MANAGER, EMAIL, TEL, FAX, MOBILE, HOMEURL,
+            CLAIMYN, PURCHASEYN, TRADSTDATE, TRADENDATE,
+            GRADE, SQCERT, SQGRADE, SQSPONSOR, TSISOYN,
+            REMARK, USEYN, ITEMSHEETTYPE,
+            REGUSERID, REGDTM, EDITUSERID, EDITDTM
+        ) VALUES (
+            #{COMPANYCD}, #{PLANTCD}, #{COMPANYTYPE}, #{COMPANYNM}, #{COMPANYNM2},
+            #{BSNO}, #{OPENYEAR}, #{BSSECTORS}, #{ZIPCD}, #{ADDR1}, #{ADDR2},
+            #{CEONM}, #{MANAGER}, #{EMAIL}, #{TEL}, #{FAX}, #{MOBILE}, #{HOMEURL},
+            #{CLAIMYN}, #{PURCHASEYN}, #{TRADSTDATE}, #{TRADENDATE},
+            #{GRADE}, #{SQCERT}, #{SQGRADE}, #{SQSPONSOR}, #{TSISOYN},
+            #{REMARK}, #{USEYN}, #{ITEMSHEETTYPE},
+            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_COMPANY
+        <set>
+            <if test="PLANTCD != null">PLANTCD = #{PLANTCD},</if>
+            <if test="COMPANYTYPE != null">COMPANYTYPE = #{COMPANYTYPE},</if>
+            <if test="COMPANYNM != null">COMPANYNM = #{COMPANYNM},</if>
+            <if test="COMPANYNM2 != null">COMPANYNM2 = #{COMPANYNM2},</if>
+            <if test="BSNO != null">BSNO = #{BSNO},</if>
+            <if test="OPENYEAR != null">OPENYEAR = #{OPENYEAR},</if>
+            <if test="BSSECTORS != null">BSSECTORS = #{BSSECTORS},</if>
+            <if test="ZIPCD != null">ZIPCD = #{ZIPCD},</if>
+            <if test="ADDR1 != null">ADDR1 = #{ADDR1},</if>
+            <if test="ADDR2 != null">ADDR2 = #{ADDR2},</if>
+            <if test="CEONM != null">CEONM = #{CEONM},</if>
+            <if test="MANAGER != null">MANAGER = #{MANAGER},</if>
+            <if test="EMAIL != null">EMAIL = #{EMAIL},</if>
+            <if test="TEL != null">TEL = #{TEL},</if>
+            <if test="FAX != null">FAX = #{FAX},</if>
+            <if test="MOBILE != null">MOBILE = #{MOBILE},</if>
+            <if test="HOMEURL != null">HOMEURL = #{HOMEURL},</if>
+            <if test="CLAIMYN != null">CLAIMYN = #{CLAIMYN},</if>
+            <if test="PURCHASEYN != null">PURCHASEYN = #{PURCHASEYN},</if>
+            <if test="REMARK != null">REMARK = #{REMARK},</if>
+            <if test="USEYN != null">USEYN = #{USEYN},</if>
+            <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
+            EDITDTM = GETDATE()
+        </set>
+        WHERE COMPANYCD = #{COMPANYCD}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_COM_COMPANY SET USEYN = 0, EDITDTM = GETDATE()
+        WHERE COMPANYCD = #{COMPANYCD}
+    </delete>
+
+</mapper>

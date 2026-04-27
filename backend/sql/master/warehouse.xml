@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.warehouse">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt FROM TBL_COM_WAREHOUSE
+        <where>
+            <if test="search != null">
+                WAREHOUSENAME LIKE #{search}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT * FROM TBL_COM_WAREHOUSE
+        <where>
+            <if test="search != null">
+                WAREHOUSENAME LIKE #{search}
+            </if>
+        </where>
+        ORDER BY WAREHOUSECODE
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_WAREHOUSE WHERE WAREHOUSECODE = #{WAREHOUSECODE}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_WAREHOUSE (
+            WAREHOUSECODE, PLANTCD, WAREHOUSENAME, USEYN,
+            REGUSERID, REGDTM, EDITUSERID, EDITDTM
+        ) VALUES (
+            #{WAREHOUSECODE}, #{PLANTCD}, #{WAREHOUSENAME}, #{USEYN},
+            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_WAREHOUSE
+        <set>
+            <if test="PLANTCD != null">PLANTCD = #{PLANTCD},</if>
+            <if test="WAREHOUSENAME != null">WAREHOUSENAME = #{WAREHOUSENAME},</if>
+            <if test="USEYN != null">USEYN = #{USEYN},</if>
+            <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
+            EDITDTM = GETDATE()
+        </set>
+        WHERE WAREHOUSECODE = #{WAREHOUSECODE}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_COM_WAREHOUSE SET USEYN = 0, EDITDTM = GETDATE()
+        WHERE WAREHOUSECODE = #{WAREHOUSECODE}
+    </delete>
+
+</mapper>

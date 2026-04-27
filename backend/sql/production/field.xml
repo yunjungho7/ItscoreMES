@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="field">
+
+  <!-- 현장 작업지시 목록 건수 -->
+  <select id="countFieldWorkorders">
+    SELECT COUNT(*) FROM TBL_PROD_WORKORDER W
+    LEFT JOIN TBL_COM_GOODS G ON W.PARTNO = G.PARTNO
+    <where>
+      W.USEYN = 1
+      <if test="include_done != 'true'">AND W.ORDSTATE != 'DONE'</if>
+      <if test="start_date != null">AND W.ORDDATE &gt;= #{start_date}</if>
+      <if test="end_date != null">AND W.ORDDATE &lt;= #{end_date}</if>
+      <if test="shift != null">AND W.SHIFT = #{shift}</if>
+      <if test="ord_state != null">AND W.ORDSTATE = #{ord_state}</if>
+      <if test="line_cd != null">AND W.LINECD = #{line_cd}</if>
+      <if test="process_cd != null">AND W.PROCESSCD = #{process_cd}</if>
+      <if test="workord_no != null">AND W.WORKORDNO LIKE #{workord_no}</if>
+      <if test="search != null">AND (W.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
+    </where>
+  </select>
+
+  <!-- 현장 작업지시 목록 -->
+  <select id="selectFieldWorkorders">
+    SELECT W.SHIFT, W.WORKORDNO, W.LINECD, W.PROCESSCD,
+           W.PARTNO AS PROC_PARTNO, G.PARTNM AS PROC_PARTNM, G.STANDARD AS PROC_STANDARD,
+           W.ORDpriority, W.ORDQTY, G.UNIT, W.ORDSTATE,
+           W.PARTNO, G.PARTNM, '' AS LOTNO, W.REMARK
+    FROM TBL_PROD_WORKORDER W
+    LEFT JOIN TBL_COM_GOODS G ON W.PARTNO = G.PARTNO
+    <where>
+      W.USEYN = 1
+      <if test="include_done != 'true'">AND W.ORDSTATE != 'DONE'</if>
+      <if test="start_date != null">AND W.ORDDATE &gt;= #{start_date}</if>
+      <if test="end_date != null">AND W.ORDDATE &lt;= #{end_date}</if>
+      <if test="shift != null">AND W.SHIFT = #{shift}</if>
+      <if test="ord_state != null">AND W.ORDSTATE = #{ord_state}</if>
+      <if test="line_cd != null">AND W.LINECD = #{line_cd}</if>
+      <if test="process_cd != null">AND W.PROCESSCD = #{process_cd}</if>
+      <if test="workord_no != null">AND W.WORKORDNO LIKE #{workord_no}</if>
+      <if test="search != null">AND (W.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
+    </where>
+    ORDER BY W.ORDDATE DESC, W.ORDpriority
+    OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+  </select>
+
+  <!-- 생산실적 집계 -->
+  <select id="selectProductionSummary">
+    SELECT
+      ISNULL(W.ORDQTY, 0) AS ORD_QTY,
+      ISNULL(P.TOT_PRODQTY, 0) AS TOT_PROD_QTY,
+      ISNULL(P.TOT_PRODQTY, 0) - ISNULL(F.TOT_FAILQTY, 0) AS TOT_GOOD_QTY,
+      ISNULL(F.TOT_FAILQTY, 0) AS TOT_FAIL_QTY,
+      ISNULL(P.TOT_PRODQTY, 0) AS PROD_QTY,
+      ISNULL(P.TOT_PRODQTY, 0) - ISNULL(F.TOT_FAILQTY, 0) AS GOOD_QTY,
+      ISNULL(F.TOT_FAILQTY, 0) AS FAIL_QTY
+    FROM TBL_PROD_WORKORDER W
+    LEFT JOIN (
+      SELECT WORKORDNO, SUM(LOTQTY) AS TOT_PRODQTY
+      FROM TBL_PROD_LOTSTATE WHERE LOTSTATE != 'CANCELED'
+      GROUP BY WORKORDNO
+    ) P ON W.WORKORDNO = P.WORKORDNO
+    LEFT JOIN (
+      SELECT P2.WORKORDNO, SUM(FQ.FAILQTY) AS TOT_FAILQTY
+      FROM TBL_PROD_FAILQTY FQ
+      JOIN TBL_PROD_LOTSTATE P2 ON FQ.LOTNO = P2.LOTNO
+      GROUP BY P2.WORKORDNO
+    ) F ON W.WORKORDNO = F.WORKORDNO
+    WHERE W.WORKORDNO = #{WORKORDNO}
+  </select>
+
+  <!-- 생산실적 LOT 상세 -->
+  <select id="selectProductionResult">
+    SELECT S.LOTNO, S.PARTNO, G.PARTNM, G.STANDARD,
+           S.LOTQTY AS INPUT_QTY, G.UNIT,
+           ISNULL(W.ORDQTY, 0) AS NEED_QTY,
+           0 AS STOCK_QTY
+    FROM TBL_PROD_LOTSTATE S
+    LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    LEFT JOIN TBL_PROD_WORKORDER W ON S.WORKORDNO = W.WORKORDNO
+    WHERE S.WORKORDNO = #{WORKORDNO}
+      AND S.LOTSTATE != 'CANCELED'
+    ORDER BY S.LOTNO DESC
+  </select>
+
+  <!-- 생산이력 -->
+  <select id="selectProductionHistory">
+    SELECT S.PARTNO, G.PARTNM, G.STANDARD,
+           S.LINECD, S.PROCESSCD, S.SHIFT,
+           S.LOTNO, S.LOTQTY AS GOOD_QTY,
+           ISNULL(F.TOT_FAILQTY, 0) AS FAIL_QTY,
+           G.UNIT, 
+           ISNULL(S.LOTCREATIONDAY, '') AS START_DATE, 
+           CONVERT(VARCHAR(10), S.WORKDAY, 23) AS END_DATE,
+           S.LOTSTATE
+    FROM TBL_PROD_LOTSTATE S
+    LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    LEFT JOIN (
+      SELECT LOTNO, SUM(FAILQTY) AS TOT_FAILQTY
+      FROM TBL_PROD_FAILQTY GROUP BY LOTNO
+    ) F ON S.LOTNO = F.LOTNO
+    WHERE S.WORKORDNO = #{WORKORDNO}
+      AND S.LOTSTATE != 'CANCELED'
+    ORDER BY S.REGDTM DESC, S.LOTNO DESC
+  </select>
+
+  <!-- 불량이력 -->
+  <select id="selectDefectHistory">
+    SELECT S.PARTNO, G.PARTNM, G.STANDARD,
+           W.LINECD, W.PROCESSCD, W.SHIFT,
+           FQ.LOTNO, FQ.FAILQTY AS FAIL_LOT_QTY,
+           G.UNIT, FQ.FAILTYPE AS FAIL_REASON, FQ.FAILBREAKDOWN AS FAIL_CAUSE
+    FROM TBL_PROD_FAILQTY FQ
+    JOIN TBL_PROD_LOTSTATE S ON FQ.LOTNO = S.LOTNO
+    LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    LEFT JOIN TBL_PROD_WORKORDER W ON S.WORKORDNO = W.WORKORDNO
+    WHERE S.WORKORDNO = #{WORKORDNO}
+    ORDER BY FQ.LOTNO DESC
+  </select>
+
+  <!-- 작업 상태 변경 -->
+  <update id="updateWorkorderStatus">
+    UPDATE TBL_PROD_WORKORDER SET
+      ORDSTATE = #{ORDSTATE},
+      STDATE = CASE 
+        WHEN #{ORDSTATE} = 'STARTED' THEN CONVERT(VARCHAR(10), GETDATE(), 23) 
+        WHEN #{ORDSTATE} = 'NEW' THEN NULL
+        ELSE STDATE END,
+      STTIME = CASE 
+        WHEN #{ORDSTATE} = 'STARTED' THEN CONVERT(VARCHAR(5), GETDATE(), 108) 
+        WHEN #{ORDSTATE} = 'NEW' THEN NULL
+        ELSE STTIME END,
+      ENDDATE = CASE 
+        WHEN #{ORDSTATE} = 'DONE' THEN CONVERT(VARCHAR(10), GETDATE(), 23) 
+        WHEN #{ORDSTATE} = 'NEW' THEN NULL
+        ELSE ENDDATE END,
+      ENDTIME = CASE 
+        WHEN #{ORDSTATE} = 'DONE' THEN CONVERT(VARCHAR(5), GETDATE(), 108) 
+        WHEN #{ORDSTATE} = 'NEW' THEN NULL
+        ELSE ENDTIME END,
+      CLOSEYN = CASE WHEN #{ORDSTATE} = 'DONE' THEN 1 ELSE 0 END,
+      EDITDTM = GETDATE(), EDITUSERID = 1
+    WHERE WORKORDNO = #{WORKORDNO}
+  </update>
+
+  <!-- 실적 등록 (LOT 생성) -->
+  <insert id="insertProductionResult">
+    INSERT INTO TBL_PROD_LOTSTATE (
+      LOTNO, WORKORDNO, PARTNO, LOTQTY, UNIT, 
+      LOTSTATE, LOTTYPE, LOTCREATIONDAY, WORKDAY, 
+      LINECD, PROCESSCD, SHIFT, REGDTM, REGUSERID
+    ) VALUES (
+      #{LOTNO}, #{WORKORDNO}, #{PARTNO}, #{LOTQTY}, #{UNIT},
+      'CREATED', '정상', CONVERT(VARCHAR(10), GETDATE(), 23), CONVERT(VARCHAR(10), GETDATE(), 23),
+      #{LINECD}, #{PROCESSCD}, #{SHIFT}, GETDATE(), 1
+    )
+  </insert>
+
+  <!-- 불량 등록 -->
+  <insert id="insertFailQty">
+    INSERT INTO TBL_PROD_FAILQTY (
+      LOTNO, FAILQTY, FAILTYPE, FAILBREAKDOWN, REGDTM, REGUSERID
+    ) VALUES (
+      #{LOTNO}, #{FAILQTY}, '현장불량', '현장입력', GETDATE(), 1
+    )
+  </insert>
+
+</mapper>

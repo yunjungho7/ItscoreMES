@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="status">
+
+  <!-- 작업지시에 대한 작업실적 (LOT) 목록 -->
+  <select id="selectResults">
+    SELECT S.WORKORDNO, S.WORKDAY AS ORDDATE, S.PROCESSCD, S.LOTNO, 
+           S.PARTNO, G.PARTNM, G.STANDARD, G.UNIT, W.ORDQTY, 
+           S.LOTQTY AS PRODQTY, S.LOTQTY AS GOODQTY, 0 AS DEFECTQTY, 
+           S.LOTSTATE, 1 AS WORKERCNT, S.LOTCREATIONDAY AS STARTDATE
+    FROM TBL_PROD_LOTSTATE S
+    JOIN TBL_PROD_WORKORDER W ON S.WORKORDNO = W.WORKORDNO
+    LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    WHERE S.WORKORDNO = #{WORKORDNO}
+      AND S.LOTSTATE != 'CANCELED'
+    ORDER BY S.WORKDAY DESC, S.LOTNO DESC
+  </select>
+
+  <!-- 작업실적 취소 (상태 업데이트) -->
+  <update id="cancelResult">
+    UPDATE TBL_PROD_LOTSTATE 
+    SET LOTSTATE = 'CANCELED', EDITDTM = GETDATE(), EDITUSERID = 1
+    WHERE LOTNO = #{LOTNO}
+  </update>
+
+</mapper>

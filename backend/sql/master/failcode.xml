@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.failcode">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt FROM TBL_COM_FAILCODE
+        <where>
+            <if test="search != null">
+                FAILCDNM LIKE #{search}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT * FROM TBL_COM_FAILCODE
+        <where>
+            <if test="search != null">
+                FAILCDNM LIKE #{search}
+            </if>
+        </where>
+        ORDER BY FAILCD
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_FAILCODE WHERE FAILCD = #{FAILCD}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_FAILCODE (
+            FAILCD, PAR_FAILCD, FAILCDNM, FAILTYPE, USEYN, REMARK,
+            REGUSERID, REGDTM, EDITUSERID, EDITDTM
+        ) VALUES (
+            #{FAILCD}, #{PAR_FAILCD}, #{FAILCDNM}, #{FAILTYPE}, #{USEYN}, #{REMARK},
+            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_FAILCODE
+        <set>
+            <if test="PAR_FAILCD != null">PAR_FAILCD = #{PAR_FAILCD},</if>
+            <if test="FAILCDNM != null">FAILCDNM = #{FAILCDNM},</if>
+            <if test="FAILTYPE != null">FAILTYPE = #{FAILTYPE},</if>
+            <if test="USEYN != null">USEYN = #{USEYN},</if>
+            <if test="REMARK != null">REMARK = #{REMARK},</if>
+            <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
+            EDITDTM = GETDATE()
+        </set>
+        WHERE FAILCD = #{FAILCD}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_COM_FAILCODE SET USEYN = 0, EDITDTM = GETDATE()
+        WHERE FAILCD = #{FAILCD}
+    </delete>
+
+</mapper>

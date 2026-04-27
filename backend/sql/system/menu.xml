@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="system.menu">
+
+    <select id="selectList">
+        SELECT 
+            MENUCD,
+            PAR_MENUCD,
+            MENUNM,
+            CLASS_PATH,
+            ORD,
+            SEARCH,
+            REGEDIT,
+            USE_YN
+        FROM TBL_COM_MENU
+        ORDER BY ISNULL(PAR_MENUCD, MENUCD) ASC, PAR_MENUCD ASC, ORD ASC
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_MENU (
+            MENUCD,
+            PAR_MENUCD,
+            MENUNM,
+            CLASS_PATH,
+            ORD,
+            SEARCH,
+            REGEDIT,
+            USE_YN,
+            REGDTM
+        ) VALUES (
+            #{MENUCD},
+            #{PAR_MENUCD},
+            #{MENUNM},
+            #{CLASS_PATH},
+            #{ORD},
+            #{SEARCH},
+            #{REGEDIT},
+            #{USE_YN},
+            GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_MENU
+        SET
+            PAR_MENUCD = #{PAR_MENUCD},
+            MENUNM = #{MENUNM},
+            CLASS_PATH = #{CLASS_PATH},
+            ORD = #{ORD},
+            SEARCH = #{SEARCH},
+            REGEDIT = #{REGEDIT},
+            USE_YN = #{USE_YN},
+            EDITDTM = GETDATE()
+        WHERE MENUCD = #{MENUCD}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM TBL_COM_MENU
+        WHERE MENUCD = #{MENUCD}
+    </delete>
+
+</mapper>

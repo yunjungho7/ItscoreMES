@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="master.factory">
+
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt FROM TBL_COM_FACTORY
+        <where>
+            <if test="plant_cd != null">
+                PLANTCD = #{plant_cd}
+            </if>
+            <if test="search != null">
+                AND FACTORYNM LIKE #{search}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectAll">
+        SELECT * FROM TBL_COM_FACTORY
+        <where>
+            <if test="plant_cd != null">
+                PLANTCD = #{plant_cd}
+            </if>
+            <if test="search != null">
+                AND FACTORYNM LIKE #{search}
+            </if>
+        </where>
+        ORDER BY FACTORYCD
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="selectById">
+        SELECT * FROM TBL_COM_FACTORY WHERE FACTORYCD = #{FACTORYCD}
+    </select>
+
+    <select id="selectLastCode">
+        SELECT TOP 1 FACTORYCD FROM TBL_COM_FACTORY
+        WHERE PLANTCD = #{plant_cd}
+        ORDER BY FACTORYCD DESC
+    </select>
+
+    <insert id="insert">
+        INSERT INTO TBL_COM_FACTORY (
+            FACTORYCD, PLANTCD, FACTORYNM, USEYN,
+            REGUSERID, REGDTM, EDITUSERID, EDITDTM
+        ) VALUES (
+            #{FACTORYCD}, #{PLANTCD}, #{FACTORYNM}, #{USEYN},
+            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE()
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE TBL_COM_FACTORY
+        <set>
+            <if test="PLANTCD != null">PLANTCD = #{PLANTCD},</if>
+            <if test="FACTORYNM != null">FACTORYNM = #{FACTORYNM},</if>
+            <if test="USEYN != null">USEYN = #{USEYN},</if>
+            <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
+            EDITDTM = GETDATE()
+        </set>
+        WHERE FACTORYCD = #{FACTORYCD}
+    </update>
+
+    <delete id="softDelete">
+        UPDATE TBL_COM_FACTORY SET USEYN = 0, EDITDTM = GETDATE()
+        WHERE FACTORYCD = #{FACTORYCD}
+    </delete>
+
+</mapper>

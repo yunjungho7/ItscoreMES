@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="testscore">
+
+  <!-- 성적서 현황 목록 조회 (마스터) -->
+  <select id="selectTestScoreList">
+    SELECT 
+      T.CODE,
+      T.PCODE,
+      T.PLANT,
+      T.TESTGUBUN,
+      T.PROD_CD,
+      T.LINE_CD,
+      T.LOT_NO,
+      T.AMPM,
+      T.RESULT,
+      T.WRITERID,
+      CONVERT(VARCHAR(10), T.WDATE, 120) AS WDATE,
+      S.PARTNO,
+      G.PARTNM
+    FROM TBL_PQC_TESTSCORE T
+    LEFT JOIN TBL_INSP_STANDARD S ON T.PCODE = S.CODE
+    LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    <where>
+      T.SHOWYN = 'Y'
+      <if test="plant != null"> AND T.PLANT = #{plant} </if>
+      <if test="test_gubun != null"> AND T.TESTGUBUN = #{test_gubun} </if>
+      <if test="prod_cd != null"> AND T.PROD_CD = #{prod_cd} </if>
+      <if test="part_no_nm != null"> AND (S.PARTNO LIKE #{part_no_nm} OR G.PARTNM LIKE #{part_no_nm}) </if>
+      <if test="lot_no != null"> AND T.LOT_NO LIKE #{lot_no} </if>
+      <if test="start_date != null"> AND T.WDATE >= #{start_date} </if>
+      <if test="end_date != null"> AND T.WDATE &lt;= #{end_date} </if>
+    </where>
+    ORDER BY T.WDATE DESC, T.CODE DESC
+  </select>
+
+  <!-- 성적서 상세 항목 조회 (기준서 기준) -->
+  <select id="selectTestScoreDetails">
+    SELECT 
+      I.CODE AS ITEM_CODE,
+      I.PCODE,
+      I.ITEMCODE,
+      I.ITEMSTEP,
+      I.CHOYN,
+      I.SELFYN,
+      I.SAMPLEQTY,
+      I.PERIOD,
+      I.UNIT,
+      I.OUTWARDVALUE,
+      I.DIMSVALUE,
+      I.PLUS,
+      I.MINUS,
+      I.BIGO
+    FROM TBL_INSP_STANDARD_ITEM I
+    WHERE I.PCODE = #{PCODE}
+    ORDER BY I.ITEMSTEP ASC
+  </select>
+
+</mapper>

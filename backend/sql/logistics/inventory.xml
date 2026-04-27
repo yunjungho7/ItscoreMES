@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<mapper namespace="inventory">
+    <select id="countAll">
+        SELECT COUNT(*) AS cnt
+        FROM (
+            SELECT LS.PARTNO
+            FROM TBL_PROD_STOCK SK
+            JOIN TBL_PROD_LOTSTATE LS ON SK.LOTNO = LS.LOTNO
+            LEFT JOIN TBL_COM_GOODS G ON LS.PARTNO = G.PARTNO
+            LEFT JOIN TBL_COM_LOCATION LOC ON SK.LOCATIONCODE = LOC.LOCATIONCODE
+            LEFT JOIN TBL_COM_WAREHOUSE WH ON LOC.WAREHOUSECODE = WH.WAREHOUSECODE
+            <where>
+                SK.STOCKQTY > 0
+                <if test="plant_cd != null">AND WH.PLANTCD = #{plant_cd}</if>
+                <if test="warehouse_cd != null">AND LOC.WAREHOUSECODE = #{warehouse_cd}</if>
+                <if test="line_cd != null">AND LS.LINECD = #{line_cd}</if>
+                <if test="process_cd != null">AND LS.PROCESSCD = #{process_cd}</if>
+                <if test="part_type != null">AND G.PARTTYPE = #{part_type}</if>
+                <if test="lot_no != null">AND SK.LOTNO = #{lot_no}</if>
+                <if test="location_cd != null">AND SK.LOCATIONCODE = #{location_cd}</if>
+                <if test="search != null">AND (LS.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
+            </where>
+            GROUP BY LS.PARTNO
+        ) T
+    </select>
+
+    <select id="selectAll">
+        SELECT LS.PARTNO, G.PARTNM, G.STANDARD, G.PARTTYPE, G.UNIT,
+               G.SAFETYSTOCK,
+               SUM(CASE WHEN LS.LOTSTATE != 'FAIL' THEN SK.STOCKQTY ELSE 0 END) AS GOODQTY,
+               SUM(CASE WHEN LS.LOTSTATE = 'FAIL' THEN SK.STOCKQTY ELSE 0 END) AS FAILQTY,
+               SUM(SK.STOCKQTY) AS TOTALQTY
+        FROM TBL_PROD_STOCK SK
+        JOIN TBL_PROD_LOTSTATE LS ON SK.LOTNO = LS.LOTNO
+        LEFT JOIN TBL_COM_GOODS G ON LS.PARTNO = G.PARTNO
+        LEFT JOIN TBL_COM_LOCATION LOC ON SK.LOCATIONCODE = LOC.LOCATIONCODE
+        LEFT JOIN TBL_COM_WAREHOUSE WH ON LOC.WAREHOUSECODE = WH.WAREHOUSECODE
+        <where>
+            SK.STOCKQTY > 0
+            <if test="plant_cd != null">AND WH.PLANTCD = #{plant_cd}</if>
+            <if test="warehouse_cd != null">AND LOC.WAREHOUSECODE = #{warehouse_cd}</if>
+            <if test="line_cd != null">AND LS.LINECD = #{line_cd}</if>
+            <if test="process_cd != null">AND LS.PROCESSCD = #{process_cd}</if>
+            <if test="part_type != null">AND G.PARTTYPE = #{part_type}</if>
+            <if test="lot_no != null">AND SK.LOTNO = #{lot_no}</if>
+            <if test="location_cd != null">AND SK.LOCATIONCODE = #{location_cd}</if>
+            <if test="search != null">AND (LS.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
+        </where>
+        GROUP BY LS.PARTNO, G.PARTNM, G.STANDARD, G.PARTTYPE, G.UNIT, G.SAFETYSTOCK
+        ORDER BY LS.PARTNO
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+    </select>
+
+    <select id="selectDetail">
+        SELECT SK.LOTNO, SK.LOCATIONCODE, SK.STOCKQTY,
+               LS.PARTNO, LS.LOTCREATIONDAY, LS.LOTSTATE, LS.ETCINFO,
+               LS.WAREHOUSECODE, WH.WAREHOUSENAME,
+               LOC.LOCATIONNAME,
+               P.PLANTNM
+        FROM TBL_PROD_STOCK SK
+        JOIN TBL_PROD_LOTSTATE LS ON SK.LOTNO = LS.LOTNO
+        LEFT JOIN TBL_COM_LOCATION LOC ON SK.LOCATIONCODE = LOC.LOCATIONCODE
+        LEFT JOIN TBL_COM_WAREHOUSE WH ON LS.WAREHOUSECODE = WH.WAREHOUSECODE
+        LEFT JOIN TBL_COM_PLANT P ON WH.PLANTCD = P.PLANTCD
+        WHERE LS.PARTNO = #{PARTNO} AND SK.STOCKQTY > 0
+        ORDER BY LS.LOTCREATIONDAY DESC
+    </select>
+
+    <update id="updateStockQty">
+        UPDATE TBL_PROD_STOCK SET STOCKQTY = #{STOCKQTY} WHERE LOTNO = #{LOTNO} AND LOCATIONCODE = #{LOCATIONCODE}
+    </update>
+
+    <insert id="insertStockHistory">
+        INSERT INTO TBL_PROD_STOCK_HISTORY (LOTNO, LOCATIONCODE, STOCKHISTORYNO, QTY, STOCKCHANGEGUBUN, MOVINGLOCATIONCD, CHANGEDAY, REMARK, REF_NO, REGUSERID, REGDTM)
+        VALUES (#{LOTNO}, #{LOCATIONCODE}, #{STOCKHISTORYNO}, #{QTY}, #{STOCKCHANGEGUBUN}, #{MOVINGLOCATIONCD}, GETDATE(), #{REMARK}, #{REF_NO}, #{REGUSERID}, GETDATE())
+    </insert>
+
+    <select id="selectSummary">
+        SELECT 
+            (SELECT COUNT(DISTINCT LS.PARTNO) FROM TBL_PROD_STOCK SK JOIN TBL_PROD_LOTSTATE LS ON SK.LOTNO = LS.LOTNO WHERE SK.STOCKQTY > 0) as total_items,
+            (SELECT COUNT(*) FROM (
+                SELECT LS.PARTNO
+                FROM TBL_PROD_STOCK SK
+                JOIN TBL_PROD_LOTSTATE LS ON SK.LOTNO = LS.LOTNO
+                JOIN TBL_COM_GOODS G ON LS.PARTNO = G.PARTNO
+                GROUP BY LS.PARTNO, G.SAFETYSTOCK
+                HAVING SUM(SK.STOCKQTY) &lt; ISNULL(G.SAFETYSTOCK, 0) AND SUM(SK.STOCKQTY) &gt; 0
+            ) T) as low_stock_items,
+            (SELECT COUNT(*) FROM (
+                SELECT LS.PARTNO
+                FROM TBL_PROD_STOCK SK
+                JOIN TBL_PROD_LOTSTATE LS ON SK.LOTNO = LS.LOTNO
+                JOIN TBL_COM_GOODS G ON LS.PARTNO = G.PARTNO
+                GROUP BY LS.PARTNO, G.SAFETYSTOCK
+                HAVING SUM(SK.STOCKQTY) &lt;= (ISNULL(G.SAFETYSTOCK, 0) * 0.1)
+            ) T) as critical_items
+    </select>
+</mapper>

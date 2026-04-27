@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="insp_standard">
+
+  <!-- ======================== -->
+  <!-- Master (TBL_INSP_STANDARD)-->
+  <!-- ======================== -->
+
+  <!-- 최신 기준서 목록 조회 -->
+  <select id="selectInspStandardList">
+    SELECT 
+      S.CODE, S.REVCODE, S.PLANTCD, S.PARTNO, G.PARTNM, G.PARTTYPE,
+      S.PROCESSCD, CONVERT(VARCHAR(10), S.WDAY, 120) AS WDAY,
+      S.REVNO, S.REVCONT, S.BIGO, S.REGDTM
+    FROM TBL_INSP_STANDARD S
+    LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    INNER JOIN (
+        SELECT PARTNO, PROCESSCD, MAX(REVNO) AS MAX_REVNO
+        FROM TBL_INSP_STANDARD
+        GROUP BY PARTNO, PROCESSCD
+    ) M ON S.PARTNO = M.PARTNO AND S.PROCESSCD = M.PROCESSCD AND S.REVNO = M.MAX_REVNO
+    <where>
+      1=1
+      <if test="part_no_nm != null">
+        AND (S.PARTNO LIKE #{part_no_nm} OR G.PARTNM LIKE #{part_no_nm})
+      </if>
+      <if test="part_gubun != null">
+        AND G.PARTTYPE = #{part_gubun}
+      </if>
+    </where>
+    ORDER BY S.REGDTM DESC
+  </select>
+
+  <!-- 개정 이력 조회 -->
+  <select id="selectInspStandardHistory">
+    SELECT 
+      S.CODE, S.REVCODE, S.PLANTCD, S.PARTNO, G.PARTNM, G.PARTTYPE,
+      S.PROCESSCD, CONVERT(VARCHAR(10), S.WDAY, 120) AS WDAY,
+      S.REVNO, S.REVCONT, S.BIGO, S.REGDTM
+    FROM TBL_INSP_STANDARD S
+    LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    WHERE S.PARTNO = #{part_no}
+      AND S.PROCESSCD = #{process_cd}
+    ORDER BY S.REVNO DESC
+  </select>
+
+  <!-- 단건 조회 (팝업창) -->
+  <select id="selectInspStandardByCode">
+    SELECT 
+      CODE, REVCODE, PLANTCD, PARTNO, PROCESSCD, 
+      CONVERT(VARCHAR(10), WDAY, 120) AS WDAY, REVNO, REVCONT, BIGO
+    FROM TBL_INSP_STANDARD
+    WHERE CODE = #{CODE}
+  </select>
+
+  <!-- 최신 Rev No 조회 (저장 시 사용) -->
+  <select id="getMaxRevNo">
+    SELECT ISNULL(MAX(REVNO), 0) AS MAX_REVNO
+    FROM TBL_INSP_STANDARD
+    WHERE PARTNO = #{PARTNO} AND PROCESSCD = #{PROCESSCD}
+  </select>
+
+  <!-- 마스터 채번 (STD-YYYYMMDD-001) -->
+  <select id="getNewStandardCode">
+    SELECT 
+      'STD-' + #{date_str} + '-' + 
+      RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(CODE, 3) AS INT)), 0) + 1 AS VARCHAR), 3) AS NEW_CODE
+    FROM TBL_INSP_STANDARD
+    WHERE CODE LIKE 'STD-' + #{date_str} + '-%'
+  </select>
+
+  <!-- 마스터 등록 -->
+  <insert id="insertInspStandard">
+    INSERT INTO TBL_INSP_STANDARD (
+      CODE, REVCODE, PLANTCD, PARTNO, PROCESSCD, WDAY, REVNO, REVCONT, BIGO, REGUSERID, REGDTM
+    ) VALUES (
+      #{CODE}, #{REVCODE}, #{PLANTCD}, #{PARTNO}, #{PROCESSCD}, #{WDAY}, #{REVNO}, #{REVCONT}, #{BIGO}, 1, GETDATE()
+    )
+  </insert>
+
+
+  <!-- ======================== -->
+  <!-- Detail (TBL_INSP_STANDARD_ITEM)-->
+  <!-- ======================== -->
+
+  <!-- 디테일 조회 -->
+  <select id="selectInspStandardItem">
+    SELECT 
+      CODE, PCODE, ITEMCODE, ITEMSTEP, CHOYN, SELFYN, SAMPLEQTY, PERIOD, UNIT, 
+      OUTWARDVALUE, DIMSVALUE, PLUS, MINUS, BIGO
+    FROM TBL_INSP_STANDARD_ITEM
+    WHERE PCODE = #{PCODE}
+    ORDER BY ITEMSTEP ASC
+  </select>
+
+  <!-- 디테일 채번 (STI-YYYYMMDD-0001) -->
+  <select id="getNewItemCode">
+    SELECT 
+      'STI-' + #{date_str} + '-' + 
+      RIGHT('0000' + CAST(ISNULL(MAX(CAST(RIGHT(CODE, 4) AS INT)), 0) + 1 AS VARCHAR), 4) AS NEW_CODE
+    FROM TBL_INSP_STANDARD_ITEM
+    WHERE CODE LIKE 'STI-' + #{date_str} + '-%'
+  </select>
+
+  <!-- 디테일 등록 -->
+  <insert id="insertInspStandardItem">
+    INSERT INTO TBL_INSP_STANDARD_ITEM (
+      CODE, PCODE, ITEMCODE, ITEMSTEP, CHOYN, SELFYN, SAMPLEQTY, PERIOD, UNIT, 
+      OUTWARDVALUE, DIMSVALUE, PLUS, MINUS, BIGO, REGUSERID, REGDTM
+    ) VALUES (
+      #{CODE}, #{PCODE}, ISNULL(#{ITEMCODE}, ''), ISNULL(#{ITEMSTEP}, 0), 
+      ISNULL(#{CHOYN}, 0), ISNULL(#{SELFYN}, 0), ISNULL(#{SAMPLEQTY}, 0), 
+      #{PERIOD}, #{UNIT}, #{OUTWARDVALUE}, #{DIMSVALUE}, #{PLUS}, #{MINUS}, #{BIGO}, 1, GETDATE()
+    )
+  </insert>
+
+</mapper>

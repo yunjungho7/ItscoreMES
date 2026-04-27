@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="production_status">
+
+  <!-- 생산현황 목록 건수 -->
+  <select id="countProductionStatus">
+    SELECT COUNT(*) FROM TBL_PROD_LOTSTATE S
+    LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    <where>
+      <if test="start_date != null">AND S.WORKDAY &gt;= #{start_date}</if>
+      <if test="end_date != null">AND S.WORKDAY &lt;= #{end_date}</if>
+      <if test="plant_cd != null">AND EXISTS (SELECT 1 FROM TBL_COM_LINE L WHERE L.LINECD = S.LINECD AND L.PLANTCD = #{plant_cd})</if>
+      <if test="lot_no != null">AND S.LOTNO LIKE #{lot_no}</if>
+      <if test="part_no != null">AND S.PARTNO LIKE #{part_no}</if>
+      <if test="search != null">AND (S.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search} OR S.LOTNO LIKE #{search})</if>
+    </where>
+  </select>
+
+  <!-- 생산현황 목록 -->
+  <select id="selectProductionStatus">
+    SELECT S.LOTNO, S.WORKORDNO, S.PARTNO, G.PARTNM, G.STANDARD, G.UNIT,
+           S.LOTQTY, S.LINECD, S.PROCESSCD, S.SHIFT,
+           CONVERT(VARCHAR(10), S.WORKDAY, 23) AS WORKDAY,
+           S.LOTSTATE, S.LOTCREATIONDAY, S.REGDTM
+    FROM TBL_PROD_LOTSTATE S
+    LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    <where>
+      <if test="start_date != null">AND S.WORKDAY &gt;= #{start_date}</if>
+      <if test="end_date != null">AND S.WORKDAY &lt;= #{end_date}</if>
+      <if test="plant_cd != null">AND EXISTS (SELECT 1 FROM TBL_COM_LINE L WHERE L.LINECD = S.LINECD AND L.PLANTCD = #{plant_cd})</if>
+      <if test="lot_no != null">AND S.LOTNO LIKE #{lot_no}</if>
+      <if test="part_no != null">AND S.PARTNO LIKE #{part_no}</if>
+      <if test="search != null">AND (S.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search} OR S.LOTNO LIKE #{search})</if>
+    </where>
+    ORDER BY S.REGDTM DESC
+    OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+  </select>
+
+  <!-- 생산실적 상세 (불량 내역 등) -->
+  <select id="selectProductionDefects">
+    SELECT FQ.LOTNO, FQ.FAILQTY, FQ.FAILTYPE, FQ.FAILBREAKDOWN, FQ.REGDTM
+    FROM TBL_PROD_FAILQTY FQ
+    WHERE FQ.LOTNO = #{LOTNO}
+  </select>
+
+</mapper>

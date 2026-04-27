@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="insp_item">
+
+  <!-- 목록 개수 조회 -->
+  <select id="countInspItem">
+    SELECT COUNT(*) 
+    FROM TBL_INSP_ITEM
+    <where>
+      1=1
+      <if test="plant_cd != null">AND PLANTCD = #{plant_cd}</if>
+      <if test="insp_tp != null">AND INSP_TP = #{insp_tp}</if>
+      <if test="item_gubun != null">AND ITEMGUBUN = #{item_gubun}</if>
+      <if test="test_item_gp != null">AND TESTITEMGP = #{test_item_gp}</if>
+      <if test="test_item != null">AND TESTITEM LIKE #{test_item}</if>
+      <if test="gauge != null">AND GAUGE LIKE #{gauge}</if>
+      <if test="use_yn != null">AND USEYN = #{use_yn}</if>
+    </where>
+  </select>
+
+  <!-- 목록 조회 -->
+  <select id="selectInspItem">
+    SELECT 
+      CODE, PLANTCD, INSP_TP, ITEMGUBUN, TESTITEMGP, TESTITEM,
+      GAUGE, STANDARD, USEYN, REGUSERID, REGDTM, EDITUSERID, EDITDTM,
+      FAILTYPE, FAILBREAKDOWN
+    FROM TBL_INSP_ITEM
+    <where>
+      1=1
+      <if test="plant_cd != null">AND PLANTCD = #{plant_cd}</if>
+      <if test="insp_tp != null">AND INSP_TP = #{insp_tp}</if>
+      <if test="item_gubun != null">AND ITEMGUBUN = #{item_gubun}</if>
+      <if test="test_item_gp != null">AND TESTITEMGP = #{test_item_gp}</if>
+      <if test="test_item != null">AND TESTITEM LIKE #{test_item}</if>
+      <if test="gauge != null">AND GAUGE LIKE #{gauge}</if>
+      <if test="use_yn != null">AND USEYN = #{use_yn}</if>
+    </where>
+    ORDER BY REGDTM DESC, CODE DESC
+    OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+  </select>
+
+  <!-- 단건 조회 -->
+  <select id="selectInspItemByCode">
+    SELECT 
+      CODE, PLANTCD, INSP_TP, ITEMGUBUN, TESTITEMGP, TESTITEM,
+      GAUGE, STANDARD, USEYN, REGUSERID, REGDTM, EDITUSERID, EDITDTM,
+      FAILTYPE, FAILBREAKDOWN
+    FROM TBL_INSP_ITEM
+    WHERE CODE = #{CODE}
+  </select>
+
+  <!-- 신규 CODE 채번 (예: INSP-20260420-001) -->
+  <select id="getNewCode">
+    SELECT 
+      'INSP-' + #{date_str} + '-' + 
+      RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(CODE, 3) AS INT)), 0) + 1 AS VARCHAR), 3) AS NEW_CODE
+    FROM TBL_INSP_ITEM
+    WHERE CODE LIKE 'INSP-' + #{date_str} + '-%'
+  </select>
+
+  <!-- 등록 -->
+  <insert id="insertInspItem">
+    INSERT INTO TBL_INSP_ITEM (
+      CODE, PLANTCD, INSP_TP, ITEMGUBUN, TESTITEMGP, TESTITEM, 
+      GAUGE, STANDARD, USEYN, REGUSERID, REGDTM, FAILTYPE, FAILBREAKDOWN
+    ) VALUES (
+      #{CODE}, #{PLANTCD}, ISNULL(#{INSP_TP}, ''), ISNULL(#{ITEMGUBUN}, ''), ISNULL(#{TESTITEMGP}, ''), ISNULL(#{TESTITEM}, ''),
+      #{GAUGE}, #{STANDARD}, ISNULL(#{USEYN}, 1), 1, GETDATE(), #{FAILTYPE}, #{FAILBREAKDOWN}
+    )
+  </insert>
+
+  <!-- 수정 -->
+  <update id="updateInspItem">
+    UPDATE TBL_INSP_ITEM
+    <set>
+      <if test="PLANTCD != null">PLANTCD = #{PLANTCD},</if>
+      <if test="INSP_TP != null">INSP_TP = #{INSP_TP},</if>
+      <if test="ITEMGUBUN != null">ITEMGUBUN = #{ITEMGUBUN},</if>
+      <if test="TESTITEMGP != null">TESTITEMGP = #{TESTITEMGP},</if>
+      <if test="TESTITEM != null">TESTITEM = #{TESTITEM},</if>
+      <if test="GAUGE != null">GAUGE = #{GAUGE},</if>
+      <if test="STANDARD != null">STANDARD = #{STANDARD},</if>
+      <if test="USEYN != null">USEYN = #{USEYN},</if>
+      <if test="FAILTYPE != null">FAILTYPE = #{FAILTYPE},</if>
+      <if test="FAILBREAKDOWN != null">FAILBREAKDOWN = #{FAILBREAKDOWN},</if>
+      EDITUSERID = 1,
+      EDITDTM = GETDATE()
+    </set>
+    WHERE CODE = #{CODE}
+  </update>
+
+</mapper>

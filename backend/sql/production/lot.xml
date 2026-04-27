@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="lot">
+
+  <!-- LOT 목록 건수 -->
+  <select id="countAllLot">
+    SELECT COUNT(*) FROM TBL_PROD_LOTHISTORY H
+    LEFT JOIN TBL_COM_GOODS G ON H.PARTNO = G.PARTNO
+    <where>
+      1=1
+      <if test="start_date != null">AND H.LOTCREATIONDAY &gt;= #{start_date}</if>
+      <if test="end_date != null">AND H.LOTCREATIONDAY &lt;= #{end_date}</if>
+      <if test="lot_no != null">AND H.LOTNO LIKE #{lot_no}</if>
+      <if test="part_no != null">AND (H.PARTNO LIKE #{part_no} OR G.PARTNM LIKE #{part_no})</if>
+    </where>
+  </select>
+
+  <!-- LOT 목록 조회 -->
+  <select id="selectAllLot">
+    SELECT H.LOTNO, H.LOTHISTORYNO, H.PARTNO, G.PARTNM, G.STANDARD, 
+           H.LOTQTY, H.WORKORDNO, H.LINECD, H.PROCESSCD, 
+           H.MERGELOTNO, H.SEPARATELOTNO, H.LOTCREATIONDAY
+    FROM TBL_PROD_LOTHISTORY H
+    LEFT JOIN TBL_COM_GOODS G ON H.PARTNO = G.PARTNO
+    <where>
+      1=1
+      <if test="start_date != null">AND H.LOTCREATIONDAY &gt;= #{start_date}</if>
+      <if test="end_date != null">AND H.LOTCREATIONDAY &lt;= #{end_date}</if>
+      <if test="lot_no != null">AND H.LOTNO LIKE #{lot_no}</if>
+      <if test="part_no != null">AND (H.PARTNO LIKE #{part_no} OR G.PARTNM LIKE #{part_no})</if>
+    </where>
+    ORDER BY H.LOTCREATIONDAY DESC, H.LOTNO DESC, H.LOTHISTORYNO DESC
+    OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+  </select>
+
+  <!-- 신규 LOT 번호 채번 -->
+  <select id="selectNextLotNum">
+    SELECT 'L' + CONVERT(VARCHAR(8), GETDATE(), 112) + '-' +
+           RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(LOTNO,3) AS INT)),0) + 1 AS VARCHAR), 3)
+    FROM TBL_PROD_LOTSTATE
+    WHERE LOTNO LIKE 'L' + CONVERT(VARCHAR(8), GETDATE(), 112) + '%'
+  </select>
+
+  <!-- LOT 생성 (State) -->
+  <insert id="insertLotState">
+    INSERT INTO TBL_PROD_LOTSTATE
+    (LOTNO, PARTNO, LOTQTY, UNIT, WAREHOUSECODE, LOCATIONCODE, LOTCREATIONDAY, LOTTYPE, LOTSTATE, REGUSERID, REGDTM, EDITUSERID, EDITDTM, REMARK)
+    VALUES (#{LOTNO}, #{PARTNO}, #{LOTQTY}, #{UNIT}, #{WAREHOUSECODE}, #{LOCATIONCODE}, #{LOTCREATIONDAY}, #{LOTTYPE}, 'CREATED', 1, GETDATE(), 1, GETDATE(), #{REMARK})
+  </insert>
+
+  <!-- LOT 생성 이력 (History) -->
+  <insert id="insertLotHistory">
+    INSERT INTO TBL_PROD_LOTHISTORY
+    (LOTNO, LOTHISTORYNO, PARTNO, LOTQTY, UNIT, WAREHOUSECODE, LOCATIONCODE, LOTCREATIONDAY, LOTTYPE, LOTSTATE, WORKORDNO, PROCESSCD, LINECD, SHIFT, REGUSERID, REGDTM, EDITUSERID, EDITDTM)
+    VALUES (#{LOTNO}, 1, #{PARTNO}, #{LOTQTY}, #{UNIT}, #{WAREHOUSECODE}, #{LOCATIONCODE}, #{LOTCREATIONDAY}, #{LOTTYPE}, 'CREATED', #{WORKORDNO}, #{PROCESSCD}, #{LINECD}, #{SHIFT}, 1, GETDATE(), 1, GETDATE())
+  </insert>
+
+  <!-- LOT 추적 (단순 조회 예시: 재고 이력 기반) -->
+  <select id="selectLotTracking">
+    SELECT 
+      1 AS DEPTH,
+      H.LOTNO, 
+      H.LOTNO AS MAT_LOTNO,
+      S.PARTNO AS PARTNO, 
+      G.PARTNM AS PARTNM,
+      H.CHANGEDAY AS CREATIONDAY, 
+      G.UNIT AS UNIT,
+      ABS(H.QTY) AS LOTQTY, 
+      H.STOCKCHANGEGUBUN AS REL_INFO, 
+      '' AS PROCESSCD, 
+      H.REF_NO AS REL_TARGET
+    FROM TBL_PROD_STOCK_HISTORY H
+    LEFT JOIN TBL_PROD_LOTSTATE S ON H.LOTNO = S.LOTNO
+    LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    WHERE (H.LOTNO = #{lotno} OR H.REF_NO = #{lotno})
+    ORDER BY H.CHANGEDAY DESC, H.STOCKHISTORYNO DESC
+  </select>
+
+</mapper>
