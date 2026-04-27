@@ -5,11 +5,26 @@
 """
 import pymssql
 import os
-from db.connection import get_db_connection
+from db.connection import get_db_connection, execute_query
 from db.xml_mapper import XMLMapper
 from typing import Optional
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+class BaseService:
+    def __init__(self):
+        pass
+
+    def get_connection(self):
+        return get_db_connection()
+
+    def execute_query(self, query_info, params=None):
+        conn = self.get_connection()
+        try:
+            return execute_query(conn, query_info, params)
+        finally:
+            conn.close()
 
 
 class BaseCrudService:
