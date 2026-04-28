@@ -5,7 +5,7 @@ MyBatis-style XML Mapper
 - <where> 자동 WHERE 절
 - <set> 자동 SET 절 (UPDATE용)
 """
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 import re
 import os
 

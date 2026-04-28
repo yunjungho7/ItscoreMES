@@ -1,13 +1,37 @@
 import pymssql
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, String, TypeDecorator
 from sqlalchemy.orm import sessionmaker
 from backend.core.config import settings
+
+class CP949String(TypeDecorator):
+    """
+    Centralized CP949 decoding logic for SQLAlchemy.
+    Converts latin-1 (how pymssql often returns CP949 bytes) to cp949 and then to utf-8.
+    """
+    impl = String
+    cache_ok = True
+
+    def process_result_value(self, value, dialect):
+        if value is not None and isinstance(value, str):
+            try:
+                return value.encode('latin-1').decode('cp949')
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                return value
+        return value
+
+def decode_cp949(value):
+    """Helper for manual decoding consistency"""
+    if value is not None and isinstance(value, str):
+        try:
+            return value.encode('latin-1').decode('cp949')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            return value
+    return value
 
 def db_creator():
     last_error = None
     for server in settings.DB_SERVERS:
         try:
-            # pymssql expects server, user, password, database
             conn = pymssql.connect(
                 server=server,
                 user=settings.DB_UID,
@@ -76,13 +100,8 @@ def execute_query(conn, query_info, param_dict=None):
             for row in cursor.fetchall():
                 row_dict = {}
                 for i, value in enumerate(row):
-                    # 한글 깨짐 방지 처리 (Move to TypeDecorator in Task 3)
-                    if isinstance(value, str):
-                        try:
-                            value = value.encode('latin-1').decode('cp949')
-                        except:
-                            pass
-                    row_dict[columns[i]] = value
+                    # Use centralized decoding
+                    row_dict[columns[i]] = decode_cp949(value)
                 results.append(row_dict)
             return results
         else:
