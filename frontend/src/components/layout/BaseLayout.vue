@@ -114,7 +114,8 @@ function toggleGroup(key: string) {
 async function fetchMenus() {
   try {
     const res = await api.get('/api/system/menus');
-    const allMenus = res.data.filter((m: any) => m.USE_YN); // 활성화된 메뉴만
+    // USE_YN이 0(거짓)이 아닌 모든 경우(1, null, undefined)를 허용
+    const allMenus = res.data.filter((m: any) => m.USE_YN !== 0 && m.USE_YN !== false); 
 
     const map = new Map();
     const tree: any[] = [];

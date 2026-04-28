@@ -8,6 +8,9 @@
             <if test="company_type != null">
                 AND COMPANYTYPE = #{company_type}
             </if>
+            <if test="is_customer != null">
+                AND (COMPANYTYPE = '고객사' OR COMPANYTYPE = '협력사/고객사')
+            </if>
             <if test="search != null">
                 AND COMPANYNM LIKE #{search}
             </if>
@@ -20,6 +23,9 @@
             USEYN = 1
             <if test="company_type != null">
                 AND COMPANYTYPE = #{company_type}
+            </if>
+            <if test="is_customer != null">
+                AND (COMPANYTYPE = '고객사' OR COMPANYTYPE = '협력사/고객사')
             </if>
             <if test="search != null">
                 AND COMPANYNM LIKE #{search}

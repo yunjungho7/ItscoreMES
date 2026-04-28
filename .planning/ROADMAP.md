@@ -2,13 +2,17 @@
 
 ## Project: NEWMES Stabilization
 
-## Phase 1: Foundation & Observability (Current)
+## Phase 1: Foundation & Observability (Complete)
 *Goal: Establish robust infrastructure and visibility before touching business logic.*
 
-- [ ] [P1-1] Implement structured logging (Loguru) and Request Tracing middleware.
-- [ ] [P1-2] Implement global error boundaries and notification system in Vue.js.
-- [ ] [P1-3] Implement SQLAlchemy connection pooling and secure XML parsing (`defusedxml`).
-- [ ] [P1-4] Set up `@hey-api/openapi-ts` for type-safe SDK generation.
+**Plans:** 2 plans
+- [x] 01-01-PLAN.md — Backend Infrastructure (Logging, Tracing, DB, XML)
+- [x] 01-02-PLAN.md — Frontend Stability & Type Safety (Error UI, SDK Gen)
+
+- [x] [P1-1] Implement structured logging (Loguru) and Request Tracing middleware.
+- [x] [P1-2] Implement global error boundaries and notification system in Vue.js.
+- [x] [P1-3] Implement SQLAlchemy connection pooling and secure XML parsing (`defusedxml`).
+- [x] [P1-4] Set up `@hey-api/openapi-ts` for type-safe SDK generation.
 
 ## Phase 2: Core Module Stabilization (Master & Logistics)
 *Goal: Ensure data integrity and transactional safety for master data and logistics.*

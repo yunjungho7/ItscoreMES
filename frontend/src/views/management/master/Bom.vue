@@ -24,7 +24,12 @@
         </thead>
         <tbody>
           <tr v-if="flatRows.length === 0">
-            <td colspan="6" class="empty-td">등록된 BOM이 없습니다.</td>
+            <td colspan="6" class="empty-td">
+              등록된 BOM이 없습니다.
+              <div v-if="allBoms.length > 0" style="font-size: 0.8rem; color: #e74c3c; margin-top: 8px;">
+                (시스템 알림: {{ allBoms.length }}건의 데이터를 불러왔으나 트리 구조를 생성하지 못했습니다. 데이터 순환 참조를 확인하세요.)
+              </div>
+            </td>
           </tr>
           <tr v-for="node in flatRows" :key="node.id" class="data-row">
             <!-- 트리 컬럼 -->
@@ -58,8 +63,8 @@
             <!-- 작업 -->
             <td style="text-align: center;">
               <button class="btn-action add" title="하위 추가" @click.stop="openAddChild(node)">＋</button>
-              <button v-if="node.data" class="btn-action edit" title="수정" @click.stop="openEditNode(node)">✎</button>
-              <button v-if="node.data" class="btn-action delete" title="삭제" @click.stop="deleteNode(node)">✕</button>
+              <button class="btn-action edit" title="수정" @click.stop="openEditNode(node)">✎</button>
+              <button class="btn-action delete" title="삭제" @click.stop="deleteNode(node)">✕</button>
             </td>
           </tr>
         </tbody>
@@ -70,24 +75,27 @@
     <FormModal :visible="showModal" :title="editMode ? 'BOM 수정' : 'BOM 등록'" width="800px" :showDelete="false" @close="showModal = false" @save="handleSave">
       <div class="fg">
         <div class="ff" style="margin-bottom: 20px;">
-          <label>모품번 (Parent Part)</label>
-          <select v-model="form.PAR_PARTNO" :disabled="editMode || lockParent" style="max-width: 400px;">
-            <option value="">모품번 선택</option>
-            <option v-for="goods in allGoods" :key="goods.PARTNO" :value="goods.PARTNO">
-              {{ goods.PARTNM }} ({{ goods.PARTNO }})
-            </option>
-          </select>
+          <label class="required">모품번 (Parent Part)</label>
+          <div class="input-with-btn" style="max-width: 400px;">
+            <input type="text" :value="form.PAR_PARTNO ? `${goodsMap[form.PAR_PARTNO] || ''} (${form.PAR_PARTNO})` : ''" readonly placeholder="모품번 선택" />
+            <button class="btn-search-sm" @click="openParentPicker" :disabled="editMode || lockParent" title="검색">🔍</button>
+          </div>
         </div>
 
         <div class="detail-section">
           <div class="detail-header">
             <span class="detail-title">자식 품목 리스트 (Children)</span>
-            <button class="btn-row-add" @click="addChildRow">＋ 행추가</button>
+            <button 
+              class="btn-row-add" 
+              @click="addChildRow" 
+              :disabled="!form.PAR_PARTNO"
+              :title="!form.PAR_PARTNO ? '모품번을 먼저 선택하세요' : ''"
+            >＋ 행추가</button>
           </div>
           <table class="detail-table">
             <thead>
               <tr>
-                <th>자품번 (Child Part)</th>
+                <th class="req-th">자품번 (Child Part)</th>
                 <th style="width: 100px;">소요량</th>
                 <th style="width: 80px;">순서</th>
                 <th style="width: 60px;"></th>
@@ -99,12 +107,10 @@
               </tr>
               <tr v-for="(item, idx) in form.details" :key="idx">
                 <td>
-                  <select v-model="item.CHILD_PARTNO">
-                    <option value="">품목 선택</option>
-                    <option v-for="goods in allGoods" :key="goods.PARTNO" :value="goods.PARTNO">
-                      {{ goods.PARTNM }} ({{ goods.PARTNO }})
-                    </option>
-                  </select>
+                  <div class="input-with-btn">
+                    <input type="text" :value="item.CHILD_PARTNO ? `${goodsMap[item.CHILD_PARTNO] || ''} (${item.CHILD_PARTNO})` : ''" readonly placeholder="자품번 선택" />
+                    <button class="btn-search-sm" @click="openChildPicker(idx)" title="검색">🔍</button>
+                  </div>
                 </td>
                 <td><input type="number" step="0.00001" v-model.number="item.REQQTY" /></td>
                 <td><input type="number" v-model.number="item.ORD" /></td>
@@ -117,6 +123,33 @@
         </div>
       </div>
     </FormModal>
+
+    <!-- ═══ 품목 선택 팝업 ═══ -->
+    <Teleport to="body">
+      <div v-if="showGoodsPicker" class="modal-overlay-picker" @click.self="showGoodsPicker=false">
+        <div class="picker-modal">
+          <div class="picker-header">
+            <h3>품목 선택</h3>
+            <button class="btn-close-sm" @click="showGoodsPicker=false">✕</button>
+          </div>
+          <div class="picker-search">
+            <input type="text" v-model="goodsSearch" placeholder="품번 또는 품명 검색" @keyup.enter="filterGoods" />
+            <button class="btn-search" @click="filterGoods">조회</button>
+          </div>
+          <div class="picker-list">
+            <table class="picker-tbl">
+              <thead><tr><th>품번</th><th>품명</th><th>품목유형</th></tr></thead>
+              <tbody>
+                <tr v-for="g in filteredGoods" :key="g.PARTNO" @click="selectGoods(g)" class="clickable">
+                  <td>{{ g.PARTNO }}</td><td>{{ g.PARTNM }}</td><td>{{ g.PARTTYPE }}</td>
+                </tr>
+                <tr v-if="filteredGoods.length===0"><td colspan="3" class="empty">결과 없음</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -153,6 +186,95 @@ const form = reactive({
 const editMode = ref(false);
 const showModal = ref(false);
 const lockParent = ref(false);
+
+// Picker state
+const showGoodsPicker = ref(false);
+const goodsSearch = ref('');
+const pickingType = ref<'parent' | 'child'>('parent');
+const pickingChildIdx = ref(-1);
+const filteredGoods = ref<any[]>([]);
+
+// Get the PARTTYPE of the currently selected Parent Part
+const selectedParentType = computed(() => {
+  if (!form.PAR_PARTNO) return null;
+  const parent = allGoods.value.find(g => g.PARTNO === form.PAR_PARTNO);
+  return parent ? parent.PARTTYPE : null;
+});
+
+// PARTTYPE Hierarchy: 완제품 > 반제품 > 원자재
+const TYPE_RANK: Record<string, number> = {
+  '완제품': 3,
+  '반제품': 2,
+  '원자재': 1
+};
+
+function openParentPicker() {
+  if (editMode.value || lockParent.value) return;
+  pickingType.value = 'parent';
+  goodsSearch.value = '';
+  filterGoods();
+  showGoodsPicker.value = true;
+}
+
+function openChildPicker(idx: number) {
+  pickingType.value = 'child';
+  pickingChildIdx.value = idx;
+  goodsSearch.value = '';
+  filterGoods();
+  showGoodsPicker.value = true;
+}
+
+function filterGoods() {
+  const s = goodsSearch.value.toLowerCase();
+  let baseList: any[] = [];
+  
+  if (pickingType.value === 'parent') {
+    baseList = parentOptions.value;
+  } else {
+    // Child picker logic:
+    // 1. Exclude the parent part itself
+    // 2. Exclude items with PARTTYPE higher than or equal to the parent's type
+    const pType = selectedParentType.value;
+    const pRank = pType ? (TYPE_RANK[pType] || 0) : 0;
+    
+    baseList = allGoods.value.filter(g => {
+      // Rule 1: Not the parent itself
+      if (g.PARTNO === form.PAR_PARTNO) return false;
+      
+      // Rule 2: Child type rank must be strictly lower than parent type rank
+      const cRank = TYPE_RANK[g.PARTTYPE] || 0;
+      return cRank < pRank;
+    });
+  }
+  
+  if (s) {
+    filteredGoods.value = baseList.filter(g => 
+      (g.PARTNO && g.PARTNO.toLowerCase().includes(s)) || 
+      (g.PARTNM && g.PARTNM.toLowerCase().includes(s))
+    );
+  } else {
+    filteredGoods.value = baseList;
+  }
+}
+
+function selectGoods(g: any) {
+  if (pickingType.value === 'parent') {
+    form.PAR_PARTNO = g.PARTNO;
+  } else if (pickingType.value === 'child') {
+    form.details[pickingChildIdx.value].CHILD_PARTNO = g.PARTNO;
+  }
+  showGoodsPicker.value = false;
+}
+
+// Filtered options for Parent Part Number (only "완제품" for new root registration)
+const parentOptions = computed(() => {
+  if (editMode.value || lockParent.value) {
+    // In edit or add-child mode, show all goods so the current value can be mapped to a label
+    return allGoods.value;
+  }
+  // In new root registration, only show Finished Products
+  return allGoods.value.filter(g => g.PARTTYPE === '완제품');
+});
 
 // ─────────────────────────────────────────────────────────
 // Computed Flat Rows for Grid
@@ -203,7 +325,12 @@ function buildTree() {
   
   // Find all unique children to determine roots
   const childSet = new Set(allBoms.value.map(bom => bom.CHILD_PARTNO));
-  const roots = Array.from(new Set(allBoms.value.map(bom => bom.PAR_PARTNO))).filter(p => !childSet.has(p));
+  let roots = Array.from(new Set(allBoms.value.map(bom => bom.PAR_PARTNO))).filter(p => !childSet.has(p));
+
+  // If no true roots found (due to cycles), use all unique parents as roots
+  if (roots.length === 0 && allBoms.value.length > 0) {
+    roots = Array.from(new Set(allBoms.value.map(bom => bom.PAR_PARTNO)));
+  }
 
   // Group by Parent Part No
   allBoms.value.forEach(bom => {
@@ -213,17 +340,24 @@ function buildTree() {
 
   // Sort
   Object.keys(adjList).forEach(key => {
-    adjList[key].sort((a, b) => a.ORD - b.ORD);
+    adjList[key].sort((a, b) => (a.ORD || 0) - (b.ORD || 0));
   });
 
+  const visitedInPath = new Set<string>();
+
   // Recursive Build
-  function createNode(partNo: string, bomRecord: any, level: number, parentId: string): TreeNode {
+  function createNode(partNo: string, bomRecord: any, level: number, parentId: string, path: string[]): TreeNode {
     const id = parentId ? `${parentId}_${partNo}` : partNo;
+    const currentPath = [...path, partNo];
+    
+    // Check for cycles in the current path to prevent infinite recursion
     const childrenRecords = adjList[partNo] || [];
-    const children = childrenRecords.map(childRec => createNode(childRec.CHILD_PARTNO, childRec, level + 1, id));
+    const children = childrenRecords
+      .filter(childRec => !currentPath.includes(childRec.CHILD_PARTNO)) // Prevent direct cycles
+      .map(childRec => createNode(childRec.CHILD_PARTNO, childRec, level + 1, id, currentPath));
     
     const existingNode = findNodeById(treeData.value, id);
-    const expanded = existingNode ? existingNode.expanded : true;
+    const expanded = existingNode ? existingNode.expanded : (level < 2); // Auto-expand first 2 levels
 
     return {
       id,
@@ -236,7 +370,7 @@ function buildTree() {
     };
   }
 
-  treeData.value = roots.map(rootPartNo => createNode(rootPartNo, null, 0, ''));
+  treeData.value = roots.map(rootPartNo => createNode(rootPartNo, null, 0, '', []));
 }
 
 function findNodeById(nodes: TreeNode[], id: string): TreeNode | null {
@@ -420,7 +554,8 @@ onMounted(() => {
 .detail-header { background: #f8fafc; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; }
 .detail-title { font-size: 0.85rem; font-weight: 700; color: #475569; }
 .btn-row-add { background: #6366f1; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
-.btn-row-add:hover { background: #4f46e5; }
+.btn-row-add:hover:not(:disabled) { background: #4f46e5; }
+.btn-row-add:disabled { background: #cbd5e1; cursor: not-allowed; }
 
 .detail-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
 .detail-table th { background: #f1f5f9; padding: 8px 10px; text-align: left; color: #64748b; font-weight: 600; border-bottom: 1px solid #e2e8f0; }
@@ -432,4 +567,24 @@ onMounted(() => {
 .btn-row-del:hover { background: #fecaca; }
 
 .empty-detail { text-align: center; padding: 20px; color: #94a3b8; font-style: italic; }
+
+/* ═══ 품목 선택 팝업 ═══ */
+.modal-overlay-picker{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;display:flex;align-items:center;justify-content:center}
+.picker-modal{background:#fff;border-radius:10px;width:500px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.2);overflow:hidden}
+.picker-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:#f8f9fa;border-bottom:1px solid #e9ecef}
+.picker-header h3{margin:0;font-size:1.05rem;font-weight:700;color:#2c3e50}
+.btn-close-sm{background:none;border:none;font-size:1.2rem;cursor:pointer;color:#95a5a6}
+.btn-close-sm:hover{color:#e74c3c}
+.picker-search{display:flex;gap:8px;padding:14px 20px;background:#fff;border-bottom:1px solid #e9ecef}
+.picker-search input{flex:1;padding:8px 12px;border:1px solid #dfe6e9;border-radius:6px;font-size:.9rem}
+.picker-list{flex:1;overflow-y:auto;padding:10px 20px 20px}
+.picker-tbl{width:100%;border-collapse:collapse;font-size:.85rem}
+.picker-tbl th{padding:8px 10px;background:#f1f5f9;text-align:left;font-weight:600;color:#3a4a6b;border-bottom:1px solid #e9ecef}
+.picker-tbl td{padding:8px 10px;border-bottom:1px solid #f0f2f5}
+.clickable{cursor:pointer;transition:background .12s}.clickable:hover{background:#e8f5e9}
+.input-with-btn{display:flex;gap:4px;height: 36px;}
+.input-with-btn input{flex:1;cursor:pointer;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:0 10px;}
+.btn-search-sm{background:#667eea;color:#fff;border:none;padding:0 12px;border-radius:6px;cursor:pointer;font-size:1rem;}
+.ff label.required::before { content: '◎ '; color: #27ae60; }
+th.req-th::before { content: '* '; color: #e74c3c; }
 </style>

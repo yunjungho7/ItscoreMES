@@ -45,7 +45,7 @@
             <label class="required">고객사</label>
             <div class="input-with-btn">
               <input type="text" v-model="regForm.COMPANYNM" readonly placeholder="고객사 선택" />
-              <button class="btn-search-sm" @click="showCompanyPicker=true" title="검색">🔍</button>
+              <button class="btn-search-sm" @click="openCompanyPicker" title="검색">🔍</button>
             </div>
           </div>
           <div class="form-field">
@@ -54,9 +54,10 @@
           </div>
           <div class="form-field">
             <label class="required">사업장</label>
-            <select v-model="regForm.PLANTCD">
-              <option v-for="p in plants" :key="p.PLANTCD" :value="p.PLANTCD">{{ p.PLANTNM }}</option>
-            </select>
+            <div class="input-with-btn">
+              <input type="text" v-model="regForm.PLANTNM" readonly placeholder="사업장 선택" />
+              <button class="btn-search-sm" @click="openPlantPicker" title="검색">🔍</button>
+            </div>
           </div>
           <div class="form-field">
             <label>비고</label>
@@ -76,14 +77,14 @@
             <thead>
               <tr>
                 <th style="width:32px"><input type="checkbox" v-model="allChecked" @change="toggleAll" /></th>
-                <th style="width:130px">제품품번</th>
+                <th style="width:130px" class="req-th">제품품번</th>
                 <th style="width:140px">품명</th>
                 <th style="width:90px">규격</th>
                 <th style="width:100px">납기요청일</th>
                 <th style="width:60px">단위</th>
                 <th style="width:90px">단가</th>
                 <th style="width:80px">재고수량</th>
-                <th style="width:80px">수량</th>
+                <th style="width:80px" class="req-th">수량</th>
                 <th style="min-width:100px">비고</th>
               </tr>
             </thead>
@@ -93,7 +94,12 @@
               </tr>
               <tr v-for="(item, i) in regItems" :key="i">
                 <td class="chk"><input type="checkbox" v-model="item._checked" /></td>
-                <td><input type="text" v-model="item.PARTNO" class="cell-input" placeholder="품번 입력" @blur="onPartBlur(item)" /></td>
+                <td>
+                  <div class="cell-input-with-btn">
+                    <input type="text" v-model="item.PARTNO" class="cell-input" placeholder="품번 입력" @blur="onPartBlur(item)" />
+                    <button class="btn-cell-search" @click="openGoodsPicker(i)">🔍</button>
+                  </div>
+                </td>
                 <td><input type="text" v-model="item.PARTNM" class="cell-input" readonly /></td>
                 <td><input type="text" v-model="item.STANDARD" class="cell-input" readonly /></td>
                 <td><input type="date" v-model="item.ADOFREQDT" class="cell-input" /></td>
@@ -103,6 +109,31 @@
                 <td><input type="number" v-model.number="item.REQQTY" class="cell-input num" /></td>
                 <td><input type="text" v-model="item.REMARK" class="cell-input" /></td>
               </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ 사업장 선택 팝업 ═══ -->
+    <div v-if="showPlantPicker" class="modal-overlay" @click.self="showPlantPicker=false">
+      <div class="picker-modal">
+        <div class="picker-header">
+          <h3>사업장 선택</h3>
+          <button class="btn-close-sm" @click="showPlantPicker=false">✕</button>
+        </div>
+        <div class="picker-search">
+          <input type="text" v-model="plantPickerSearch" placeholder="사업장명 검색" @keyup.enter="fetchPlantsForPicker" />
+          <button class="btn-search" @click="fetchPlantsForPicker">조회</button>
+        </div>
+        <div class="picker-list">
+          <table class="picker-tbl">
+            <thead><tr><th>코드</th><th>사업장명</th><th>대표자</th></tr></thead>
+            <tbody>
+              <tr v-for="p in pickerPlants" :key="p.PLANTCD" @click="selectPlant(p)" class="clickable">
+                <td>{{ p.PLANTCD }}</td><td>{{ p.PLANTNM }}</td><td>{{ p.BOSSNM }}</td>
+              </tr>
+              <tr v-if="pickerPlants.length===0"><td colspan="3" class="empty">결과 없음</td></tr>
             </tbody>
           </table>
         </div>
@@ -125,9 +156,34 @@
             <thead><tr><th>코드</th><th>고객사명</th><th>사업자번호</th></tr></thead>
             <tbody>
               <tr v-for="c in companies" :key="c.COMPANYCD" @click="selectCompany(c)" class="clickable">
-                <td>{{ c.COMPANYCD }}</td><td>{{ c.COMPANYNM }}</td><td>{{ c.BUSINESSNO }}</td>
+                <td>{{ c.COMPANYCD }}</td><td>{{ c.COMPANYNM }}</td><td>{{ c.BSNO }}</td>
               </tr>
               <tr v-if="companies.length===0"><td colspan="3" class="empty">결과 없음</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ 품목 선택 팝업 ═══ -->
+    <div v-if="showGoodsPicker" class="modal-overlay" @click.self="showGoodsPicker=false">
+      <div class="picker-modal">
+        <div class="picker-header">
+          <h3>품목 선택</h3>
+          <button class="btn-close-sm" @click="showGoodsPicker=false">✕</button>
+        </div>
+        <div class="picker-search">
+          <input type="text" v-model="goodsSearch" placeholder="품번 또는 품명 검색" @keyup.enter="fetchGoods" />
+          <button class="btn-search" @click="fetchGoods">조회</button>
+        </div>
+        <div class="picker-list">
+          <table class="picker-tbl">
+            <thead><tr><th>품번</th><th>품명</th><th>규격</th><th>단위</th></tr></thead>
+            <tbody>
+              <tr v-for="g in goods" :key="g.PARTNO" @click="selectGoods(g)" class="clickable">
+                <td>{{ g.PARTNO }}</td><td>{{ g.PARTNM }}</td><td>{{ g.STANDARD }}</td><td>{{ g.UNIT }}</td>
+              </tr>
+              <tr v-if="goods.length===0"><td colspan="4" class="empty">결과 없음</td></tr>
             </tbody>
           </table>
         </div>
@@ -196,7 +252,7 @@ function onPg(p: number) { pg.value = p; fetchData(); }
 
 // ── 수주등록 모달 ──
 const showReg = ref(false), regEdit = ref(false);
-const regForm = ref({ PLANTCD: '', COMPANYCD: '', COMPANYNM: '', ADOFREQDT: f(d), REMARK: '' });
+const regForm = ref({ PLANTCD: '', PLANTNM: '', COMPANYCD: '', COMPANYNM: '', ADOFREQDT: f(d), REMARK: '' });
 const regItems = ref<any[]>([]);
 const allChecked = ref(false);
 
@@ -206,7 +262,15 @@ function emptyRow() {
 
 function openRegister() {
   regEdit.value = false;
-  regForm.value = { PLANTCD: plants.value.length ? plants.value[0].PLANTCD : '', COMPANYCD: '', COMPANYNM: '', ADOFREQDT: f(d), REMARK: '' };
+  const defPlant = plants.value.length ? plants.value[0] : { PLANTCD: '', PLANTNM: '' };
+  regForm.value = { 
+    PLANTCD: defPlant.PLANTCD, 
+    PLANTNM: defPlant.PLANTNM,
+    COMPANYCD: '', 
+    COMPANYNM: '', 
+    ADOFREQDT: f(d), 
+    REMARK: '' 
+  };
   regItems.value = [emptyRow()];
   allChecked.value = false;
   showReg.value = true;
@@ -237,8 +301,15 @@ async function onPartBlur(item: any) {
 async function handleSave() {
   if (!regForm.value.COMPANYCD) { alert('고객사를 선택하세요.'); return; }
   if (!regForm.value.PLANTCD) { alert('사업장을 선택하세요.'); return; }
-  const validItems = regItems.value.filter(r => r.PARTNO);
+  
+  const validItems = regItems.value.filter(r => r.PARTNO || r.REQQTY);
   if (validItems.length === 0) { alert('품목을 1건 이상 입력하세요.'); return; }
+  
+  for (const item of validItems) {
+    if (!item.PARTNO) { alert('제품품번을 입력하세요.'); return; }
+    if (!item.REQQTY || item.REQQTY <= 0) { alert('수량을 입력하세요.'); return; }
+  }
+
   try {
     const body = {
       PLANTCD: regForm.value.PLANTCD,
@@ -260,11 +331,35 @@ async function handleSave() {
 }
 function handleRegDelete() { alert('삭제 기능'); }
 
+// ── 사업장 선택 ──
+const showPlantPicker = ref(false), plantPickerSearch = ref(''), pickerPlants = ref<any[]>([]);
+function openPlantPicker() {
+  plantPickerSearch.value = '';
+  showPlantPicker.value = true;
+  fetchPlantsForPicker();
+}
+async function fetchPlantsForPicker() {
+  try {
+    const r = await api.get('/api/master/plant', { params: { search: plantPickerSearch.value, size: 50 } });
+    pickerPlants.value = r.data.data || [];
+  } catch {}
+}
+function selectPlant(p: any) {
+  regForm.value.PLANTCD = p.PLANTCD;
+  regForm.value.PLANTNM = p.PLANTNM;
+  showPlantPicker.value = false;
+}
+
 // ── 고객사 선택 ──
 const showCompanyPicker = ref(false), companySearch = ref(''), companies = ref<any[]>([]);
+function openCompanyPicker() {
+  companySearch.value = '';
+  showCompanyPicker.value = true;
+  fetchCompanies();
+}
 async function fetchCompanies() {
   try {
-    const r = await api.get('/api/master/company', { params: { search: companySearch.value, size: 50 } });
+    const r = await api.get('/api/master/company', { params: { search: companySearch.value, is_customer: 1, size: 50 } });
     companies.value = r.data.data || [];
   } catch {}
 }
@@ -272,6 +367,33 @@ function selectCompany(c: any) {
   regForm.value.COMPANYCD = c.COMPANYCD;
   regForm.value.COMPANYNM = c.COMPANYNM;
   showCompanyPicker.value = false;
+}
+
+// ── 품목 선택 ──
+const showGoodsPicker = ref(false), goodsSearch = ref(''), goods = ref<any[]>([]), pickingIdx = ref(-1);
+function openGoodsPicker(idx: number) {
+  pickingIdx.value = idx;
+  goodsSearch.value = regItems.value[idx].PARTNO || '';
+  goods.value = [];
+  showGoodsPicker.value = true;
+  if (goodsSearch.value) fetchGoods();
+}
+async function fetchGoods() {
+  try {
+    const r = await api.get('/api/master/goods', { params: { search: goodsSearch.value, parttype: '완제품', size: 50 } });
+    goods.value = r.data.data || [];
+  } catch {}
+}
+function selectGoods(g: any) {
+  if (pickingIdx.value > -1) {
+    const item = regItems.value[pickingIdx.value];
+    item.PARTNO = g.PARTNO;
+    item.PARTNM = g.PARTNM;
+    item.STANDARD = g.STANDARD;
+    item.UNIT = g.UNIT;
+    item.UNIT_PRICE = g.UNIT_PRICE || 0;
+  }
+  showGoodsPicker.value = false;
 }
 
 onMounted(() => { fetchPlants(); fetchData(); });
@@ -330,6 +452,7 @@ onMounted(() => { fetchPlants(); fetchData(); });
 .reg-grid{width:100%;border-collapse:collapse;font-size:.83rem}
 .reg-grid thead{position:sticky;top:0;z-index:2}
 .reg-grid th{background:linear-gradient(180deg,#e8f5e9,#c8e6c9);color:#2e7d32;font-weight:600;padding:9px 8px;text-align:left;border-bottom:2px solid #a5d6a7;white-space:nowrap;font-size:.82rem}
+.reg-grid th.req-th::before{content:'* ';color:#e74c3c}
 .reg-grid td{padding:4px 4px;border-bottom:1px solid #f0f2f5}
 .reg-grid .chk{text-align:center}
 .reg-grid .empty{text-align:center;color:#b2bec3;padding:50px 16px!important;font-size:.9rem}
@@ -337,6 +460,9 @@ onMounted(() => { fetchPlants(); fetchData(); });
 .cell-input:focus{border-color:#27ae60;outline:none}
 .cell-input[readonly]{background:#f8fafc;color:#94a3b8;border-color:#f0f2f5}
 .num{text-align:right}.readonly{padding:6px 8px;color:#636e72;font-size:.83rem}
+.cell-input-with-btn{display:flex;gap:2px}
+.cell-input-with-btn input{flex:1}
+.btn-cell-search{background:#636e72;color:#fff;border:none;padding:0 6px;border-radius:4px;cursor:pointer;font-size:.8rem}
 
 /* 고객사 선택 팝업 */
 .picker-modal{background:#fff;border-radius:12px;width:520px;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}

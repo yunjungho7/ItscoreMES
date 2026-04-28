@@ -38,19 +38,38 @@
     </insert>
 
     <select id="selectBomChildren">
-        SELECT B.CHILD_PARTNO AS PARTNO, G.PARTNM, G.STANDARD, G.UNIT,
+        WITH BOM_CTE AS (
+            SELECT B.CHILD_PARTNO AS PARTNO, 
+                   CAST(B.REQQTY AS DECIMAL(18,5)) AS REQQTY,
+                   1 AS LEVEL,
+                   CAST(B.ORD AS VARCHAR(MAX)) AS PATH
+            FROM TBL_COM_BOM B
+            WHERE B.PAR_PARTNO = #{par_partno} AND B.USEYN = 1
+            
+            UNION ALL
+            
+            SELECT B.CHILD_PARTNO AS PARTNO,
+                   CAST(C.REQQTY * B.REQQTY AS DECIMAL(18,5)) AS REQQTY,
+                   C.LEVEL + 1 AS LEVEL,
+                   CAST(C.PATH + '-' + CAST(B.ORD AS VARCHAR(MAX)) AS VARCHAR(MAX)) AS PATH
+            FROM TBL_COM_BOM B
+            JOIN BOM_CTE C ON B.PAR_PARTNO = C.PARTNO
+            WHERE B.USEYN = 1
+        )
+        SELECT CTE.PARTNO, G.PARTNM, G.STANDARD, G.UNIT,
                G.UNIT_PRICE, G.COMPANYCD, C.COMPANYNM,
-               B.REQQTY,
+               CTE.REQQTY,
+               CTE.LEVEL,
+               CTE.PATH,
                ISNULL(S.STOCKQTY, 0) AS STOCKQTY
-        FROM TBL_COM_BOM B
-        LEFT JOIN TBL_COM_GOODS G ON B.CHILD_PARTNO = G.PARTNO
+        FROM BOM_CTE CTE
+        LEFT JOIN TBL_COM_GOODS G ON CTE.PARTNO = G.PARTNO
         LEFT JOIN TBL_COM_COMPANY C ON G.COMPANYCD = C.COMPANYCD
         LEFT JOIN (SELECT LS.PARTNO, SUM(SK.STOCKQTY) AS STOCKQTY
                    FROM TBL_PROD_STOCK SK
                    JOIN TBL_PROD_LOTSTATE LS ON SK.LOTNO = LS.LOTNO
-                   GROUP BY LS.PARTNO) S ON B.CHILD_PARTNO = S.PARTNO
-        WHERE B.PAR_PARTNO = #{par_partno} AND B.USEYN = 1
-        ORDER BY B.ORD
+                   GROUP BY LS.PARTNO) S ON CTE.PARTNO = S.PARTNO
+        ORDER BY CTE.PATH
     </select>
     <select id="selectNextOrderNum">
         SELECT 'PO' + FORMAT(GETDATE(),'yyyyMMdd') + '-' + RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(ORDERNUM,3) AS INT)),0)+1 AS VARCHAR), 3) AS NEXTNUM
