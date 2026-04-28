@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from asgi_correlation_id import CorrelationIdMiddleware
+from backend.core.logging import setup_logging
 from routers.master import router as master_router
 from routers.logistics import router as logistics_router
 from routers.production import router as production_router
@@ -9,11 +11,17 @@ from routers.inspection import router as inspection_router
 from routers.system import router as system_router
 from routers.auth import router as auth_router
 
+# Setup logging before FastAPI initialization
+setup_logging()
+
 app = FastAPI(
     title="PFMES API",
     description="PFMES Manufacturing Execution System API",
     version="1.0.0"
 )
+
+# Correlation ID middleware
+app.add_middleware(CorrelationIdMiddleware)
 
 # CORS middleware
 app.add_middleware(
