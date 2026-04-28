@@ -1,9 +1,12 @@
 import axios from 'axios';
+import { useNotification } from './composables/useNotification';
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || '',
     timeout: 5000,
 });
+
+const { notifyError } = useNotification();
 
 // 전역 응답 인터셉터 (에러 캐치)
 api.interceptors.response.use(
@@ -14,9 +17,9 @@ api.interceptors.response.use(
         if (error.response && error.response.data) {
             // 요구사항에 맞춰 {statusCode: x, message: y} 포맷 캐치
             const { statusCode, message } = error.response.data;
-            alert(`[Error ${statusCode || error.response.status}] ${message || 'Unknown Error'}`);
+            notifyError(message || 'Unknown Error', statusCode || error.response.status);
         } else {
-            alert(`[Error] Network error or server is down.`);
+            notifyError('Network error or server is down.');
         }
         return Promise.reject(error);
     }
