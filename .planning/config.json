@@ -1,0 +1,13 @@
+{
+  "project_name": "NEWMES",
+  "workflow_version": "1.0",
+  "config": {
+    "granularity": "coarse",
+    "execution": "parallel",
+    "git_tracking": true,
+    "research_before_planning": true,
+    "plan_check": true,
+    "priority": "stabilization"
+  },
+  "status": "initializing"
+}
