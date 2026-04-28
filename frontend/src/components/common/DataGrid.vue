@@ -55,19 +55,20 @@
 
 <script setup lang="ts">
 const props = withDefaults(defineProps<{
-  columns: Array<{ key: string; label: string; width?: string; minWidth?: string; type?: string }>;
-  rows: Array<any>;
-  loading?: boolean;
-  selectedIndex?: number;
-  page?: number;
-  totalPages?: number;
-  total?: number;
+ columns: Array<{ key: string; label: string; width?: string; minWidth?: string; type?: string }>;
+ rows?: Array<any>;
+ loading?: boolean;
+ selectedIndex?: number;
+ page?: number;
+ totalPages?: number;
+ total?: number;
 }>(), {
-  loading: false,
-  selectedIndex: -1,
-  page: 1,
-  totalPages: 1,
-  total: 0
+ rows: () => [],
+ loading: false,
+ selectedIndex: -1,
+ page: 1,
+ totalPages: 1,
+ total: 0
 });
 
 defineEmits(['row-click', 'page-change']);

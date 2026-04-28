@@ -3,23 +3,30 @@ import os
 
 # 환경 변수나 설정 파일에서 가져오는 것이 좋으나, 
 # 사용자로부터 DB 정보를 받지 않았으므로 로컬 기본값을 세팅해 둡니다.
-DB_SERVER = os.getenv("DB_SERVER", "192.168.0.5")
+# 여러 개의 DB 서버 IP를 정의 (우선순위 순서)
+DB_SERVERS = ["192.168.0.5", "192.168.1.5"]
 DB_NAME = os.getenv("DB_NAME", "PFMES")
 DB_UID = os.getenv("DB_UID", "SA")
 DB_PWD = os.getenv("DB_PWD", "itscore1!")
 
 def get_db_connection():
-    try:
-        conn = pymssql.connect(
-            server=DB_SERVER,
-            user=DB_UID,
-            password=DB_PWD,
-            database=DB_NAME,
-            charset='utf8'
-        )
-        return conn
-    except Exception as e:
-        raise Exception(f"Database 연결 실패: {e}")
+    last_error = None
+    for server in DB_SERVERS:
+        try:
+            conn = pymssql.connect(
+                server=server,
+                user=DB_UID,
+                password=DB_PWD,
+                database=DB_NAME,
+                charset='utf8',
+                login_timeout=2  # 빠른 타임아웃 설정을 통해 다음 IP 시도
+            )
+            return conn
+        except Exception as e:
+            last_error = e
+            continue
+    
+    raise Exception(f"모든 Database 서버({', '.join(DB_SERVERS)}) 연결 실패: {last_error}")
 
 def execute_query(conn, query_info, param_dict=None):
     """

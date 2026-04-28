@@ -48,7 +48,7 @@ class BaseCrudService:
         query_info = self.mapper.get_query(query_id, params)
         if not query_info:
             return []
-        
+
         conn = self._get_conn()
         try:
             cursor = conn.cursor()
@@ -109,17 +109,19 @@ class BaseCrudService:
         }
         if search:
             params['search'] = f"%{search}%"
-        
+
         params.update(extra_params)
 
         items = self._execute_select('get_list', params)
         total = self._execute_scalar('get_count', params)
 
+        total_pages = (total + size - 1) // size if size > 0 else 1
         return {
-            "items": items,
+            "data": items,
             "total": total,
             "page": page,
-            "size": size
+            "size": size,
+            "totalPages": total_pages
         }
 
     def get_one(self, **pks) -> Optional[dict]:
