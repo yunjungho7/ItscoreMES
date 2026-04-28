@@ -1,36 +1,58 @@
 import pymssql
-import os
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from backend.core.config import settings
 
-# 환경 변수나 설정 파일에서 가져오는 것이 좋으나, 
-# 사용자로부터 DB 정보를 받지 않았으므로 로컬 기본값을 세팅해 둡니다.
-# 여러 개의 DB 서버 IP를 정의 (우선순위 순서)
-DB_SERVERS = ["192.168.0.5", "192.168.1.5"]
-DB_NAME = os.getenv("DB_NAME", "PFMES")
-DB_UID = os.getenv("DB_UID", "SA")
-DB_PWD = os.getenv("DB_PWD", "itscore1!")
-
-def get_db_connection():
+def db_creator():
     last_error = None
-    for server in DB_SERVERS:
+    for server in settings.DB_SERVERS:
         try:
+            # pymssql expects server, user, password, database
             conn = pymssql.connect(
                 server=server,
-                user=DB_UID,
-                password=DB_PWD,
-                database=DB_NAME,
+                user=settings.DB_UID,
+                password=settings.DB_PWD,
+                database=settings.DB_NAME,
                 charset='utf8',
-                login_timeout=2  # 빠른 타임아웃 설정을 통해 다음 IP 시도
+                login_timeout=2
             )
             return conn
         except Exception as e:
             last_error = e
             continue
     
-    raise Exception(f"모든 Database 서버({', '.join(DB_SERVERS)}) 연결 실패: {last_error}")
+    raise Exception(f"모든 Database 서버({', '.join(settings.DB_SERVERS)}) 연결 실패: {last_error}")
+
+# SQLAlchemy Engine with Connection Pooling and Multi-IP Failover
+engine = create_engine(
+    "mssql+pymssql://",
+    creator=db_creator,
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+    pool_recycle=3600
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db_session():
+    """FastAPI Dependency for DB Session"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def get_db_connection():
+    """
+    Returns a raw connection from the pool.
+    Maintained for backward compatibility.
+    """
+    return engine.raw_connection()
 
 def execute_query(conn, query_info, param_dict=None):
     """
-    conn: DB Connection 객체
+    conn: DB Connection 객체 (raw pymssql connection or proxy)
     query_info: XMLMapper 에서 반환된 {query: '...', params: ['...']}
     param_dict: 실제 값이 담긴 딕셔너리 (예: {"user_id": 1})
     """
@@ -54,13 +76,9 @@ def execute_query(conn, query_info, param_dict=None):
             for row in cursor.fetchall():
                 row_dict = {}
                 for i, value in enumerate(row):
-                    # 한글 깨짐 방지 처리: 쨈챘쩍... -> bytes (latin-1) -> decode (cp949)
+                    # 한글 깨짐 방지 처리 (Move to TypeDecorator in Task 3)
                     if isinstance(value, str):
                         try:
-                            # 만약 이미 정상적인 한글이라면 latin-1 인코딩 시 에러가 나거나
-                            # 변환 후 결과가 이상해질 수 있으므로, 
-                            # '쨈', '쨔' 등 특정 패턴이 보일 때만 변환하는 식의 로직도 고려 가능하지만
-                            # 현재 DB 상태가 모두 깨져있다면 일괄 적용
                             value = value.encode('latin-1').decode('cp949')
                         except:
                             pass
@@ -71,7 +89,8 @@ def execute_query(conn, query_info, param_dict=None):
             conn.commit()
             return cursor.rowcount
     except Exception as e:
-        conn.rollback()
+        if hasattr(conn, 'rollback'):
+            conn.rollback()
         raise e
     finally:
         cursor.close()
