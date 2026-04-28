@@ -1,31 +1,35 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <mapper namespace="purchase">
     <select id="countPlan">
-        SELECT COUNT(DISTINCT PP.PARTNO) AS cnt
-        FROM TBL_PROD_PRODUCEPLAN PP
-        LEFT JOIN TBL_COM_GOODS G ON PP.PARTNO = G.PARTNO
+        SELECT COUNT(DISTINCT D.PARTNO) AS cnt
+        FROM TBL_INOUT_ORDERS O
+        JOIN TBL_INOUT_ORDER_DETAIL D ON O.ORDERNO = D.ORDERNO
+        LEFT JOIN TBL_COM_GOODS G ON D.PARTNO = G.PARTNO
         <where>
-            <if test="plant_cd != null">PP.PLANTCD = #{plant_cd}</if>
-            <if test="search != null">AND (PP.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
+            O.USEYN = 1
+            <if test="plant_cd != null">AND O.PLANTCD = #{plant_cd}</if>
+            <if test="search != null">AND (D.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
         </where>
     </select>
 
     <select id="selectPlanList">
-        SELECT PP.PRODUCEDT, PP.PLANTCD, PP.PARTNO, G.PARTNM, G.STANDARD,
-               PP.ORDERNUM, PP.ORDERSEQ, PP.PRODUCEQTY,
+        SELECT O.ADOFREQDT AS PRODUCEDT, O.PLANTCD, D.PARTNO, G.PARTNM, G.STANDARD,
+               O.ORDERNO AS ORDERNUM, D.SEQ AS ORDERSEQ, D.REQQTY AS PRODUCEQTY,
                ISNULL(S.STOCKQTY, 0) AS STOCKQTY
-        FROM TBL_PROD_PRODUCEPLAN PP
-        LEFT JOIN TBL_COM_GOODS G ON PP.PARTNO = G.PARTNO
+        FROM TBL_INOUT_ORDERS O
+        JOIN TBL_INOUT_ORDER_DETAIL D ON O.ORDERNO = D.ORDERNO
+        LEFT JOIN TBL_COM_GOODS G ON D.PARTNO = G.PARTNO
         LEFT JOIN (SELECT PARTNO, SUM(STOCKQTY) AS STOCKQTY FROM TBL_PROD_STOCK SK
                    JOIN TBL_PROD_LOTSTATE LS ON SK.LOTNO = LS.LOTNO
-                   GROUP BY PARTNO) S ON PP.PARTNO = S.PARTNO
+                   GROUP BY PARTNO) S ON D.PARTNO = S.PARTNO
         <where>
-            <if test="plant_cd != null">PP.PLANTCD = #{plant_cd}</if>
-            <if test="start_date != null">AND PP.PRODUCEDT &gt;= #{start_date}</if>
-            <if test="end_date != null">AND PP.PRODUCEDT &lt;= #{end_date}</if>
-            <if test="search != null">AND (PP.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
+            O.USEYN = 1
+            <if test="plant_cd != null">AND O.PLANTCD = #{plant_cd}</if>
+            <if test="start_date != null">AND O.ADOFREQDT &gt;= #{start_date}</if>
+            <if test="end_date != null">AND O.ADOFREQDT &lt;= #{end_date}</if>
+            <if test="search != null">AND (D.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
         </where>
-        ORDER BY PP.PARTNO, PP.PRODUCEDT
+        ORDER BY D.PARTNO, O.ADOFREQDT
     </select>
 
     <insert id="insertPlan">
@@ -47,5 +51,65 @@
                    GROUP BY LS.PARTNO) S ON B.CHILD_PARTNO = S.PARTNO
         WHERE B.PAR_PARTNO = #{par_partno} AND B.USEYN = 1
         ORDER BY B.ORD
+    </select>
+    <select id="selectNextOrderNum">
+        SELECT 'PO' + FORMAT(GETDATE(),'yyyyMMdd') + '-' + RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(ORDERNUM,3) AS INT)),0)+1 AS VARCHAR), 3) AS NEXTNUM
+        FROM TBL_INOUT_PURCHASE_ORDER
+        WHERE ORDERNUM LIKE 'PO' + FORMAT(GETDATE(),'yyyyMMdd') + '%'
+    </select>
+
+    <insert id="insertPurchaseOrder">
+        INSERT INTO TBL_INOUT_PURCHASE_ORDER (ORDERNUM, PLANTCD, COMPANYCD, ORDERDT, ADOFREQDT, USEYN, REGUSERID, REGDTM, ORDERSTATE, REMARK)
+        VALUES (#{ORDERNUM}, #{PLANTCD}, #{COMPANYCD}, #{ORDERDT}, #{ADOFREQDT}, 1, #{REGUSERID}, GETDATE(), #{ORDERSTATE}, #{REMARK})
+    </insert>
+
+    <insert id="insertPurchaseOrderDetail">
+        INSERT INTO TBL_INOUT_PURCHASE_ORDER_DETAIL (ORDERNUM, PARTNO, USEYN, ORDERQTY, REMARK, ADOFREQDT, UNIT_PRICE)
+        VALUES (#{ORDERNUM}, #{PARTNO}, 1, #{ORDERQTY}, #{REMARK}, #{ADOFREQDT}, #{UNIT_PRICE})
+    </insert>
+    <select id="selectPurchaseOrderList">
+        SELECT O.ORDERNUM, O.PLANTCD, P.PLANTNM, O.COMPANYCD, C.COMPANYNM, O.ORDERDT, O.ADOFREQDT, O.ORDERSTATE,
+               (SELECT ISNULL(SUM(D.ORDERQTY * ISNULL(D.UNIT_PRICE, 0)), 0) 
+                FROM TBL_INOUT_PURCHASE_ORDER_DETAIL D 
+                WHERE D.ORDERNUM = O.ORDERNUM AND D.USEYN = 1) AS TOTALAMT,
+               U.NAME AS REGUSERNM, O.REMARK
+        FROM TBL_INOUT_PURCHASE_ORDER O
+        LEFT JOIN TBL_COM_PLANT P ON O.PLANTCD = P.PLANTCD
+        LEFT JOIN TBL_COM_COMPANY C ON O.COMPANYCD = C.COMPANYCD
+        LEFT JOIN TBL_COM_MEMBERS U ON O.REGUSERID = U.EMPID
+        <where>
+            O.USEYN = 1
+            <if test="include_completed == null or include_completed == 'false'">AND O.ORDERSTATE != 'COMPLETED'</if>
+            <if test="start_date != null">AND O.ORDERDT &gt;= #{start_date}</if>
+            <if test="end_date != null">AND O.ORDERDT &lt;= #{end_date}</if>
+            <if test="plant_cd != null">AND O.PLANTCD = #{plant_cd}</if>
+            <if test="company_cd != null">AND O.COMPANYCD = #{company_cd}</if>
+            <if test="search != null">
+                AND (O.ORDERNUM LIKE #{search} OR C.COMPANYNM LIKE #{search} OR
+                     EXISTS (SELECT 1 FROM TBL_INOUT_PURCHASE_ORDER_DETAIL D
+                             LEFT JOIN TBL_COM_GOODS G ON D.PARTNO = G.PARTNO
+                             WHERE D.ORDERNUM = O.ORDERNUM AND D.USEYN = 1
+                             AND (D.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})))
+            </if>
+        </where>
+        ORDER BY O.ORDERDT DESC, O.ORDERNUM DESC
+    </select>
+
+    <select id="selectPurchaseOrderDetailList">
+        SELECT D.ORDERNUM, D.PARTNO, G.PARTNM, G.STANDARD, G.UNIT, D.UNIT_PRICE, D.ORDERQTY, D.ADOFREQDT, 
+               ISNULL(D.ORDERQTY * ISNULL(D.UNIT_PRICE, 0), 0) AS AMT,
+               D.INQTY, (D.ORDERQTY - ISNULL(D.INQTY, 0)) AS REMAINQTY,
+               (SELECT MAX(W.INDAY) FROM TBL_INOUT_WAREHOUSE_DETAIL WD 
+                JOIN TBL_INOUT_WAREHOUSE W ON WD.WAREHOUSENUM = W.WAREHOUSENUM 
+                WHERE W.ORDERNUM = D.ORDERNUM AND WD.PARTNO = D.PARTNO AND WD.USEYN=1) AS LASTINDAY,
+               ISNULL(S.STOCKQTY, 0) AS STOCKQTY, D.REMARK
+        FROM TBL_INOUT_PURCHASE_ORDER_DETAIL D
+        LEFT JOIN TBL_COM_GOODS G ON D.PARTNO = G.PARTNO
+        LEFT JOIN (SELECT LS.PARTNO, SUM(SK.STOCKQTY) AS STOCKQTY
+                   FROM TBL_PROD_STOCK SK
+                   JOIN TBL_PROD_LOTSTATE LS ON SK.LOTNO = LS.LOTNO
+                   GROUP BY LS.PARTNO) S ON D.PARTNO = S.PARTNO
+        WHERE D.ORDERNUM = #{ORDERNUM} AND D.USEYN = 1
+        ORDER BY D.PARTNO
     </select>
 </mapper>

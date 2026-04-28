@@ -56,8 +56,22 @@ class BaseCrudService:
                 params.get(name) for name in query_info['params']
             ) if params else ()
             cursor.execute(query_info['query'], values)
-            columns = [column[0] for column in cursor.description]
-            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+            # 컬럼명을 항상 대문자로 변환하여 프론트엔드와 일치시킴
+            columns = [column[0].upper() for column in cursor.description]
+            results = []
+            for row in cursor.fetchall():
+                row_dict = {}
+                for i, value in enumerate(row):
+                    if isinstance(value, str):
+                        try:
+                            value = value.encode('latin-1').decode('cp949')
+                        except:
+                            pass
+                    row_dict[columns[i]] = value
+                results.append(row_dict)
+            
+            print(f"DEBUG [{query_id}]: {len(results)} rows fetched.")
+            return results
         finally:
             conn.close()
 
@@ -112,8 +126,8 @@ class BaseCrudService:
 
         params.update(extra_params)
 
-        items = self._execute_select('get_list', params)
-        total = self._execute_scalar('get_count', params)
+        items = self._execute_select('selectAll', params)
+        total = self._execute_scalar('countAll', params)
 
         total_pages = (total + size - 1) // size if size > 0 else 1
         return {
@@ -126,20 +140,26 @@ class BaseCrudService:
 
     def get_one(self, **pks) -> Optional[dict]:
         """단건 조회"""
-        items = self._execute_select('get_one', pks)
+        items = self._execute_select('selectById', pks)
         return items[0] if items else None
+
+    def get_by_id(self, pks: dict) -> Optional[dict]:
+        """ID로 조회 (Alias for get_one)"""
+        return self.get_one(**pks)
 
     def create(self, data: dict):
         """등록"""
         return self._execute_update('insert', data)
 
-    def update(self, data: dict):
+    def update(self, pks: dict, data: dict):
         """수정"""
-        return self._execute_update('update', data)
+        # PK와 데이터를 합쳐서 전달
+        params = {**pks, **data}
+        return self._execute_update('update', params)
 
-    def delete(self, **pks):
-        """삭제"""
-        return self._execute_update('delete', pks)
+    def delete(self, pks: dict):
+        """삭제 (Soft Delete)"""
+        return self._execute_update('softDelete', pks)
 
     def _execute_transaction(self, callback):
         """트랜잭션 실행 (callback 에 cursor 전달)"""

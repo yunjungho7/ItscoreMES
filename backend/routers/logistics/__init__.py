@@ -83,7 +83,19 @@ def get_bom_children(par_partno: str):
 
 @router.post("/api/purchase/order", summary="발주 등록 (BOM 기반)", status_code=201)
 def create_purchase_order(body: PurchaseOrderCreate):
-    return {"statusCode": 201, "message": "발주가 등록되었습니다."}
+    return purchase_service.create_purchase_order(body.model_dump())
+
+@router.get("/api/purchase/list", summary="발주 현황(목록) 조회")
+def get_purchase_orders(start_date: Optional[str] = None, end_date: Optional[str] = None,
+                        plant_cd: Optional[str] = None, company_cd: Optional[str] = None,
+                        search: Optional[str] = None, include_completed: bool = False):
+    return purchase_service.get_purchase_orders(start_date=start_date, end_date=end_date,
+                                                 plant_cd=plant_cd, company_cd=company_cd,
+                                                 search=search, include_completed=include_completed)
+
+@router.get("/api/purchase/detail/{order_num}", summary="발주 현황 상세 품목 조회")
+def get_purchase_order_details(order_num: str):
+    return purchase_service.get_purchase_order_details(order_num)
 
 
 # ════════════════════════════════════════
@@ -108,6 +120,10 @@ def get_receive_summary():
 def get_receive_details(warehouse_num: str):
     return receive_service.get_details(warehouse_num)
 
+@router.post("/api/receive/order", summary="입고 등록 (발주기반)", status_code=201)
+def create_receive_from_order(data: ReceiveCreate):
+    return receive_service.create(data.model_dump())
+
 @router.post("/api/receive/create", summary="입고 등록", status_code=201)
 def create_receive(body: ReceiveCreate):
     return receive_service.create(body.model_dump())
@@ -117,6 +133,14 @@ def delete_receive(warehouse_num: str):
     if not receive_service.delete(warehouse_num):
         raise HTTPException(status_code=404, detail="입고를 찾을 수 없습니다.")
     return {"statusCode": 200, "message": "입고가 취소되었습니다."}
+
+@router.get("/api/receive/po-list", summary="발주 목록 조회 (입고용)")
+def get_po_list_for_receive(plant_cd: Optional[str] = None, search: Optional[str] = None):
+    return receive_service.get_purchase_orders(plant_cd=plant_cd, search=search)
+
+@router.get("/api/receive/po-detail/{order_num}", summary="발주 상세 조회 (입고용)")
+def get_po_detail_for_receive(order_num: str):
+    return receive_service.get_purchase_order_details(order_num)
 
 
 # ════════════════════════════════════════

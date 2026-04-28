@@ -13,7 +13,8 @@ import os
 class XMLMapper:
     def __init__(self, xml_path):
         self.xml_path = xml_path
-        self.tree = ET.parse(xml_path)
+        with open(xml_path, 'r', encoding='utf-8') as f:
+            self.tree = ET.parse(f)
         self.root = self.tree.getroot()
         self.namespace = self.root.attrib.get('namespace', '')
         self.elements = {}

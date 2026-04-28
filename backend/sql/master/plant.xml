@@ -4,8 +4,9 @@
     <select id="countAll">
         SELECT COUNT(*) AS cnt FROM TBL_COM_PLANT
         <where>
+            USEYN = 1
             <if test="search != null">
-                PLANTNM LIKE #{search}
+                AND PLANTNM LIKE #{search}
             </if>
         </where>
     </select>
@@ -13,8 +14,9 @@
     <select id="selectAll">
         SELECT * FROM TBL_COM_PLANT
         <where>
+            USEYN = 1
             <if test="search != null">
-                PLANTNM LIKE #{search}
+                AND PLANTNM LIKE #{search}
             </if>
         </where>
         ORDER BY PLANTCD

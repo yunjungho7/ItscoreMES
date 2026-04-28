@@ -50,7 +50,22 @@ def execute_query(conn, query_info, param_dict=None):
         # SELECT 문인 경우 결과를 Dictionary 리스트로 변환하여 반환
         if query.strip().upper().startswith("SELECT"):
             columns = [column[0] for column in cursor.description]
-            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            results = []
+            for row in cursor.fetchall():
+                row_dict = {}
+                for i, value in enumerate(row):
+                    # 한글 깨짐 방지 처리: 쨈챘쩍... -> bytes (latin-1) -> decode (cp949)
+                    if isinstance(value, str):
+                        try:
+                            # 만약 이미 정상적인 한글이라면 latin-1 인코딩 시 에러가 나거나
+                            # 변환 후 결과가 이상해질 수 있으므로, 
+                            # '쨈', '쨔' 등 특정 패턴이 보일 때만 변환하는 식의 로직도 고려 가능하지만
+                            # 현재 DB 상태가 모두 깨져있다면 일괄 적용
+                            value = value.encode('latin-1').decode('cp949')
+                        except:
+                            pass
+                    row_dict[columns[i]] = value
+                results.append(row_dict)
             return results
         else:
             conn.commit()

@@ -76,6 +76,15 @@ class ReceiveService:
             dq = self.mapper.get_query('insertDetail', d)
             dv = tuple(d.get(name) for name in dq['params'])
             cursor.execute(dq['query'], dv)
+        
+        # 발주기반 입고인 경우 발주상태를 'COMPLETED'로 변경
+        order_num = data.get('ORDERNUM') or data.get('order_num')
+        if order_num:
+            uq = self.mapper.get_query('updatePurchaseOrderState', {'ORDERNUM': order_num, 'ORDERSTATE': 'COMPLETED'})
+            if uq:
+                uv = tuple({'ORDERNUM': order_num, 'ORDERSTATE': 'COMPLETED'}.get(name) for name in uq['params'])
+                cursor.execute(uq['query'], uv)
+
         conn.commit()
         conn.close()
         return {"WAREHOUSENUM": wh_num}

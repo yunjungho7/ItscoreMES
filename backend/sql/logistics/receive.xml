@@ -73,4 +73,11 @@
             (SELECT COUNT(*) FROM TBL_INOUT_WAREHOUSE WHERE WHSTATE = 'RECEIVED' AND USEYN=1) as in_progress,
             (SELECT COUNT(*) FROM TBL_INOUT_WAREHOUSE WHERE WHSTATE = 'QUALITY' AND USEYN=1) as quality_pending
     </select>
+
+    <update id="updatePurchaseOrderState">
+        UPDATE TBL_INOUT_PURCHASE_ORDER
+        SET ORDERSTATE = #{ORDERSTATE}, EDITDTM = GETDATE()
+        WHERE ORDERNUM = #{ORDERNUM}
+    </update>
+
 </mapper>

@@ -14,8 +14,8 @@ def _not_found(key: str):
 
 
 @router.get("/company", summary="거래처 목록 조회")
-def get_companies(search: Optional[str] = None, page: int = 1, size: int = 50):
-    return company_service.get_all(search=search, page=page, size=size)
+def get_companies(search: Optional[str] = None, company_type: Optional[str] = None, page: int = 1, size: int = 50):
+    return company_service.get_all(search=search, company_type=company_type, page=page, size=size)
 
 
 @router.get("/company/{company_cd}", summary="거래처 상세 조회")

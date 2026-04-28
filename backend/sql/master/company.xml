@@ -4,8 +4,12 @@
     <select id="countAll">
         SELECT COUNT(*) AS cnt FROM TBL_COM_COMPANY
         <where>
+            USEYN = 1
+            <if test="company_type != null">
+                AND COMPANYTYPE = #{company_type}
+            </if>
             <if test="search != null">
-                COMPANYNM LIKE #{search}
+                AND COMPANYNM LIKE #{search}
             </if>
         </where>
     </select>
@@ -13,8 +17,12 @@
     <select id="selectAll">
         SELECT * FROM TBL_COM_COMPANY
         <where>
+            USEYN = 1
+            <if test="company_type != null">
+                AND COMPANYTYPE = #{company_type}
+            </if>
             <if test="search != null">
-                COMPANYNM LIKE #{search}
+                AND COMPANYNM LIKE #{search}
             </if>
         </where>
         ORDER BY COMPANYCD

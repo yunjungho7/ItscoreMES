@@ -46,12 +46,12 @@ class PurchaseOrderCreate(BaseModel):
     PLANTCD: str
     ADOFREQDT: date
     REMARK: Optional[str] = None
-    items: List['PurchaseItemCreate'] = []
+    details: List['PurchaseItemCreate'] = []
 
 class PurchaseItemCreate(BaseModel):
     PARTNO: str
     COMPANYCD: Optional[str] = None
-    REQQTY: Decimal = 0
+    ORDERQTY: Decimal = 0
     UNIT_PRICE: Optional[Decimal] = 0
     REMARK: Optional[str] = None
 
