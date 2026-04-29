@@ -81,30 +81,31 @@ const selectedOrderNum = ref('');
 
 // Master Grid Columns
 const masterCols = [
-  { key: 'ORDERNUM', label: '발주번호', width: '130px' },
-  { key: 'PLANTNM', label: '사업장', width: '120px' },
-  { key: 'COMPANYNM', label: '공급사', width: '150px' },
-  { key: 'ORDERDT', label: '발주일자', width: '110px', type: 'date' },
-  { key: 'ADOFREQDT', label: '납기요청일', width: '110px', type: 'date' },
-  { key: 'TOTALAMT', label: '총금액', width: '110px', type: 'number' },
+  { key: 'ORDERNUM', label: '발주번호', width: '140px' },
+  { key: 'PLANTNM', label: '사업장', width: '130px' },
+  { key: 'COMPANYNM', label: '공급사', width: '200px' },
+  { key: 'ORDERDT', label: '발주일자', width: '100px', type: 'date' },
+  { key: 'ADOFREQDT', label: '납기요청일', width: '100px', type: 'date' },
+  { key: 'TOTALAMT', label: '총금액', width: '120px', type: 'number' },
   { key: 'ORDERSTATE', label: '상태', width: '90px' },
   { key: 'REGUSERNM', label: '등록자', width: '90px' },
-  { key: 'REMARK', label: '비고', width: '150px' },
+  { key: 'REMARK', label: '비고', width: '200px' },
 ];
 
 // Detail Grid Columns
 const detailCols = [
-  { key: 'PARTNO', label: '자재품번', width: '130px' },
-  { key: 'PARTNM', label: '품명', width: '150px' },
-  { key: 'STANDARD', label: '규격', width: '100px' },
+  { key: 'PARTNO', label: '자재품번', width: '140px' },
+  { key: 'PARTNM', label: '품명', width: '220px' },
+  { key: 'STANDARD', label: '규격', width: '120px' },
   { key: 'UNIT', label: '단위', width: '60px' },
-  { key: 'UNIT_PRICE', label: '단가', width: '90px', type: 'number' },
+  { key: 'UNIT_PRICE', label: '단가', width: '100px', type: 'number' },
   { key: 'ORDERQTY', label: '발주수량', width: '90px', type: 'number' },
-  { key: 'ADOFREQDT', label: '납기요청일', width: '110px', type: 'date' },
-  { key: 'AMT', label: '금액', width: '100px', type: 'number' },
+  { key: 'ADOFREQDT', label: '납기요청일', width: '100px', type: 'date' },
+  { key: 'SALES_ADOFREQDT', label: '수주납기일', width: '100px', type: 'date' },
+  { key: 'AMT', label: '금액', width: '110px', type: 'number' },
   { key: 'INQTY', label: '입고수량', width: '90px', type: 'number' },
   { key: 'STOCKQTY', label: '재고수량', width: '90px', type: 'number' },
-  { key: 'REMARK', label: '비고', width: '150px' },
+  { key: 'REMARK', label: '비고', width: '200px' },
 ];
 
 // --- API Fetching ---

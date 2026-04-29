@@ -11,6 +11,12 @@
             <if test="is_customer != null">
                 AND (COMPANYTYPE = '고객사' OR COMPANYTYPE = '협력사/고객사')
             </if>
+            <if test="is_supplier != null">
+                AND (COMPANYTYPE = '협력사' OR COMPANYTYPE = '협력사/고객사')
+            </if>
+            <if test="plant_cd != null">
+                AND PLANTCD = #{plant_cd}
+            </if>
             <if test="search != null">
                 AND COMPANYNM LIKE #{search}
             </if>
@@ -26,6 +32,12 @@
             </if>
             <if test="is_customer != null">
                 AND (COMPANYTYPE = '고객사' OR COMPANYTYPE = '협력사/고객사')
+            </if>
+            <if test="is_supplier != null">
+                AND (COMPANYTYPE = '협력사' OR COMPANYTYPE = '협력사/고객사')
+            </if>
+            <if test="plant_cd != null">
+                AND PLANTCD = #{plant_cd}
             </if>
             <if test="search != null">
                 AND COMPANYNM LIKE #{search}

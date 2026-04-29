@@ -42,10 +42,10 @@
         <!-- 폼 영역 -->
         <div class="reg-form">
           <div class="form-field">
-            <label class="required">고객사</label>
+            <label class="required">사업장</label>
             <div class="input-with-btn">
-              <input type="text" v-model="regForm.COMPANYNM" readonly placeholder="고객사 선택" />
-              <button class="btn-search-sm" @click="openCompanyPicker" title="검색">🔍</button>
+              <input type="text" v-model="regForm.PLANTNM" readonly placeholder="사업장 선택" />
+              <button class="btn-search-sm" @click="openPlantPicker" title="검색">🔍</button>
             </div>
           </div>
           <div class="form-field">
@@ -53,10 +53,10 @@
             <input type="date" v-model="regForm.ADOFREQDT" />
           </div>
           <div class="form-field">
-            <label class="required">사업장</label>
+            <label class="required">고객사</label>
             <div class="input-with-btn">
-              <input type="text" v-model="regForm.PLANTNM" readonly placeholder="사업장 선택" />
-              <button class="btn-search-sm" @click="openPlantPicker" title="검색">🔍</button>
+              <input type="text" v-model="regForm.COMPANYNM" readonly placeholder="고객사 선택" />
+              <button class="btn-search-sm" @click="openCompanyPicker" title="검색">🔍</button>
             </div>
           </div>
           <div class="form-field">
@@ -345,6 +345,10 @@ async function fetchPlantsForPicker() {
   } catch {}
 }
 function selectPlant(p: any) {
+  if (regForm.value.PLANTCD !== p.PLANTCD) {
+    regForm.value.COMPANYCD = '';
+    regForm.value.COMPANYNM = '';
+  }
   regForm.value.PLANTCD = p.PLANTCD;
   regForm.value.PLANTNM = p.PLANTNM;
   showPlantPicker.value = false;
@@ -353,13 +357,21 @@ function selectPlant(p: any) {
 // ── 고객사 선택 ──
 const showCompanyPicker = ref(false), companySearch = ref(''), companies = ref<any[]>([]);
 function openCompanyPicker() {
+  if (!regForm.value.PLANTCD) {
+    alert('사업장을 먼저 선택하세요.');
+    return;
+  }
   companySearch.value = '';
   showCompanyPicker.value = true;
   fetchCompanies();
 }
 async function fetchCompanies() {
   try {
-    const r = await api.get('/api/master/company', { params: { search: companySearch.value, is_customer: 1, size: 50 } });
+    const params: any = { search: companySearch.value, is_customer: 1, size: 50 };
+    if (regForm.value.PLANTCD) {
+      params.plant_cd = regForm.value.PLANTCD;
+    }
+    const r = await api.get('/api/master/company', { params });
     companies.value = r.data.data || [];
   } catch {}
 }

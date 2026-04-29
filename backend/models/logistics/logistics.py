@@ -44,6 +44,7 @@ class ProducePlanCreate(BaseModel):
 
 class PurchaseOrderCreate(BaseModel):
     PLANTCD: str
+    COMPANYCD: Optional[str] = None
     ADOFREQDT: date
     REMARK: Optional[str] = None
     details: List['PurchaseItemCreate'] = []
@@ -53,6 +54,7 @@ class PurchaseItemCreate(BaseModel):
     COMPANYCD: Optional[str] = None
     ORDERQTY: Decimal = 0
     UNIT_PRICE: Optional[Decimal] = 0
+    ADOFREQDT: Optional[date] = None
     REMARK: Optional[str] = None
 
 

@@ -21,7 +21,7 @@
       <table class="cal-grid">
         <thead>
           <tr>
-            <th class="fix">품번</th><th class="fix">품명</th><th class="fix">규격</th>
+            <th class="fix">수주번호</th><th class="fix">고객사</th><th class="fix">품번</th><th class="fix">품명</th><th class="fix">단위</th>
             <th class="fix num">재고수량</th><th class="fix num">계획합계</th>
             <th v-for="dt in dateCols" :key="dt" class="date-col">
               <div>{{ dt.slice(5) }}</div><div class="sub">계획</div>
@@ -29,9 +29,9 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-if="pivotRows.length===0"><td :colspan="5+dateCols.length" class="empty">데이터가 없습니다.</td></tr>
+          <tr v-if="pivotRows.length===0"><td :colspan="7+dateCols.length" class="empty">데이터가 없습니다.</td></tr>
           <tr v-for="(row,i) in pivotRows" :key="i" :class="{selected:selIdx===i}" @click="selIdx=i">
-            <td>{{ row.PARTNO }}</td><td>{{ row.PARTNM }}</td><td>{{ row.STANDARD }}</td>
+            <td>{{ row.ORDERNUM }}</td><td>{{ row.COMPANYNM }}</td><td>{{ row.PARTNO }}</td><td>{{ row.PARTNM }}</td><td><span class="badge">{{ row.UNIT }}</span></td>
             <td class="num">{{ row.STOCKQTY }}</td>
             <td class="num total">{{ row.PLANTOTAL }}</td>
             <td v-for="dt in dateCols" :key="dt" class="num" :class="{hasval:row.dates[dt]>0}">
@@ -55,20 +55,26 @@
         <div class="modal-content-wrap">
           <div class="form-row">
             <div class="lbl-wrap"><i class="fas fa-circle-notch text-green"></i> 사업장</div>
-            <div class="form-input-search" style="width:160px;">
+            <div class="form-input-search" style="width:140px;">
               <input type="text" :value="getPlantName(poForm.PLANTCD)" readonly placeholder="선택" @click="openPlantPicker" />
               <button class="btn-search-form" @click="openPlantPicker">🔍</button>
             </div>
+
+            <div class="lbl-wrap" style="margin-left: 8px;"><i class="fas fa-circle-notch text-green"></i> 공급사</div>
+            <div class="form-input-search" style="width:160px;">
+              <input type="text" v-model="poForm.COMPANYNM" readonly placeholder="공급사 선택" @click="openCompanyPicker(-1)" />
+              <button class="btn-search-form" @click="openCompanyPicker(-1)"><i class="fas fa-search"></i></button>
+            </div>
             
-            <div class="lbl-wrap" style="margin-left: 10px;"><i class="fas fa-circle-notch text-green"></i> 납기요청일</div>
-            <input type="date" v-model="poForm.ADOFREQDT" style="width:140px;"/>
+            <div class="lbl-wrap" style="margin-left: 8px;"><i class="fas fa-circle-notch text-green"></i> 납기요청일</div>
+            <input type="date" v-model="poForm.ADOFREQDT" style="width:130px;"/>
             
-            <div class="lbl-wrap" style="margin-left: 10px;"><i class="fas fa-circle-notch text-green"></i> 비고</div>
+            <div class="lbl-wrap" style="margin-left: 8px;"><i class="fas fa-circle-notch text-green"></i> 비고</div>
             <input type="text" v-model="poForm.REMARK" style="flex:1" placeholder="특이사항 입력" />
             
-            <div style="display:flex; gap:8px; margin-left: 16px;">
-              <button class="btn-add-row" @click="addProduct"><i class="fas fa-arrow-down" style="margin-right:6px;"></i> 추가</button>
-              <button class="btn-del-row" @click="removeProduct"><i class="fas fa-cut" style="margin-right:6px;"></i> 제거</button>
+            <div style="display:flex; gap:6px; margin-left: 10px;">
+              <button class="btn-add-row" @click="addProduct"><i class="fas fa-plus"></i></button>
+              <button class="btn-del-row" @click="removeProduct"><i class="fas fa-minus"></i></button>
             </div>
           </div>
           
@@ -243,7 +249,7 @@ const d=new Date(); const f=(v:Date)=>v.toISOString().slice(0,10);
 const baseDate=ref(f(d)),plantCd=ref(''),searchText=ref(''),plants=ref<any[]>([]);
 const dateCols=ref<string[]>([]),pivotRows=ref<any[]>([]),selIdx=ref(-1);
 const showReg=ref(false);
-const poForm=ref({PLANTCD:'',ADOFREQDT:f(new Date(d.getTime()+86400000)),REMARK:''});
+const poForm=ref({PLANTCD:'',COMPANYCD:'',COMPANYNM:'',ADOFREQDT:f(new Date(d.getTime()+86400000)),REMARK:''});
 const products=ref<any[]>([]),materials=ref<any[]>([]),prodIdx=ref(-1);
 
 // Picker state
@@ -259,7 +265,7 @@ const filteredPlants = ref<any[]>([]);
 
 const showCompanyPicker = ref(false);
 const companySearch = ref('');
-const pickingMatIdx = ref(-1);
+const pickingMatIdx = ref(-1); // -1 means master picker
 const allCompanies = ref<any[]>([]);
 const filteredCompanies = ref<any[]>([]);
 
@@ -301,7 +307,7 @@ async function fetchAllGoods() {
 
 async function fetchAllCompanies() {
   try {
-    const r = await api.get('/api/master/company', { params: { size: 9999 } });
+    const r = await api.get('/api/master/company', { params: { is_supplier: 1, size: 9999 } });
     allCompanies.value = r.data.data || [];
     filterCompanies();
   } catch {}
@@ -358,10 +364,15 @@ function filterCompanies() {
 }
 
 function selectCompany(c: any) {
-  const m = materials.value[pickingMatIdx.value];
-  if (m) {
-    m.COMPANYCD = c.COMPANYCD;
-    m.COMPANYNM = c.COMPANYNM;
+  if (pickingMatIdx.value === -1) {
+    poForm.value.COMPANYCD = c.COMPANYCD;
+    poForm.value.COMPANYNM = c.COMPANYNM;
+  } else {
+    const m = materials.value[pickingMatIdx.value];
+    if (m) {
+      m.COMPANYCD = c.COMPANYCD;
+      m.COMPANYNM = c.COMPANYNM;
+    }
   }
   showCompanyPicker.value = false;
 }
@@ -380,10 +391,24 @@ async function fetchData(){
     const raw=r.data||[];
     const map:Record<string,any>={};
     for(const row of raw){
-      if(!map[row.PARTNO])map[row.PARTNO]={PARTNO:row.PARTNO,PARTNM:row.PARTNM,STANDARD:row.STANDARD,STOCKQTY:row.STOCKQTY||0,PLANTCD:row.PLANTCD||'',PLANTOTAL:0,dates:{}};
+      const key = `${row.ORDERNUM}_${row.PARTNO}`;
+      if(!map[key]) {
+        map[key]={
+          ORDERNUM:row.ORDERNUM,
+          COMPANYNM:row.COMPANYNM,
+          PARTNO:row.PARTNO,
+          PARTNM:row.PARTNM,
+          UNIT:row.UNIT,
+          STANDARD:row.STANDARD,
+          STOCKQTY:row.STOCKQTY||0,
+          PLANTCD:row.PLANTCD||'',
+          PLANTOTAL:0,
+          dates:{}
+        };
+      }
       const dt=typeof row.PRODUCEDT==='string'?row.PRODUCEDT.slice(0,10):f(new Date(row.PRODUCEDT));
-      map[row.PARTNO].dates[dt]=(map[row.PARTNO].dates[dt]||0)+(row.PRODUCEQTY||0);
-      map[row.PARTNO].PLANTOTAL+=(row.PRODUCEQTY||0);
+      map[key].dates[dt]=(map[key].dates[dt]||0)+(row.PRODUCEQTY||0);
+      map[key].PLANTOTAL+=(row.PRODUCEQTY||0);
     }
     pivotRows.value=Object.values(map);
   }catch{}
@@ -396,6 +421,11 @@ async function openRegister(){
   } else if(plantCd.value) {
     poForm.value.PLANTCD = plantCd.value;
   }
+  
+  poForm.value.COMPANYCD = '';
+  poForm.value.COMPANYNM = '';
+  poForm.value.REMARK = '';
+  
   if(selIdx.value>=0){
     const r=pivotRows.value[selIdx.value];
     products.value=[{PARTNO:r.PARTNO,PARTNM:r.PARTNM,UNIT:r.UNIT||'',STANDARD:r.STANDARD,QTY:r.PLANTOTAL,checked:false}];
@@ -468,6 +498,16 @@ async function submitPO() {
     return;
   }
   
+  // Update materials with master supplier if they don't have one
+  if (poForm.value.COMPANYCD) {
+    validMaterials.forEach(m => {
+      if (!m.COMPANYCD) {
+        m.COMPANYCD = poForm.value.COMPANYCD;
+        m.COMPANYNM = poForm.value.COMPANYNM;
+      }
+    });
+  }
+
   const suppliers = new Set(validMaterials.map((m:any) => m.COMPANYCD).filter(Boolean));
   if (suppliers.size === 0) {
     alert('선택된 자재에 공급사가 지정되지 않았습니다.');
@@ -559,18 +599,20 @@ onMounted(()=>{fetchPlants();fetchData();fetchAllGoods();fetchAllCompanies();});
 }
 .modal-actions { display:flex; gap:8px; }
 .btn-po {
-  background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff;
-  border: none; padding: 8px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;
-  box-shadow: 0 4px 10px rgba(59,130,246,0.3); transition: all 0.2s; font-size: 0.95rem;
-  display:flex; align-items:center;
+  background: linear-gradient(135deg, #4f46e5, #3b82f6); color: #fff;
+  border: none; padding: 8px 20px; border-radius: 8px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(79,70,229,0.3); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); font-size: 0.95rem;
+  display:flex; align-items:center; gap: 6px;
 }
-.btn-po:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(59,130,246,0.4); }
+.btn-po:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(79,70,229,0.4); background: linear-gradient(135deg, #4338ca, #2563eb); }
+.btn-po:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(79,70,229,0.3); }
+
 .btn-close {
-  background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);
+  background: transparent; color: #f8fafc; border: 1px solid rgba(255,255,255,0.3);
   padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;
-  display:flex; align-items:center;
+  display:flex; align-items:center; gap: 6px;
 }
-.btn-close:hover { background: rgba(255,255,255,0.2); }
+.btn-close:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.5); }
 
 .modal-content-wrap {
   padding: 24px; overflow-y:auto; flex:1; background: #f8fafc;
@@ -589,24 +631,26 @@ onMounted(()=>{fetchPlants();fetchData();fetchAllGoods();fetchAllCompanies();});
   padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem;
   transition: all 0.2s ease; outline: none; background: #f8fafc;
 }
-.form-row input:focus { background: #fff; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.form-row input:focus { background: #fff; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
 .form-input-search { display:flex; gap:6px; }
 .form-input-search input { flex:1; min-width:0; cursor:pointer; }
-.btn-search-form { flex-shrink:0; background:#64748b; color:#fff; border:none; padding:0 12px; border-radius:8px; cursor:pointer; transition: background 0.2s; }
-.btn-search-form:hover { background:#475569; }
+.btn-search-form { flex-shrink:0; width: 36px; height: 36px; display:flex; justify-content:center; align-items:center; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:8px; cursor:pointer; transition: all 0.2s; }
+.btn-search-form:hover { background:#e2e8f0; color:#0f172a; border-color:#94a3b8; }
 
 .btn-add-row {
-  background: linear-gradient(135deg, #10b981, #059669); color: #fff;
-  border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;
-  box-shadow: 0 4px 6px -1px rgba(16,185,129,0.2); transition: all 0.2s; display:flex; align-items:center;
+  width: 36px; height: 36px; display: flex; justify-content: center; align-items: center;
+  background: #10b981; color: #fff;
+  border: none; border-radius: 8px; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(16,185,129,0.25); transition: all 0.2s;
 }
-.btn-add-row:hover { transform: translateY(-1px); box-shadow: 0 6px 8px -1px rgba(16,185,129,0.3); }
+.btn-add-row:hover { background: #059669; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(16,185,129,0.3); }
 
 .btn-del-row {
-  background: #fff; color: #ef4444; border: 1px solid #fca5a5; padding: 8px 16px; border-radius: 8px; 
-  font-weight: 600; cursor: pointer; transition: all 0.2s; display:flex; align-items:center;
+  width: 36px; height: 36px; display: flex; justify-content: center; align-items: center;
+  background: #fff; color: #ef4444; border: 1px solid #fca5a5; border-radius: 8px; 
+  cursor: pointer; transition: all 0.2s;
 }
-.btn-del-row:hover { background: #fef2f2; border-color: #ef4444; }
+.btn-del-row:hover { background: #fef2f2; border-color: #ef4444; color: #dc2626; }
 
 .tbl-wrap {
   background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);
