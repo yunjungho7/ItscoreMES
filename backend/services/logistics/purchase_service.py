@@ -131,7 +131,6 @@ class PurchaseService:
         if plant_cd: params['plant_cd'] = plant_cd
         if company_cd: params['company_cd'] = company_cd
         if search: params['search'] = f'%{search}%'
-        params['include_completed'] = 'true' if include_completed else 'false'
         q = self.mapper.get_query('selectPurchaseOrderList', params)
         values = tuple(params.get(name) for name in q['params'])
         conn = get_db_connection()
@@ -149,6 +148,11 @@ class PurchaseService:
                 row_dict[columns[i]] = value
             results.append(row_dict)
         conn.close()
+
+        # Python 단에서 직접 COMPLETED 필터링 (XML 매퍼 조건 불안정 대비)
+        if not include_completed:
+            results = [r for r in results if r.get('ORDERSTATE') != 'COMPLETED']
+
         return results
 
     def get_purchase_order_details(self, order_num):

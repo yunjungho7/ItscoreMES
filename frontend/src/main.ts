@@ -9,7 +9,7 @@ const app = createApp(App)
 const { notifyError, notifyInfo } = useNotification()
 
 // Global Error Handler
-app.config.errorHandler = (err, instance, info) => {
+app.config.errorHandler = (err, _, info) => {
   console.error('Vue Global Error:', err, info)
   notifyError('An unexpected error occurred in the application.')
 }

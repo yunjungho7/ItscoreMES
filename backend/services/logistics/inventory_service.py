@@ -33,8 +33,16 @@ class InventoryService:
         q = self.mapper.get_query('selectAll', params)
         values = tuple(params.get(name) for name in q['params'])
         cursor.execute(q['query'], values)
-        columns = [col[0] for col in cursor.description]
-        rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        columns = [col[0].upper() for col in cursor.description]
+        rows = []
+        for row in cursor.fetchall():
+            row_dict = {}
+            for i, value in enumerate(row):
+                if isinstance(value, str):
+                    try: value = value.encode('latin-1').decode('cp949')
+                    except: pass
+                row_dict[columns[i]] = value
+            rows.append(row_dict)
         conn.close()
         return {"data": rows, "total": total, "page": page, "totalPages": math.ceil(total / size) if total else 0}
 
@@ -45,8 +53,16 @@ class InventoryService:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(q['query'], values)
-        columns = [col[0] for col in cursor.description]
-        rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        columns = [col[0].upper() for col in cursor.description]
+        rows = []
+        for row in cursor.fetchall():
+            row_dict = {}
+            for i, value in enumerate(row):
+                if isinstance(value, str):
+                    try: value = value.encode('latin-1').decode('cp949')
+                    except: pass
+                row_dict[columns[i]] = value
+            rows.append(row_dict)
         conn.close()
         return rows
 

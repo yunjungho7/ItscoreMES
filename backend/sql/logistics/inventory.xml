@@ -25,7 +25,9 @@
     </select>
 
     <select id="selectAll">
-        SELECT LS.PARTNO, G.PARTNM, G.STANDARD, G.PARTTYPE, G.UNIT,
+        SELECT LS.PARTNO, G.PARTNM, G.STANDARD, 
+               ISNULL(G.PARTTYPE, LS.LOTTYPE) AS PARTTYPE, 
+               G.UNIT,
                G.SAFETYSTOCK,
                SUM(CASE WHEN LS.LOTSTATE != 'FAIL' THEN SK.STOCKQTY ELSE 0 END) AS GOODQTY,
                SUM(CASE WHEN LS.LOTSTATE = 'FAIL' THEN SK.STOCKQTY ELSE 0 END) AS FAILQTY,
@@ -46,7 +48,7 @@
             <if test="location_cd != null">AND SK.LOCATIONCODE = #{location_cd}</if>
             <if test="search != null">AND (LS.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
         </where>
-        GROUP BY LS.PARTNO, G.PARTNM, G.STANDARD, G.PARTTYPE, G.UNIT, G.SAFETYSTOCK
+        GROUP BY LS.PARTNO, G.PARTNM, G.STANDARD, G.PARTTYPE, LS.LOTTYPE, G.UNIT, G.SAFETYSTOCK
         ORDER BY LS.PARTNO
         OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
     </select>

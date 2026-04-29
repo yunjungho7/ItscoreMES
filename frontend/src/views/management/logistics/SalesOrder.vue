@@ -380,7 +380,7 @@ function openGoodsPicker(idx: number) {
 }
 async function fetchGoods() {
   try {
-    const r = await api.get('/api/master/goods', { params: { search: goodsSearch.value, parttype: '완제품', size: 50 } });
+    const r = await api.get('/api/master/goods', { params: { search: goodsSearch.value, parttype: 'PARTGUBUN001', size: 50 } });
     goods.value = r.data.data || [];
   } catch {}
 }

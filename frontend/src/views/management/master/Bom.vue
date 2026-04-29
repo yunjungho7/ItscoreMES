@@ -203,6 +203,11 @@ const selectedParentType = computed(() => {
 
 // PARTTYPE Hierarchy: 완제품 > 반제품 > 원자재
 const TYPE_RANK: Record<string, number> = {
+  'PARTGUBUN001': 3,  // 완제품
+  'PARTGUBUN002': 2,  // 반제품
+  'PARTGUBUN003': 1,  // 원자재
+  'PARTGUBUN004': 1,  // 부자재
+  // 기존 한글명 호환
   '완제품': 3,
   '반제품': 2,
   '원자재': 1
@@ -273,7 +278,7 @@ const parentOptions = computed(() => {
     return allGoods.value;
   }
   // In new root registration, only show Finished Products
-  return allGoods.value.filter(g => g.PARTTYPE === '완제품');
+  return allGoods.value.filter(g => g.PARTTYPE === 'PARTGUBUN001' || g.PARTTYPE === '완제품');
 });
 
 // ─────────────────────────────────────────────────────────
@@ -342,8 +347,6 @@ function buildTree() {
   Object.keys(adjList).forEach(key => {
     adjList[key].sort((a, b) => (a.ORD || 0) - (b.ORD || 0));
   });
-
-  const visitedInPath = new Set<string>();
 
   // Recursive Build
   function createNode(partNo: string, bomRecord: any, level: number, parentId: string, path: string[]): TreeNode {

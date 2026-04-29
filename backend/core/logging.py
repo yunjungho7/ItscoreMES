@@ -2,7 +2,7 @@ import sys
 import logging
 from loguru import logger
 from asgi_correlation_id import correlation_id
-from backend.core.config import settings
+from core.config import settings
 
 def setup_logging():
     # Remove default handlers

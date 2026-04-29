@@ -39,6 +39,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('../views/management/logistics/PurchaseOrder.vue'),
       },
       {
+        path: 'logistics/purchase-registration',
+        name: 'PurchaseRegistration',
+        meta: { title: '발주현황/등록' },
+        component: () => import('../views/management/logistics/PurchaseRegistration.vue'),
+      },
+      {
         path: 'logistics/receiving',
         name: 'Receiving',
         meta: { title: '입고관리' },

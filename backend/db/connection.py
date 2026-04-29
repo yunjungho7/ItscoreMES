@@ -1,7 +1,7 @@
 import pymssql
 from sqlalchemy import create_engine, String, TypeDecorator
 from sqlalchemy.orm import sessionmaker
-from backend.core.config import settings
+from core.config import settings
 
 class CP949String(TypeDecorator):
     """

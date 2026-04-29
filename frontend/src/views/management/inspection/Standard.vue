@@ -11,9 +11,7 @@
         <label style="margin-left:20px;">품목구분</label>
         <select v-model="searchGubun">
           <option value="">(선택하세요)</option>
-          <option value="1">제품</option>
-          <option value="2">반제품</option>
-          <option value="3">원자재</option>
+          <option v-for="code in partTypes" :key="code.CODECD" :value="code.CODECD">{{ code.CODENM }}</option>
         </select>
         
         <button class="btn-search" @click="fetchStandards">조회</button>
@@ -109,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import api from '../../../api';
 import StandardRegModal from './StandardRegModal.vue';
 
@@ -121,8 +119,14 @@ const selectedStd = ref<any>(null);
 const history = ref<any[]>([]);
 
 const isModalOpen = ref(false);
+const allCodes = ref<any[]>([]);
+const partTypes = computed(() => allCodes.value.filter(c => c.PAR_CODECD === 'PARTGUBUN000').sort((a,b) => a.ORD - b.ORD));
 
 function formatGubun(code: string) {
+  if (!code) return '';
+  const found = partTypes.value.find(c => c.CODECD === code);
+  if (found) return found.CODENM;
+  // 기존 숫자 코드 호환
   if(code === '1') return '제품';
   if(code === '2') return '반제품';
   if(code === '3') return '원자재';
@@ -164,8 +168,15 @@ function onModalSaved() {
   fetchStandards();
 }
 
+async function fetchCodes() {
+  try {
+    const r = await api.get('/api/master/code', { params: { size: 9999 } });
+    allCodes.value = r.data.data || [];
+  } catch {}
+}
+
 onMounted(() => {
-  fetchStandards();
+  fetchCodes().then(fetchStandards);
 });
 </script>
 

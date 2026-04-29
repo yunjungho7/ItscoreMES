@@ -9,7 +9,7 @@
         <label>품목구분</label>
         <select v-model="searchType" @change="fetchData">
           <option value="">전체</option>
-          <option v-for="code in partTypes" :key="code.CODECD" :value="code.CODENM">{{ code.CODENM }}</option>
+          <option v-for="code in partTypes" :key="code.CODECD" :value="code.CODECD">{{ code.CODENM }}</option>
         </select>
         <button class="btn-search" @click="fetchData">조회</button>
         <button class="btn-add" @click="openAdd">＋ 신규등록</button>
@@ -25,7 +25,7 @@
           <label>품목구분</label>
           <select v-model="form.PARTTYPE">
             <option value="">선택</option>
-            <option v-for="code in partTypes" :key="code.CODECD" :value="code.CODENM">{{ code.CODENM }}</option>
+            <option v-for="code in partTypes" :key="code.CODECD" :value="code.CODECD">{{ code.CODENM }}</option>
           </select>
         </div>
         <div class="ff"><label>단위</label><input v-model="form.UNIT"/></div>
@@ -47,11 +47,19 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue';
 import api from '../../../api'; import DataGrid from '../../../components/common/DataGrid.vue'; import FormModal from '../../../components/common/FormModal.vue';
-const columns=[{key:'PARTNO',label:'품번',width:'130px'},{key:'PARTNM',label:'품명',minWidth:'140px'},{key:'STANDARD',label:'규격',width:'120px'},{key:'PARTTYPE',label:'품목구분',width:'90px'},{key:'UNIT',label:'단위',width:'60px'},{key:'LOTSTDQTY',label:'LOT기준수량',width:'100px'},{key:'QTYPERBOX',label:'박스당수량',width:'90px'},{key:'INTESTYN',label:'수입검사',width:'80px',type:'boolean'},{key:'LOCATIONCD',label:'Location(보관)',width:'110px'},{key:'PROCESSCD',label:'공정',width:'90px'}];
+const columns=[{key:'PARTNO',label:'품번',width:'130px'},{key:'PARTNM',label:'품명',minWidth:'140px'},{key:'STANDARD',label:'규격',width:'120px'},{key:'PARTTYPE_NM',label:'품목구분',width:'90px'},{key:'UNIT',label:'단위',width:'60px'},{key:'LOTSTDQTY',label:'LOT기준수량',width:'100px'},{key:'QTYPERBOX',label:'박스당수량',width:'90px'},{key:'INTESTYN',label:'수입검사',width:'80px',type:'boolean'},{key:'LOCATIONCD',label:'Location(보관)',width:'110px'},{key:'PROCESSCD',label:'공정',width:'90px'}];
 const searchCd=ref('');const searchNm=ref('');const searchStd=ref('');const searchType=ref('');const items=ref<any[]>([]);const loading=ref(false);const page=ref(1);const totalPages=ref(0);const total=ref(0);const selectedIdx=ref(-1);const editMode=ref(false);const showModal=ref(false);
 const allCodes=ref<any[]>([]);
 
 const partTypes = computed(() => allCodes.value.filter(c => c.PAR_CODECD === 'PARTGUBUN000').sort((a,b)=>a.ORD - b.ORD));
+
+function getPartTypeName(cd: string) {
+  if (!cd) return '';
+  const found = partTypes.value.find(c => c.CODECD === cd);
+  if (found) return found.CODENM;
+  // 기존 한글명으로 저장된 데이터 호환
+  return cd;
+}
 
 const emptyForm={PARTNO:'',PARTNM:'',STANDARD:'',PARTTYPE:'',UNIT:'',LOTSTDQTY:0,QTYPERBOX:0,SAFETYSTOCK:0,UNIT_PRICE:0,PROCESSCD:'',LOCATIONCD:'',LOCATIONCD_PROD:'',COMPANYCD:'',CARTYPE:'',TEXTURE:'',USEYN:true as boolean};const form=reactive({...emptyForm});
 
@@ -62,7 +70,7 @@ async function fetchCodes(){
   }catch(e){console.error(e);}
 }
 
-async function fetchData(){loading.value=true;try{const p:any={page:page.value,size:50};if(searchNm.value)p.search=searchNm.value;if(searchType.value)p.parttype=searchType.value;const r=await api.get('/api/master/goods',{params:p});items.value=r.data.data;total.value=r.data.total;totalPages.value=r.data.totalPages;selectedIdx.value=-1;}finally{loading.value=false;}}
+async function fetchData(){loading.value=true;try{const p:any={page:page.value,size:50};if(searchNm.value)p.search=searchNm.value;if(searchType.value)p.parttype=searchType.value;const r=await api.get('/api/master/goods',{params:p});const rawData = r.data.data || [];items.value=rawData.map((item: any) => ({...item, PARTTYPE_NM: getPartTypeName(item.PARTTYPE)}));total.value=r.data.total;totalPages.value=r.data.totalPages;selectedIdx.value=-1;}finally{loading.value=false;}}
 function onRowClick(row:any,idx:number){selectedIdx.value=idx;editMode.value=true;Object.assign(form,row);showModal.value=true;}
 function onPageChange(p:number){page.value=p;fetchData();}
 function openAdd(){editMode.value=false;Object.assign(form,{...emptyForm});showModal.value=true;}

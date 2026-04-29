@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from asgi_correlation_id import CorrelationIdMiddleware
-from backend.core.logging import setup_logging
+from core.logging import setup_logging
 from routers.master import router as master_router
 from routers.logistics import router as logistics_router
 from routers.production import router as production_router

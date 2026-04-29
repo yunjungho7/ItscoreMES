@@ -98,7 +98,7 @@
         LEFT JOIN TBL_COM_MEMBERS U ON O.REGUSERID = U.EMPID
         <where>
             O.USEYN = 1
-            <if test="include_completed == null or include_completed == 'false'">AND O.ORDERSTATE != 'COMPLETED'</if>
+            <if test="exclude_completed == 'true'">AND O.ORDERSTATE != 'COMPLETED'</if>
             <if test="start_date != null">AND O.ORDERDT &gt;= #{start_date}</if>
             <if test="end_date != null">AND O.ORDERDT &lt;= #{end_date}</if>
             <if test="plant_cd != null">AND O.PLANTCD = #{plant_cd}</if>

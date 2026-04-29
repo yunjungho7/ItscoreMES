@@ -62,31 +62,82 @@ class ReceiveService:
         data['WAREHOUSENUM'] = wh_num
         data['WHSTATE'] = 'RECEIVED'
         data['INTIME'] = ''
+        # 필수 필드 기본값 보장
+        if not data.get('INGUBUN'):
+            data['INGUBUN'] = 'PURCHASE'
+        if not data.get('REGUSERID'):
+            data['REGUSERID'] = '1'
+
+        order_num = data.get('ORDERNUM') or data.get('order_num') or ''
+
         q = self.mapper.get_query('insert', data)
         values = tuple(data.get(name) for name in q['params'])
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(q['query'], values)
-        for i, d in enumerate(details):
-            d['WAREHOUSENUM'] = wh_num
-            d['WHDETAILNO'] = i + 1
-            d['INDAY'] = data.get('INDAY')
-            if not d.get('LOTNO'):
-                d['LOTNO'] = f"L{wh_num[-3:]}-{i+1:03d}"
-            dq = self.mapper.get_query('insertDetail', d)
-            dv = tuple(d.get(name) for name in dq['params'])
-            cursor.execute(dq['query'], dv)
-        
-        # 발주기반 입고인 경우 발주상태를 'COMPLETED'로 변경
-        order_num = data.get('ORDERNUM') or data.get('order_num')
-        if order_num:
-            uq = self.mapper.get_query('updatePurchaseOrderState', {'ORDERNUM': order_num, 'ORDERSTATE': 'COMPLETED'})
-            if uq:
-                uv = tuple({'ORDERNUM': order_num, 'ORDERSTATE': 'COMPLETED'}.get(name) for name in uq['params'])
-                cursor.execute(uq['query'], uv)
+        try:
+            cursor.execute(q['query'], values)
+            for i, d in enumerate(details):
+                d['WAREHOUSENUM'] = wh_num
+                d['WHDETAILNO'] = i + 1
+                d['INDAY'] = data.get('INDAY')
+                if not d.get('LOTNO'):
+                    d['LOTNO'] = f"L{wh_num[-3:]}-{i+1:03d}"
+                if not d.get('LOCATIONCODE'):
+                    d['LOCATIONCODE'] = 'LOC001'
+                if not d.get('WAREHOUSECODE'):
+                    d['WAREHOUSECODE'] = 'WH001'
 
-        conn.commit()
-        conn.close()
+                # 입고수량 보장 (0이면 ORDERQTY 사용)
+                inlotqty = d.get('INLOTQTY') or d.get('ORDERQTY') or 0
+                d['INLOTQTY'] = inlotqty
+
+                dq = self.mapper.get_query('insertDetail', d)
+                dv = tuple(d.get(name) for name in dq['params'])
+                cursor.execute(dq['query'], dv)
+
+                # Insert Lot State & Stock
+                lot_data = {
+                    'LOTNO': d['LOTNO'],
+                    'PARTNO': d['PARTNO'],
+                    'LOTQTY': inlotqty,
+                    'WAREHOUSECODE': d['WAREHOUSECODE'],
+                    'LOCATIONCODE': d['LOCATIONCODE'],
+                    'LOTCREATIONDAY': d['INDAY'],
+                    'LOTTYPE': 'PURCHASE',
+                    'REMARK': '입고완료(발주)'
+                }
+                lq = self.mapper.get_query('insertLotState', lot_data)
+                if lq:
+                    cursor.execute(lq['query'], tuple(lot_data.get(name) for name in lq['params']))
+
+                sq = self.mapper.get_query('insertStock', lot_data)
+                if sq:
+                    cursor.execute(sq['query'], tuple(lot_data.get(name) for name in sq['params']))
+
+                # Update PO detail INQTY if applicable
+                if order_num:
+                    up_params = {
+                        'ORDERNUM': order_num,
+                        'PARTNO': d['PARTNO'],
+                        'INLOTQTY': inlotqty
+                    }
+                    up_q = self.mapper.get_query('updatePurchaseOrderDetailInQty', up_params)
+                    if up_q:
+                        cursor.execute(up_q['query'], tuple(up_params.get(n) for n in up_q['params']))
+
+            # 발주기반 입고인 경우 발주상태를 'COMPLETED'로 변경
+            if order_num:
+                uq = self.mapper.get_query('updatePurchaseOrderState', {'ORDERNUM': order_num, 'ORDERSTATE': 'COMPLETED'})
+                if uq:
+                    uv = tuple({'ORDERNUM': order_num, 'ORDERSTATE': 'COMPLETED'}.get(name) for name in uq['params'])
+                    cursor.execute(uq['query'], uv)
+
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
         return {"WAREHOUSENUM": wh_num}
 
     def delete(self, warehouse_num):
