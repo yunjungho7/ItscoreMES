@@ -380,7 +380,7 @@ async function fetchData(){
     const raw=r.data||[];
     const map:Record<string,any>={};
     for(const row of raw){
-      if(!map[row.PARTNO])map[row.PARTNO]={PARTNO:row.PARTNO,PARTNM:row.PARTNM,STANDARD:row.STANDARD,STOCKQTY:row.STOCKQTY||0,PLANTOTAL:0,dates:{}};
+      if(!map[row.PARTNO])map[row.PARTNO]={PARTNO:row.PARTNO,PARTNM:row.PARTNM,STANDARD:row.STANDARD,STOCKQTY:row.STOCKQTY||0,PLANTCD:row.PLANTCD||'',PLANTOTAL:0,dates:{}};
       const dt=typeof row.PRODUCEDT==='string'?row.PRODUCEDT.slice(0,10):f(new Date(row.PRODUCEDT));
       map[row.PARTNO].dates[dt]=(map[row.PARTNO].dates[dt]||0)+(row.PRODUCEQTY||0);
       map[row.PARTNO].PLANTOTAL+=(row.PRODUCEQTY||0);
@@ -390,6 +390,12 @@ async function fetchData(){
 }
 
 async function openRegister(){
+  // 선택된 행의 사업장 정보를 우선 사용, 없으면 검색 조건의 사업장 사용
+  if(selIdx.value >= 0 && pivotRows.value[selIdx.value]?.PLANTCD) {
+    poForm.value.PLANTCD = pivotRows.value[selIdx.value].PLANTCD;
+  } else if(plantCd.value) {
+    poForm.value.PLANTCD = plantCd.value;
+  }
   if(selIdx.value>=0){
     const r=pivotRows.value[selIdx.value];
     products.value=[{PARTNO:r.PARTNO,PARTNM:r.PARTNM,UNIT:r.UNIT||'',STANDARD:r.STANDARD,QTY:r.PLANTOTAL,checked:false}];
