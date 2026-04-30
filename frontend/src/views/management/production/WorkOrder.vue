@@ -222,13 +222,14 @@ const mCols = [
   { key: 'PARTNO', label: '품번', width: '120px' },
   { key: 'PARTNM', label: '품명', width: '130px' },
   { key: 'STANDARD', label: '규격', width: '80px' },
-  { key: 'UNIT', label: '단위', width: '50px' },
+  { key: 'PROCESSNM', label: '공정', width: '90px' },
+  { key: 'LINENM', label: '라인', width: '90px' },
+  { key: 'EQUIPNM', label: '설비', width: '90px' },
   { key: 'ORDQTY', label: '지시수량', width: '70px' },
   { key: 'ORDTYPE', label: '작업구분', width: '70px' },
   { key: 'SHIFT', label: '근무조', width: '60px' },
   { key: 'ORDpriority', label: '우선순위', width: '60px' },
   { key: 'ORDSTATE', label: '상태', width: '60px' },
-  { key: 'FIXEDYN', label: '확정', width: '50px' },
 ];
 const dCols = [
   { key: 'WORKORDNO', label: '작업지시번호', width: '130px' },
@@ -236,11 +237,9 @@ const dCols = [
   { key: 'PARTNO', label: '품번', width: '120px' },
   { key: 'PARTNM', label: '품명', width: '130px' },
   { key: 'STANDARD', label: '규격', width: '80px' },
-  { key: 'UNIT', label: '단위', width: '50px' },
+  { key: 'PROCESSNM', label: '공정', width: '90px' },
+  { key: 'LINENM', label: '라인', width: '90px' },
   { key: 'ORDQTY', label: '지시수량', width: '70px' },
-  { key: 'PROCESSCD', label: '공정', width: '70px' },
-  { key: 'LINECD', label: '라인', width: '70px' },
-  { key: 'SHIFT', label: '근무조', width: '60px' },
   { key: 'ORDSTATE', label: '상태', width: '60px' },
 ];
 
@@ -249,19 +248,19 @@ const ld = ref(false), dl = ref(false), si = ref(-1), sel = ref<any>(null);
 const pg = ref(1), tp = ref(0), tot = ref(0);
 
 async function fetchPlants() {
-  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = r.data.data || []; } catch {}
+  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); } catch {}
 }
 async function fetchProcesses() {
-  try { const r = await api.get('/api/master/process', { params: { size: 200 } }); processes.value = r.data.data || []; } catch {}
+  try { const r = await api.get('/api/master/process', { params: { size: 200 } }); processes.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); } catch {}
 }
 async function fetchLines() {
-  try { const r = await api.get('/api/master/line', { params: { size: 200 } }); lines.value = r.data.data || []; } catch {}
+  try { const r = await api.get('/api/master/line', { params: { size: 200 } }); lines.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); } catch {}
 }
 
 async function fetchData() {
   ld.value = true; si.value = -1; sel.value = null; dRows.value = [];
   try {
-    const p: any = { page: pg.value, size: 50 };
+    const p: any = { page: pg.value, size: 50, parent_only: true };
     if (startDate.value) p.start_date = startDate.value;
     if (endDate.value) p.end_date = endDate.value;
     if (plantCd.value) p.plant_cd = plantCd.value;
@@ -269,14 +268,14 @@ async function fetchData() {
     if (shift.value) p.shift = shift.value;
     if (ordState.value) p.ord_state = ordState.value;
     const r = await api.get('/api/production/workorder', { params: p });
-    mRows.value = r.data.data || [];
-    tot.value = r.data.total; tp.value = r.data.totalPages;
+    mRows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    tot.value = (r.data?.data?.total ?? r.data?.total ?? 0); tp.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
   } finally { ld.value = false; }
 }
 
 async function onMaster(row: any, idx: number) {
   si.value = idx; sel.value = row; dl.value = true;
-  try { const r = await api.get(`/api/production/workorder/${row.WORKORDNO}/children`); dRows.value = r.data || []; }
+  try { const r = await api.get(`/api/production/workorder/${row.WORKORDNO}/children`); dRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []); }
   finally { dl.value = false; }
 }
 function onPg(p: number) { pg.value = p; fetchData(); }
@@ -305,7 +304,7 @@ async function fetchPartInfo() {
   if (!regForm.value.PARTNO) return;
   try {
     const r = await api.get('/api/master/goods', { params: { search: regForm.value.PARTNO, size: 1 } });
-    const rows = r.data.data || [];
+    const rows = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
     if (rows.length > 0) {
       const g = rows[0];
       regForm.value.PARTNM = g.PARTNM || '';
@@ -363,7 +362,7 @@ const showItemPicker = ref(false), itemSearch = ref(''), itemsList = ref<any[]>(
 async function fetchItems() {
   try {
     const r = await api.get('/api/master/goods', { params: { search: itemSearch.value, size: 50 } });
-    itemsList.value = r.data.data || [];
+    itemsList.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   } catch {}
 }
 function selectItem(g: any) {

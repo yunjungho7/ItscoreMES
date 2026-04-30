@@ -104,7 +104,7 @@ const pg = ref(1), tp = ref(0), tot = ref(0);
 
 // ── 데이터 가져오기 ──
 async function fetchPlants() {
-  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = r.data.data || []; } catch {}
+  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); } catch {}
 }
 
 async function fetchMaster() {
@@ -120,8 +120,8 @@ async function fetchMaster() {
     
     // API 재사용 (작업지시 목록)
     const r = await api.get('/api/production/workorder', { params: p });
-    mRows.value = r.data.data || [];
-    tot.value = r.data.total; tp.value = r.data.totalPages;
+    mRows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    tot.value = (r.data?.data?.total ?? r.data?.total ?? 0); tp.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
   } finally { ld.value = false; }
 }
 
@@ -135,7 +135,7 @@ async function fetchDetail(workordno: string) {
   dl.value = true;
   try {
     const r = await api.get(`/api/production/status/result/${workordno}`);
-    dRows.value = r.data || [];
+    dRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []);
   } finally { dl.value = false; }
 }
 

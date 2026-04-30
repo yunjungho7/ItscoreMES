@@ -4,7 +4,7 @@ from db.connection import get_db_connection
 from typing import Optional
 
 router = APIRouter(
-    prefix="/api/auth",
+    prefix="/auth",
     tags=["Auth"]
 )
 

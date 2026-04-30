@@ -1,0 +1,56 @@
+[2026-04-30 13:00:41 +0900] [5010] [INFO] Starting gunicorn 25.3.0
+[2026-04-30 13:00:41 +0900] [5010] [INFO] Listening at: http://0.0.0.0:8000 (5010)
+[2026-04-30 13:00:41 +0900] [5010] [INFO] Using worker: uvicorn.workers.UvicornWorker
+[2026-04-30 13:00:41 +0900] [5011] [INFO] Booting worker with pid: 5011
+[2026-04-30 13:00:41 +0900] [5012] [INFO] Booting worker with pid: 5012
+[2026-04-30 13:00:41 +0900] [5013] [INFO] Booting worker with pid: 5013
+[2026-04-30 13:00:41 +0900] [5014] [INFO] Booting worker with pid: 5014
+[2026-04-30 13:00:41 +0900] [5010] [INFO] Control socket listening at /run/user/1000/gunicorn.ctl
+[2026-04-30 13:06:16 +0900] [5010] [INFO] Handling signal: term
+[2026-04-30 13:06:16 +0900] [5010] [INFO] Worker (pid:5011) was sent SIGTERM!
+[2026-04-30 13:06:16 +0900] [5010] [INFO] Worker (pid:5012) was sent SIGTERM!
+[2026-04-30 13:06:16 +0900] [5010] [INFO] Worker (pid:5013) was sent SIGTERM!
+[2026-04-30 13:06:16 +0900] [5010] [INFO] Worker (pid:5014) was sent SIGTERM!
+[2026-04-30 13:06:16 +0900] [5010] [INFO] Shutting down: Master
+[2026-04-30 13:06:28 +0900] [5468] [INFO] Starting gunicorn 25.3.0
+[2026-04-30 13:06:28 +0900] [5468] [INFO] Listening at: http://0.0.0.0:8000 (5468)
+[2026-04-30 13:06:28 +0900] [5468] [INFO] Using worker: uvicorn.workers.UvicornWorker
+[2026-04-30 13:06:28 +0900] [5469] [INFO] Booting worker with pid: 5469
+[2026-04-30 13:06:28 +0900] [5470] [INFO] Booting worker with pid: 5470
+[2026-04-30 13:06:28 +0900] [5471] [INFO] Booting worker with pid: 5471
+[2026-04-30 13:06:28 +0900] [5472] [INFO] Booting worker with pid: 5472
+[2026-04-30 13:06:28 +0900] [5468] [INFO] Control socket listening at /run/user/1000/gunicorn.ctl
+[2026-04-30 13:07:50 +0900] [5468] [INFO] Handling signal: term
+[2026-04-30 13:07:51 +0900] [5468] [INFO] Worker (pid:5469) was sent SIGTERM!
+[2026-04-30 13:07:51 +0900] [5468] [INFO] Worker (pid:5470) was sent SIGTERM!
+[2026-04-30 13:07:51 +0900] [5468] [INFO] Worker (pid:5472) was sent SIGTERM!
+[2026-04-30 13:07:51 +0900] [5468] [INFO] Worker (pid:5471) was sent SIGTERM!
+[2026-04-30 13:07:51 +0900] [5468] [INFO] Shutting down: Master
+[2026-04-30 13:08:04 +0900] [5772] [INFO] Starting gunicorn 25.3.0
+[2026-04-30 13:08:04 +0900] [5772] [INFO] Listening at: http://0.0.0.0:8000 (5772)
+[2026-04-30 13:08:04 +0900] [5772] [INFO] Using worker: uvicorn.workers.UvicornWorker
+[2026-04-30 13:08:04 +0900] [5773] [INFO] Booting worker with pid: 5773
+[2026-04-30 13:08:04 +0900] [5774] [INFO] Booting worker with pid: 5774
+[2026-04-30 13:08:05 +0900] [5775] [INFO] Booting worker with pid: 5775
+[2026-04-30 13:08:05 +0900] [5776] [INFO] Booting worker with pid: 5776
+[2026-04-30 13:08:05 +0900] [5772] [INFO] Control socket listening at /run/user/1000/gunicorn.ctl
+[2026-04-30 13:09:50 +0900] [5772] [INFO] Handling signal: term
+[2026-04-30 13:09:50 +0900] [5772] [INFO] Worker (pid:5775) was sent SIGTERM!
+[2026-04-30 13:09:50 +0900] [5772] [INFO] Worker (pid:5776) was sent SIGTERM!
+[2026-04-30 13:09:50 +0900] [5772] [INFO] Worker (pid:5773) was sent SIGTERM!
+[2026-04-30 13:09:50 +0900] [5772] [INFO] Worker (pid:5774) was sent SIGTERM!
+[2026-04-30 13:09:51 +0900] [5772] [INFO] Shutting down: Master
+[2026-04-30 13:10:01 +0900] [6128] [INFO] Starting gunicorn 25.3.0
+[2026-04-30 13:10:01 +0900] [6128] [INFO] Listening at: http://0.0.0.0:8000 (6128)
+[2026-04-30 13:10:01 +0900] [6128] [INFO] Using worker: uvicorn.workers.UvicornWorker
+[2026-04-30 13:10:01 +0900] [6129] [INFO] Booting worker with pid: 6129
+[2026-04-30 13:10:01 +0900] [6130] [INFO] Booting worker with pid: 6130
+[2026-04-30 13:10:01 +0900] [6131] [INFO] Booting worker with pid: 6131
+[2026-04-30 13:10:01 +0900] [6132] [INFO] Booting worker with pid: 6132
+[2026-04-30 13:10:01 +0900] [6128] [INFO] Control socket listening at /run/user/1000/gunicorn.ctl
+[2026-04-30 13:15:26 +0900] [6128] [INFO] Handling signal: term
+[2026-04-30 13:15:27 +0900] [6128] [INFO] Worker (pid:6129) was sent SIGTERM!
+[2026-04-30 13:15:27 +0900] [6128] [INFO] Worker (pid:6132) was sent SIGTERM!
+[2026-04-30 13:15:27 +0900] [6128] [INFO] Worker (pid:6130) was sent SIGTERM!
+[2026-04-30 13:15:27 +0900] [6128] [INFO] Worker (pid:6131) was sent SIGTERM!
+[2026-04-30 13:15:27 +0900] [6128] [INFO] Shutting down: Master

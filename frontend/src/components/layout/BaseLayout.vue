@@ -114,8 +114,10 @@ function toggleGroup(key: string) {
 async function fetchMenus() {
   try {
     const res = await api.get('/api/system/menus');
+    // axios res.data => { data: [...] }, 실제 배열은 res.data.data
+    const rawMenus = Array.isArray(res.data) ? res.data : (res.data?.data || []);
     // USE_YN이 0(거짓)이 아닌 모든 경우(1, null, undefined)를 허용
-    const allMenus = res.data.filter((m: any) => m.USE_YN !== 0 && m.USE_YN !== false); 
+    const allMenus = rawMenus.filter((m: any) => m.USE_YN !== 0 && m.USE_YN !== false); 
 
     const map = new Map();
     const tree: any[] = [];

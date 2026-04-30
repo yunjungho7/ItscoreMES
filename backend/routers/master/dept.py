@@ -16,10 +16,12 @@ def _not_found(key: str):
 @router.get("/dept", summary="부서 목록 조회")
 def get_depts(search: Optional[str] = None, plant_cd: Optional[str] = None,
               factory_cd: Optional[str] = None, page: int = 1, size: int = 50):
-    return dept_service.get_all(
+    result = dept_service.get_all(
         search=search, page=page, size=size,
         plant_cd=plant_cd, factory_cd=factory_cd
     )
+
+    return {"data": result}
 
 
 @router.get("/dept/{dept_cd}", summary="부서 상세 조회")

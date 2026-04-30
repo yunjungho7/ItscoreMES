@@ -16,7 +16,9 @@ def _not_found(key: str):
 @router.get("/code", summary="공통코드 목록 조회")
 def get_codes(search: Optional[str] = None, par_codecd: Optional[str] = None,
               page: int = 1, size: int = 50):
-    return code_service.get_all(search=search, page=page, size=size, par_codecd=par_codecd)
+    result = code_service.get_all(search=search, page=page, size=size, par_codecd=par_codecd)
+
+    return {"data": result}
 
 
 @router.get("/code/{code_cd}", summary="공통코드 상세 조회")

@@ -88,7 +88,7 @@ const pg = ref(1), tp = ref(0), tot = ref(0);
 
 // ── 데이터 처리 ──
 async function fetchMaster() {
-  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = r.data.data || []; } catch {}
+  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); } catch {}
 }
 
 async function fetchData() {
@@ -103,8 +103,8 @@ async function fetchData() {
     if (processStatus.value !== '전체') p.process_status = processStatus.value;
 
     const r = await api.get('/api/status/defect', { params: p });
-    rows.value = r.data.data || [];
-    tot.value = r.data.total; tp.value = r.data.totalPages;
+    rows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    tot.value = (r.data?.data?.total ?? r.data?.total ?? 0); tp.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
   } finally { ld.value = false; }
 }
 

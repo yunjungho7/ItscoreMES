@@ -14,7 +14,9 @@ class MenuService(BaseService):
 
     def get_menus(self):
         query_info = self.sql_mapper.get_query("selectList", {})
-        return self.execute_query(query_info, {})
+        results = self.execute_query(query_info, {})
+        # 프론트엔드 일관성을 위해 키를 대문자로 변환
+        return [{k.upper(): v for k, v in row.items()} for row in results] if isinstance(results, list) else results
 
     def create_menu(self, menu: MenuCreate):
         # 중복 체크

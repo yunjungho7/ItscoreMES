@@ -132,7 +132,8 @@ async function fetchData() {
   loading.value = true;
   try {
     const r = await api.get('/api/system/menus');
-    items.value = r.data;
+    // API 응답 구조에 맞게 데이터 추출 (data.data 또는 data)
+    items.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data) ? r.data : (r.data?.data?.data || []));
     selectedIdx.value = -1;
   } catch (e) {
     console.error('메뉴 조회 중 오류:', e);

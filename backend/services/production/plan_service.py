@@ -1,9 +1,8 @@
 """생산계획 서비스"""
 from db.xml_mapper import XMLMapper
-from db.connection import get_db_connection
+from db.connection import get_db_connection, execute_query
 import os
 from datetime import date, timedelta
-from calendar import monthrange
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -13,7 +12,7 @@ class ProducePlanService:
         self.mapper = XMLMapper(os.path.join(BASE_DIR, 'sql/production/produceplan.xml'))
 
     def get_plan_list(self, plant_cd=None, base_date=None, search=None):
-        """기준일의 생산계획을 14일치 피벗하여 반환"""
+        """기준일의 생산계획을 31일치 피벗하여 반환"""
         if not base_date:
             base_date = date.today().strftime('%Y-%m-%d')
 
@@ -29,13 +28,11 @@ class ProducePlanService:
         if search: params['search'] = f'%{search}%'
 
         q = self.mapper.get_query('selectPlanList', params)
-        values = tuple(params.get(name) for name in q['params'])
         conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(q['query'], values)
-        columns = [col[0] for col in cursor.description]
-        rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        conn.close()
+        try:
+            rows = execute_query(conn, q, params)
+        finally:
+            conn.close()
 
         # dates array
         dates = [(base_dt + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(days_to_show)]
@@ -43,12 +40,22 @@ class ProducePlanService:
         # 품번별 피벗
         pivot = {}
         for r in rows:
-            key = f"{r['PARTNO']}_{r.get('ORDERNUM', '')}_{r.get('ORDERSEQ', 1)}"
+            # key에 PLANTCD를 포함하여 사업장별로 구분되도록 수정
+            plant = r.get('PLANTCD', '')
+            key = f"{plant}_{r['PARTNO']}_{r.get('ORDERNUM', '')}_{r.get('ORDERSEQ', 1)}"
             if key not in pivot:
                 pivot[key] = {
+                    'PLANTCD': plant,
                     'PARTNO': r['PARTNO'], 'PARTNM': r.get('PARTNM',''),
                     'STANDARD': r.get('STANDARD',''), 'UNIT': r.get('UNIT',''),
+                    'PARTTYPE': r.get('PARTTYPE', ''),
                     'ORDERNUM': r.get('ORDERNUM', ''), 'ORDERSEQ': r.get('ORDERSEQ', 1),
+                    'ORDER_PARTNO': r.get('ORDER_PARTNO', ''),
+                    'ORDER_PARTNM': r.get('ORDER_PARTNM', ''),
+                    'ORDER_STANDARD': r.get('ORDER_STANDARD', ''),
+                    'ORDER_UNIT': r.get('ORDER_UNIT', ''),
+                    'ORDER_PARTTYPE': r.get('ORDER_PARTTYPE', ''),
+                    'ORDER_PROCESSCD': r.get('ORDER_PROCESSCD', ''),
                     'STOCKQTY': r.get('STOCKQTY', 0),
                     'COMPANYNM': r.get('COMPANYNM', ''),
                     'REQQTY': r.get('REQQTY', 0),
@@ -70,12 +77,11 @@ class ProducePlanService:
 
     def upsert(self, data: dict):
         q = self.mapper.get_query('upsert', data)
-        values = tuple(data.get(name) for name in q['params'])
         conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(q['query'], values)
-        conn.commit()
-        conn.close()
+        try:
+            execute_query(conn, q, data)
+        finally:
+            conn.close()
         return True
 
 

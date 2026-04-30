@@ -200,7 +200,7 @@ async function fetchData() {
     if (searchShowYn.value !== '') p.showyn = searchShowYn.value;
 
     const r = await api.get('/api/system/users', { params: p });
-    items.value = r.data;
+    items.value = Array.isArray(r.data) ? r.data : (r.data?.data || []);
     total.value = items.value.length;
     totalPages.value = 1;
     selectedIdx.value = -1;

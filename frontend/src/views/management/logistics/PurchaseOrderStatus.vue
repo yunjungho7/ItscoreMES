@@ -120,7 +120,7 @@ const dCols=[
 
 const mRows=ref<any[]>([]),dRows=ref<any[]>([]),ld=ref(false),dl=ref(false),si=ref(-1),sel=ref<any>(null);
 
-async function fetchPlants(){try{const r=await api.get('/api/master/plant',{params:{size:100}});plants.value=r.data.data||[];}catch{}}
+async function fetchPlants(){try{const r=await api.get('/api/master/plant',{params:{size:100}});plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));}catch{}}
 
 async function fetchData(){
   ld.value=true; si.value=-1; sel.value=null; dRows.value=[];
@@ -133,7 +133,7 @@ async function fetchData(){
       include_completed:includeCompleted.value
     };
     const r=await api.get('/api/purchase/list',{params:p});
-    mRows.value=r.data||[];
+    mRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []);
   }finally{ld.value=false;}}
 
 // 체크박스 관련
@@ -221,7 +221,7 @@ async function submitPO(){
 // 품목 선택 팝업 관련
 const showPartPicker=ref(false), partSearch=ref(''), parts=ref<any[]>([]), activeItemIdx=ref(-1);
 function openPartPicker(idx:number){ activeItemIdx.value=idx; partSearch.value=''; parts.value=[]; showPartPicker.value=true; }
-async function fetchParts(){ const r=await api.get('/api/master/goods',{params:{search:partSearch.value,size:50}}); parts.value=r.data.data||[]; }
+async function fetchParts(){ const r=await api.get('/api/master/goods',{params:{search:partSearch.value,size:50}}); parts.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); }
 function selectPart(p:any){ if(activeItemIdx.value>-1){ products.value[activeItemIdx.value].PARTNO=p.PARTNO; products.value[activeItemIdx.value].PARTNM=p.PARTNM; updateMaterials(); } showPartPicker.value=false; }
 
 onMounted(()=>{fetchPlants();fetchData();});

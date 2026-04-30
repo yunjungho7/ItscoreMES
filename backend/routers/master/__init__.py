@@ -19,7 +19,7 @@ from routers.master.process_user import router as process_user_router
 from routers.master.code import router as code_router
 from routers.master.failcode import router as failcode_router
 
-router = APIRouter(prefix="/api/master", tags=["기준정보"])
+router = APIRouter(prefix="/master", tags=["기준정보"])
 
 router.include_router(plant_router)
 router.include_router(factory_router)

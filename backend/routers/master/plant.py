@@ -15,7 +15,9 @@ def _not_found(key: str):
 
 @router.get("/plant", summary="사업장 목록 조회")
 def get_plants(search: Optional[str] = None, page: int = 1, size: int = 50):
-    return plant_service.get_all(search=search, page=page, size=size)
+    result = plant_service.get_all(search=search, page=page, size=size)
+
+    return {"data": result}
 
 
 @router.get("/plant/{plant_cd}", summary="사업장 상세 조회")

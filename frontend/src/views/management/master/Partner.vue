@@ -62,18 +62,18 @@ const emptyForm={COMPANYCD:'',PLANTCD:'',COMPANYTYPE:'',COMPANYNM:'',COMPANYNM2:
 async function fetchCodes(){
   try{
     const r=await api.get('/api/master/code',{params:{size:9999}});
-    allCodes.value=r.data.data||[];
+    allCodes.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   }catch(e){console.error(e);}
 }
 
 async function fetchPlants(){
   try{
     const r=await api.get('/api/master/plant',{params:{size:100}});
-    plants.value=r.data.data||[];
+    plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   }catch(e){console.error(e);}
 }
 
-async function fetchData(){loading.value=true;try{const p:any={page:page.value,size:50};if(searchNm.value)p.search=searchNm.value;if(searchType.value)p.company_type=searchType.value;const r=await api.get('/api/master/company',{params:p});items.value=r.data.data;total.value=r.data.total;totalPages.value=r.data.totalPages;selectedIdx.value=-1;}finally{loading.value=false;}}
+async function fetchData(){loading.value=true;try{const p:any={page:page.value,size:50};if(searchNm.value)p.search=searchNm.value;if(searchType.value)p.company_type=searchType.value;const r=await api.get('/api/master/company',{params:p});items.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));total.value=(r.data?.data?.total ?? r.data?.total ?? 0);totalPages.value=(r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);selectedIdx.value=-1;}finally{loading.value=false;}}
 function onRowClick(row:any,idx:number){selectedIdx.value=idx;editMode.value=true;Object.assign(form,row);showModal.value=true;}
 function onPageChange(p:number){page.value=p;fetchData();}
 function openAdd(){editMode.value=false;Object.assign(form,{...emptyForm});showModal.value=true;}

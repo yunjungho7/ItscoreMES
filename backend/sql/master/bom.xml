@@ -11,14 +11,36 @@
     </select>
 
     <select id="selectAll">
-        SELECT * FROM TBL_COM_BOM
+        SELECT B.*, G.PARTNM, G.STANDARD, G.UNIT, G.PROCESSCD, G.PARTTYPE
+        FROM TBL_COM_BOM B
+        LEFT JOIN TBL_COM_GOODS G ON B.CHILD_PARTNO = G.PARTNO
         <where>
             <if test="search != null">
-                PAR_PARTNO LIKE #{search}
+                B.PAR_PARTNO = #{search}
+            </if>
+            <if test="useyn != null">
+                AND B.USEYN = #{useyn}
             </if>
         </where>
-        ORDER BY PAR_PARTNO, CHILD_PARTNO
+        ORDER BY B.PAR_PARTNO, B.ORD, B.CHILD_PARTNO
+        <if test="offset != null and size != null">
         OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+        </if>
+    </select>
+
+    <select id="selectWhereUsed">
+        SELECT B.*, G.PARTNM, G.STANDARD, G.UNIT, G.PROCESSCD, G.PARTTYPE
+        FROM TBL_COM_BOM B
+        LEFT JOIN TBL_COM_GOODS G ON B.PAR_PARTNO = G.PARTNO
+        <where>
+            <if test="search != null">
+                B.CHILD_PARTNO = #{search}
+            </if>
+            <if test="useyn != null">
+                AND B.USEYN = #{useyn}
+            </if>
+        </where>
+        ORDER BY B.CHILD_PARTNO, B.PAR_PARTNO
     </select>
 
     <select id="selectById">

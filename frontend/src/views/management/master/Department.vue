@@ -171,7 +171,7 @@ const flatRows = computed(() => {
 async function fetchPlants() {
   try {
     const r = await api.get('/api/master/plant', { params: { size: 100 } });
-    plants.value = r.data.data || [];
+    plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   } catch (e) {
     console.error(e);
   }
@@ -213,7 +213,7 @@ async function fetchData() {
     if (searchFactoryCd.value) p.factory_cd = searchFactoryCd.value;
     
     const r = await api.get('/api/master/dept', { params: p });
-    allDepts.value = r.data.data || [];
+    allDepts.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
     buildTree();
   } catch (e) {
     console.error(e);

@@ -5,7 +5,7 @@
 """
 import pymssql
 import os
-from db.connection import get_db_connection, execute_query
+from db.connection import get_db_connection, execute_query, decode_cp949
 from db.xml_mapper import XMLMapper
 from typing import Optional
 
@@ -62,12 +62,7 @@ class BaseCrudService:
             for row in cursor.fetchall():
                 row_dict = {}
                 for i, value in enumerate(row):
-                    if isinstance(value, str):
-                        try:
-                            value = value.encode('latin-1').decode('cp949')
-                        except:
-                            pass
-                    row_dict[columns[i]] = value
+                    row_dict[columns[i]] = decode_cp949(value)
                 results.append(row_dict)
             
             print(f"DEBUG [{query_id}]: {len(results)} rows fetched.")

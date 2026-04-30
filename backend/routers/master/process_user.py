@@ -15,7 +15,9 @@ def _not_found(key: str):
 
 @router.get("/process-user", summary="공정별작업자 목록 조회")
 def get_process_users(search: Optional[str] = None, page: int = 1, size: int = 50):
-    return process_user_service.get_all(search=search, page=page, size=size)
+    result = process_user_service.get_all(search=search, page=page, size=size)
+
+    return {"data": result}
 
 
 @router.get("/process-user/{user_id}/{process_id}", summary="공정별작업자 상세 조회")

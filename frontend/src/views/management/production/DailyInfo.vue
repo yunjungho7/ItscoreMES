@@ -105,8 +105,8 @@ async function fetchData() {
     if (shift.value) p.shift = shift.value;
     
     const r = await api.get('/api/production/daily-report', { params: p });
-    rows.value = r.data.data || [];
-    tot.value = r.data.total; tp.value = r.data.totalPages;
+    rows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    tot.value = (r.data?.data?.total ?? r.data?.total ?? 0); tp.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
   } finally { ld.value = false; }
 }
 

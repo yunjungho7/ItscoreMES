@@ -24,7 +24,9 @@ class UserService(BaseService):
             params['SHOWYN'] = 1 if showyn else 0
 
         query_info = self.sql_mapper.get_query("selectList", params)
-        return self.execute_query(query_info, params)
+        results = self.execute_query(query_info, params)
+        # 프론트엔드 일관성을 위해 키를 대문자로 변환
+        return [{k.upper(): v for k, v in row.items()} for row in results] if isinstance(results, list) else results
 
     def create_user(self, user: UserCreate):
         # 1. 중복 체크

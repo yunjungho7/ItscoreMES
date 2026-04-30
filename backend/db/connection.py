@@ -20,12 +20,14 @@ class CP949String(TypeDecorator):
         return value
 
 def decode_cp949(value):
-    """Helper for manual decoding consistency"""
+    """Helper for manual decoding consistency and stripping trailing spaces"""
     if value is not None and isinstance(value, str):
         try:
-            return value.encode('latin-1').decode('cp949')
+            # Convert latin-1 (often how pymssql returns CP949 bytes) to cp949
+            decoded = value.encode('latin-1').decode('cp949')
+            return decoded.strip()
         except (UnicodeEncodeError, UnicodeDecodeError):
-            return value
+            return value.strip()
     return value
 
 def db_creator():

@@ -108,7 +108,7 @@ const summary = computed(() => {
 });
 
 async function fetchPlants() {
-  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = r.data.data || []; } catch {}
+  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); } catch {}
 }
 
 async function fetchData() {
@@ -120,9 +120,9 @@ async function fetchData() {
     if (plantCd.value) p.plant_cd = plantCd.value;
     if (searchText.value) p.search = searchText.value;
     const r = await api.get('/api/receive/list', { params: p });
-    mRows.value = r.data.data || [];
-    total.value = r.data.total;
-    totalPages.value = r.data.totalPages;
+    mRows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    total.value = (r.data?.data?.total ?? r.data?.total ?? 0);
+    totalPages.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
   } finally { loading.value = false; }
 }
 
@@ -130,7 +130,7 @@ async function onMaster(row: any, idx: number) {
   si.value = idx; sel.value = row; dl.value = true;
   try {
     const r = await api.get(`/api/receive/detail/${row.RECEIVENO}/items`);
-    dRows.value = r.data || [];
+    dRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []);
   } finally { dl.value = false; }
 }
 

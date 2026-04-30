@@ -15,7 +15,9 @@ def _not_found(key: str):
 
 @router.get("/location", summary="Location 목록 조회")
 def get_locations(search: Optional[str] = None, page: int = 1, size: int = 50):
-    return location_service.get_all(search=search, page=page, size=size)
+    result = location_service.get_all(search=search, page=page, size=size)
+
+    return {"data": result}
 
 
 @router.get("/location/{location_cd}", summary="Location 상세 조회")

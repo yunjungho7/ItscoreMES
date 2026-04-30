@@ -198,7 +198,7 @@ const ld = ref(false), dl = ref(false), si = ref(-1), sel = ref<any>(null);
 const pg = ref(1), tp = ref(0), tot = ref(0);
 
 async function fetchPlants() {
-  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = r.data.data || []; } catch {}
+  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); } catch {}
 }
 async function fetchData() {
   ld.value = true; si.value = -1; sel.value = null; dRows.value = [];
@@ -211,13 +211,13 @@ async function fetchData() {
     if (orderNo.value) p.order_no = orderNo.value;
     if (includeDone.value) p.include_done = '1';
     const r = await api.get('/api/shipment/list', { params: p });
-    mRows.value = r.data.data || [];
-    tot.value = r.data.total; tp.value = r.data.totalPages;
+    mRows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    tot.value = (r.data?.data?.total ?? r.data?.total ?? 0); tp.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
   } finally { ld.value = false; }
 }
 async function onMaster(row: any, idx: number) {
   si.value = idx; sel.value = row; dl.value = true;
-  try { const r = await api.get(`/api/shipment/detail/${row.SHIPMENTINDICATIONNO}/items`); dRows.value = r.data || []; }
+  try { const r = await api.get(`/api/shipment/detail/${row.SHIPMENTINDICATIONNO}/items`); dRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []); }
   finally { dl.value = false; }
 }
 function onPg(p: number) { pg.value = p; fetchData(); }
@@ -299,7 +299,7 @@ const showCompanyPicker = ref(false), companySearch = ref(''), companies = ref<a
 async function fetchCompanies() {
   try {
     const r = await api.get('/api/master/company', { params: { search: companySearch.value, size: 50 } });
-    companies.value = r.data.data || [];
+    companies.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   } catch {}
 }
 function selectCompany(c: any) {

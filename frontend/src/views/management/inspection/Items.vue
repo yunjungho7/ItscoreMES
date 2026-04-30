@@ -160,8 +160,8 @@ async function fetchData() {
     // (서버 검색 파라미터 맞춤)
 
     const r = await api.get('/api/inspection/items', { params: p });
-    rows.value = r.data.data || [];
-    tp.value = r.data.totalPages;
+    rows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    tp.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
   } catch (err) {
     console.error(err);
   }

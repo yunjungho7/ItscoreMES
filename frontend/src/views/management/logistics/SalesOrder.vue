@@ -228,7 +228,7 @@ const ld = ref(false), dl = ref(false), si = ref(-1), sel = ref<any>(null);
 const pg = ref(1), tp = ref(0), tot = ref(0);
 
 async function fetchPlants() {
-  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = r.data.data || []; } catch {}
+  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); } catch {}
 }
 async function fetchData() {
   ld.value = true; si.value = -1; sel.value = null; dRows.value = [];
@@ -239,13 +239,13 @@ async function fetchData() {
     if (plantCd.value) p.plant_cd = plantCd.value;
     if (searchText.value) p.search = searchText.value;
     const r = await api.get('/api/order/list', { params: p });
-    mRows.value = r.data.data || [];
-    tot.value = r.data.total; tp.value = r.data.totalPages;
+    mRows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    tot.value = (r.data?.data?.total ?? r.data?.total ?? 0); tp.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
   } finally { ld.value = false; }
 }
 async function onMaster(row: any, idx: number) {
   si.value = idx; sel.value = row; dl.value = true;
-  try { const r = await api.get(`/api/order/detail/${row.ORDERNO}/items`); dRows.value = r.data || []; }
+  try { const r = await api.get(`/api/order/detail/${row.ORDERNO}/items`); dRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []); }
   finally { dl.value = false; }
 }
 function onPg(p: number) { pg.value = p; fetchData(); }
@@ -287,7 +287,7 @@ async function onPartBlur(item: any) {
   if (!item.PARTNO) return;
   try {
     const r = await api.get('/api/master/goods', { params: { search: item.PARTNO, size: 1 } });
-    const rows = r.data.data || [];
+    const rows = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
     if (rows.length > 0) {
       const g = rows[0];
       item.PARTNM = g.PARTNM || '';
@@ -341,7 +341,7 @@ function openPlantPicker() {
 async function fetchPlantsForPicker() {
   try {
     const r = await api.get('/api/master/plant', { params: { search: plantPickerSearch.value, size: 50 } });
-    pickerPlants.value = r.data.data || [];
+    pickerPlants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   } catch {}
 }
 function selectPlant(p: any) {
@@ -372,7 +372,7 @@ async function fetchCompanies() {
       params.plant_cd = regForm.value.PLANTCD;
     }
     const r = await api.get('/api/master/company', { params });
-    companies.value = r.data.data || [];
+    companies.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   } catch {}
 }
 function selectCompany(c: any) {
@@ -393,7 +393,7 @@ function openGoodsPicker(idx: number) {
 async function fetchGoods() {
   try {
     const r = await api.get('/api/master/goods', { params: { search: goodsSearch.value, parttype: 'PARTGUBUN001', size: 50 } });
-    goods.value = r.data.data || [];
+    goods.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   } catch {}
 }
 function selectGoods(g: any) {

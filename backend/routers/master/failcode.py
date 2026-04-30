@@ -15,7 +15,9 @@ def _not_found(key: str):
 
 @router.get("/failcode", summary="불량코드 목록 조회")
 def get_failcodes(search: Optional[str] = None, page: int = 1, size: int = 50):
-    return failcode_service.get_all(search=search, page=page, size=size)
+    result = failcode_service.get_all(search=search, page=page, size=size)
+
+    return {"data": result}
 
 
 @router.get("/failcode/{fail_cd}", summary="불량코드 상세 조회")

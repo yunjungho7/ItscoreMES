@@ -33,10 +33,54 @@
         <div class="ff"><label>박스당수량</label><input type="number" v-model.number="form.QTYPERBOX"/></div>
         <div class="ff"><label>안전재고</label><input type="number" v-model.number="form.SAFETYSTOCK"/></div>
         <div class="ff"><label>단가</label><input type="number" v-model.number="form.UNIT_PRICE"/></div>
-        <div class="ff"><label>공정</label><input v-model="form.PROCESSCD"/></div>
-        <div class="ff"><label>Location(보관)</label><input v-model="form.LOCATIONCD"/></div>
-        <div class="ff"><label>Location(투입)</label><input v-model="form.LOCATIONCD_PROD"/></div>
-        <div class="ff"><label>거래처</label><input v-model="form.COMPANYCD"/></div>
+        <div class="ff">
+          <label>공정</label>
+          <PopupPicker 
+            v-model="form.PROCESSCD" 
+            :display-value="form.PROCESSNM"
+            title="공정 선택" 
+            api-path="/api/master/process" 
+            :columns="processCols" 
+            value-field="PROCESSCD"
+            @select="row => form.PROCESSNM = row.PROCESSNM"
+          />
+        </div>
+        <div class="ff">
+          <label>Location(보관)</label>
+          <PopupPicker 
+            v-model="form.LOCATIONCD" 
+            :display-value="form.LOCATIONNAME"
+            title="보관 위치 선택" 
+            api-path="/api/master/location" 
+            :columns="locationCols" 
+            value-field="LOCATIONCODE"
+            @select="row => form.LOCATIONNAME = row.LOCATIONNAME"
+          />
+        </div>
+        <div class="ff">
+          <label>Location(투입)</label>
+          <PopupPicker 
+            v-model="form.LOCATIONCD_PROD" 
+            :display-value="form.LOCATIONNAME_PROD"
+            title="투입 위치 선택" 
+            api-path="/api/master/location" 
+            :columns="locationCols" 
+            value-field="LOCATIONCODE"
+            @select="row => form.LOCATIONNAME_PROD = row.LOCATIONNAME"
+          />
+        </div>
+        <div class="ff">
+          <label>거래처</label>
+          <PopupPicker 
+            v-model="form.COMPANYCD" 
+            :display-value="form.COMPANYNM"
+            title="거래처 선택" 
+            api-path="/api/master/company" 
+            :columns="companyCols" 
+            value-field="COMPANYCD"
+            @select="row => form.COMPANYNM = row.COMPANYNM"
+          />
+        </div>
         <div class="ff"><label>차종</label><input v-model="form.CARTYPE"/></div>
         <div class="ff"><label>재질</label><input v-model="form.TEXTURE"/></div>
         <div class="ff"><label>사용여부</label><select v-model="form.USEYN"><option :value="true">사용</option><option :value="false">미사용</option></select></div>
@@ -46,8 +90,27 @@
 </template>
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue';
-import api from '../../../api'; import DataGrid from '../../../components/common/DataGrid.vue'; import FormModal from '../../../components/common/FormModal.vue';
+import api from '../../../api'; 
+import DataGrid from '../../../components/common/DataGrid.vue'; 
+import FormModal from '../../../components/common/FormModal.vue';
+import PopupPicker from '../../../components/common/PopupPicker.vue';
+
 const columns=[{key:'PARTNO',label:'품번',width:'130px'},{key:'PARTNM',label:'품명',minWidth:'140px'},{key:'STANDARD',label:'규격',width:'120px'},{key:'PARTTYPE_NM',label:'품목구분',width:'90px'},{key:'UNIT',label:'단위',width:'60px'},{key:'LOTSTDQTY',label:'LOT기준수량',width:'100px'},{key:'QTYPERBOX',label:'박스당수량',width:'90px'},{key:'INTESTYN',label:'수입검사',width:'80px',type:'boolean'},{key:'LOCATIONCD',label:'Location(보관)',width:'110px'},{key:'PROCESSCD',label:'공정',width:'90px'}];
+
+const processCols = [
+  { key: 'PROCESSCD', label: '공정코드', width: '120px' },
+  { key: 'PROCESSNM', label: '공정명', minWidth: '150px' }
+];
+const locationCols = [
+  { key: 'LOCATIONCODE', label: '코드', width: '120px' },
+  { key: 'LOCATIONNAME', label: '위치명', minWidth: '150px' }
+];
+const companyCols = [
+  { key: 'COMPANYCD', label: '코드', width: '100px' },
+  { key: 'COMPANYNM', label: '거래처명', minWidth: '150px' },
+  { key: 'COMPANYTYPE', label: '구분', width: '90px' }
+];
+
 const searchCd=ref('');const searchNm=ref('');const searchStd=ref('');const searchType=ref('');const items=ref<any[]>([]);const loading=ref(false);const page=ref(1);const totalPages=ref(0);const total=ref(0);const selectedIdx=ref(-1);const editMode=ref(false);const showModal=ref(false);
 const allCodes=ref<any[]>([]);
 
@@ -57,20 +120,19 @@ function getPartTypeName(cd: string) {
   if (!cd) return '';
   const found = partTypes.value.find(c => c.CODECD === cd);
   if (found) return found.CODENM;
-  // 기존 한글명으로 저장된 데이터 호환
   return cd;
 }
 
-const emptyForm={PARTNO:'',PARTNM:'',STANDARD:'',PARTTYPE:'',UNIT:'',LOTSTDQTY:0,QTYPERBOX:0,SAFETYSTOCK:0,UNIT_PRICE:0,PROCESSCD:'',LOCATIONCD:'',LOCATIONCD_PROD:'',COMPANYCD:'',CARTYPE:'',TEXTURE:'',USEYN:true as boolean};const form=reactive({...emptyForm});
+const emptyForm={PARTNO:'',PARTNM:'',STANDARD:'',PARTTYPE:'',UNIT:'',LOTSTDQTY:0,QTYPERBOX:0,SAFETYSTOCK:0,UNIT_PRICE:0,PROCESSCD:'',PROCESSNM:'',LOCATIONCD:'',LOCATIONNAME:'',LOCATIONCD_PROD:'',LOCATIONNAME_PROD:'',COMPANYCD:'',COMPANYNM:'',CARTYPE:'',TEXTURE:'',USEYN:true as boolean};const form=reactive({...emptyForm});
 
 async function fetchCodes(){
   try{
     const r=await api.get('/api/master/code',{params:{size:9999}});
-    allCodes.value=r.data.data||[];
+    allCodes.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   }catch(e){console.error(e);}
 }
 
-async function fetchData(){loading.value=true;try{const p:any={page:page.value,size:50};if(searchNm.value)p.search=searchNm.value;if(searchType.value)p.parttype=searchType.value;const r=await api.get('/api/master/goods',{params:p});const rawData = r.data.data || [];items.value=rawData.map((item: any) => ({...item, PARTTYPE_NM: getPartTypeName(item.PARTTYPE)}));total.value=r.data.total;totalPages.value=r.data.totalPages;selectedIdx.value=-1;}finally{loading.value=false;}}
+async function fetchData(){loading.value=true;try{const p:any={page:page.value,size:50};if(searchNm.value)p.search=searchNm.value;if(searchType.value)p.parttype=searchType.value;const r=await api.get('/api/master/goods',{params:p});const rawData = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));items.value=rawData.map((item: any) => ({...item, PARTTYPE_NM: getPartTypeName(item.PARTTYPE)}));total.value=(r.data?.data?.total ?? r.data?.total ?? 0);totalPages.value=(r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);selectedIdx.value=-1;}finally{loading.value=false;}}
 function onRowClick(row:any,idx:number){selectedIdx.value=idx;editMode.value=true;Object.assign(form,row);showModal.value=true;}
 function onPageChange(p:number){page.value=p;fetchData();}
 function openAdd(){editMode.value=false;Object.assign(form,{...emptyForm});showModal.value=true;}

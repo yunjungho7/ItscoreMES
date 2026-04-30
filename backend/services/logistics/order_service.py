@@ -31,7 +31,7 @@ class OrderService:
         q = self.mapper.get_query('selectAll', params)
         values = tuple(params.get(name) for name in q['params'])
         cursor.execute(q['query'], values)
-        columns = [col[0] for col in cursor.description]
+        columns = [col[0].upper() for col in cursor.description]
         rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
         conn.close()
         return {"data": rows, "total": total, "page": page, "totalPages": math.ceil(total / size) if total else 0}
@@ -43,7 +43,7 @@ class OrderService:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(q['query'], values)
-        columns = [col[0] for col in cursor.description]
+        columns = [col[0].upper() for col in cursor.description]
         row = cursor.fetchone()
         conn.close()
         return dict(zip(columns, row)) if row else None
@@ -55,7 +55,7 @@ class OrderService:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(q['query'], values)
-        columns = [col[0] for col in cursor.description]
+        columns = [col[0].upper() for col in cursor.description]
         rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
         conn.close()
         return rows

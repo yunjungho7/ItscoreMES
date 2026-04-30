@@ -13,7 +13,7 @@
           <button v-if="showDelete" class="btn-danger" @click="$emit('delete')">🗑 삭제</button>
           <div class="spacer"></div>
           <button class="btn-secondary" @click="$emit('close')">취소</button>
-          <button class="btn-primary" @click="$emit('save')">💾 저장</button>
+          <button v-if="showSave !== false" class="btn-primary" @click="$emit('save')">💾 저장</button>
         </div>
       </div>
     </div>
@@ -21,12 +21,15 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   visible: boolean;
   title: string;
   width?: string;
   showDelete?: boolean;
-}>();
+  showSave?: boolean;
+}>(), {
+  showSave: true
+});
 defineEmits(['close', 'save', 'delete']);
 </script>
 

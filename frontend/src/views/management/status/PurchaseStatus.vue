@@ -66,7 +66,7 @@ const summary = computed(() => {
 });
 
 async function fetchPlants() {
-  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = r.data.data || []; } catch {}
+  try { const r = await api.get('/api/master/plant', { params: { size: 100 } }); plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); } catch {}
 }
 async function fetchData() {
   loading.value = true;
@@ -77,7 +77,7 @@ async function fetchData() {
     if (endDate.value) p.end_date = endDate.value;
     if (searchText.value) p.search = searchText.value;
     const r = await api.get('/api/purchase/plan', { params: p });
-    rows.value = r.data || [];
+    rows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []);
   } finally { loading.value = false; }
 }
 

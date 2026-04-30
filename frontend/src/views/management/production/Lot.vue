@@ -191,8 +191,8 @@ async function fetchData() {
     if (searchLotNo.value) p.lot_no = searchLotNo.value;
     if (searchPartNo.value) p.part_no = searchPartNo.value;
     const r = await api.get('/api/production/lot', { params: p });
-    mRows.value = r.data.data || [];
-    tot.value = r.data.total; tp.value = r.data.totalPages;
+    mRows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    tot.value = (r.data?.data?.total ?? r.data?.total ?? 0); tp.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
   } finally { ld.value = false; }
 }
 
@@ -242,7 +242,7 @@ async function handleCreate() {
 const showItemPicker = ref(false), itemSearch = ref(''), itemsList = ref<any[]>([]);
 async function fetchItems() {
   const r = await api.get('/api/master/goods', { params: { search: itemSearch.value, size: 50 } });
-  itemsList.value = r.data.data || [];
+  itemsList.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
 }
 function selectItem(g: any) {
   cForm.value.PARTNO = g.PARTNO; cForm.value.PARTNM = g.PARTNM; cForm.value.UNIT = g.UNIT;
@@ -278,7 +278,7 @@ async function fetchTracking() {
   tl.value = true;
   try {
     const r = await api.get(`/api/production/lot/tracking/${trackLotNo.value}`);
-    tRows.value = r.data || [];
+    tRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []);
   } catch (e: any) { alert('추적 실패'); }
   finally { tl.value = false; }
 }

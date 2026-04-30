@@ -52,6 +52,14 @@ class BomService(BaseCrudService):
             'size': 9999
         })
 
+    def get_where_used(self, child_partno: str):
+        """특정 자식 품목을 사용하는 부모 품목 목록 조회 (역전개)"""
+        return self._execute_select('selectWhereUsed', {
+            'search': child_partno,
+            'offset': 0,
+            'size': 9999
+        })
+
 bom_service = BomService(
     mapper_path='sql/master/bom.xml',
     pk_columns=['PAR_PARTNO', 'CHILD_PARTNO']

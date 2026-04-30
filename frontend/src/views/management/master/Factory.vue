@@ -75,7 +75,7 @@ const form = reactive({ ...emptyForm });
 async function fetchPlants() {
   try {
     const r = await api.get('/api/master/plant', { params: { size: 100 } });
-    plants.value = r.data.data || [];
+    plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   } catch (e) {
     console.error('사업장 조회 중 오류:', e);
   }
@@ -88,9 +88,9 @@ async function fetchData() {
     if (searchNm.value) p.search = searchNm.value;
     if (searchPlantCd.value) p.plant_cd = searchPlantCd.value;
     const r = await api.get('/api/master/factory', { params: p });
-    items.value = r.data.data;
-    total.value = r.data.total;
-    totalPages.value = r.data.totalPages;
+    items.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    total.value = (r.data?.data?.total ?? r.data?.total ?? 0);
+    totalPages.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
     selectedIdx.value = -1;
   } catch (e) {
     console.error('공장 조회 중 오류:', e);

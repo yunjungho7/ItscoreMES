@@ -142,7 +142,7 @@ async function fetchStandards() {
     if (searchGubun.value) params.part_gubun = searchGubun.value;
 
     const res = await api.get('/api/inspection/standard', { params });
-    standards.value = res.data;
+    standards.value = Array.isArray(res.data) ? res.data : (res.data?.data || []);
   } catch (err) {
     console.error(err);
   }
@@ -154,7 +154,7 @@ async function selectStandard(std: any) {
     const res = await api.get(`/api/inspection/standard/${std.PARTNO}/history`, {
       params: { process_cd: std.PROCESSCD }
     });
-    history.value = res.data;
+    history.value = Array.isArray(res.data) ? res.data : (res.data?.data || []);
   } catch (err) {
     console.error(err);
   }
@@ -171,7 +171,7 @@ function onModalSaved() {
 async function fetchCodes() {
   try {
     const r = await api.get('/api/master/code', { params: { size: 9999 } });
-    allCodes.value = r.data.data || [];
+    allCodes.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   } catch {}
 }
 

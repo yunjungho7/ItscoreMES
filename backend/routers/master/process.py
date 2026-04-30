@@ -15,7 +15,9 @@ def _not_found(key: str):
 
 @router.get("/process", summary="공정 목록 조회")
 def get_processes(search: Optional[str] = None, page: int = 1, size: int = 50):
-    return process_service.get_all(search=search, page=page, size=size)
+    result = process_service.get_all(search=search, page=page, size=size)
+
+    return {"data": result}
 
 
 @router.get("/process/{process_cd}", summary="공정 상세 조회")

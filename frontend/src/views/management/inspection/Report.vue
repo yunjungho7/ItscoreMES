@@ -195,7 +195,7 @@ async function fetchList() {
     if (searchEndDate.value) params.end_date = searchEndDate.value;
 
     const res = await api.get('/api/inspection/testscore', { params });
-    testScores.value = res.data;
+    testScores.value = Array.isArray(res.data) ? res.data : (res.data?.data || []);
   } catch (err) {
     console.error(err);
   }
@@ -206,7 +206,7 @@ async function selectScore(score: any) {
   try {
     // PCODE(기준서 코드)를 통해 검사항목 조회 (상세 데이터 대용)
     const res = await api.get(`/api/inspection/testscore/${score.PCODE}/details`);
-    details.value = res.data;
+    details.value = Array.isArray(res.data) ? res.data : (res.data?.data || []);
   } catch (err) {
     console.error(err);
   }

@@ -4,7 +4,7 @@ from models.system.user import UserCreate, UserUpdate, UserResponse
 from services.system.user import UserService
 
 router = APIRouter(
-    prefix="/api/system/users",
+    prefix="/system/users",
     tags=["System - Users"]
 )
 

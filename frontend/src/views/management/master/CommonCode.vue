@@ -175,7 +175,7 @@ async function fetchAllCodes() {
   loading.value = true;
   try {
     const r = await api.get('/api/master/code', { params: { size: 9999 } });
-    allCodes.value = r.data.data || [];
+    allCodes.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
     buildTree();
   } catch (e) {
     console.error(e);

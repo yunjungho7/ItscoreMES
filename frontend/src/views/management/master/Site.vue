@@ -29,7 +29,7 @@ const page = ref(1); const totalPages = ref(0); const total = ref(0);
 const selectedIdx = ref(-1); const editMode = ref(false); const showModal = ref(false);
 const emptyForm = { PLANTCD:'',PLANTNM:'',PLANTTYPE:'',BUSINESSNO:'',TEL:'',FAX:'',ADDR1:'',ADDR2:'',BOSSNM:'',PERSON_CHARGE:'',USEYN:true as boolean };
 const form = reactive({...emptyForm});
-async function fetchData(){ loading.value=true; try{ const p:any={page:page.value,size:50}; if(searchNm.value) p.search=searchNm.value; const r=await api.get('/api/master/plant',{params:p}); items.value=r.data.data; total.value=r.data.total; totalPages.value=r.data.totalPages; selectedIdx.value=-1; }finally{ loading.value=false; } }
+async function fetchData(){ loading.value=true; try{ const p:any={page:page.value,size:50}; if(searchNm.value) p.search=searchNm.value; const r=await api.get('/api/master/plant',{params:p}); items.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); total.value=(r.data?.data?.total ?? r.data?.total ?? 0); totalPages.value=(r.data?.data?.totalPages ?? r.data?.totalPages ?? 0); selectedIdx.value=-1; }finally{ loading.value=false; } }
 function onRowClick(row:any,idx:number){ selectedIdx.value=idx; editMode.value=true; Object.assign(form,row); showModal.value=true; }
 function onPageChange(p:number){ page.value=p; fetchData(); }
 function openAdd(){ editMode.value=false; Object.assign(form,{...emptyForm}); showModal.value=true; }

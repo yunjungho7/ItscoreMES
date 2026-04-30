@@ -14,21 +14,40 @@
     </select>
 
     <select id="selectAll">
-        SELECT * FROM TBL_COM_GOODS
+        SELECT G.*, 
+               P.PROCESSNM,
+               L1.LOCATIONNAME,
+               L2.LOCATIONNAME AS LOCATIONNAME_PROD,
+               C.COMPANYNM
+        FROM TBL_COM_GOODS G
+        LEFT JOIN TBL_COM_PROCESS P ON G.PROCESSCD = P.PROCESSCD
+        LEFT JOIN TBL_COM_LOCATION L1 ON G.LOCATIONCD = L1.LOCATIONCODE
+        LEFT JOIN TBL_COM_LOCATION L2 ON G.LOCATIONCD_PROD = L2.LOCATIONCODE
+        LEFT JOIN TBL_COM_COMPANY C ON G.COMPANYCD = C.COMPANYCD
         <where>
             <if test="search != null">
-                (PARTNO LIKE #{search} OR PARTNM LIKE #{search})
+                (G.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})
             </if>
             <if test="parttype != null">
-                AND PARTTYPE = #{parttype}
+                AND G.PARTTYPE = #{parttype}
             </if>
         </where>
-        ORDER BY PARTNO
+        ORDER BY G.PARTNO
         OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
     </select>
 
     <select id="selectById">
-        SELECT * FROM TBL_COM_GOODS WHERE PARTNO = #{PARTNO}
+        SELECT G.*, 
+               P.PROCESSNM,
+               L1.LOCATIONNAME,
+               L2.LOCATIONNAME AS LOCATIONNAME_PROD,
+               C.COMPANYNM
+        FROM TBL_COM_GOODS G
+        LEFT JOIN TBL_COM_PROCESS P ON G.PROCESSCD = P.PROCESSCD
+        LEFT JOIN TBL_COM_LOCATION L1 ON G.LOCATIONCD = L1.LOCATIONCODE
+        LEFT JOIN TBL_COM_LOCATION L2 ON G.LOCATIONCD_PROD = L2.LOCATIONCODE
+        LEFT JOIN TBL_COM_COMPANY C ON G.COMPANYCD = C.COMPANYCD
+        WHERE G.PARTNO = #{PARTNO}
     </select>
 
     <insert id="insert">
@@ -68,10 +87,14 @@
             <if test="OPTIMUMSTOCK != null">OPTIMUMSTOCK = #{OPTIMUMSTOCK},</if>
             <if test="UNIT != null">UNIT = #{UNIT},</if>
             <if test="WEIGHT != null">WEIGHT = #{WEIGHT},</if>
+            <if test="TEXTURE != null">TEXTURE = #{TEXTURE},</if>
             <if test="STANDARD != null">STANDARD = #{STANDARD},</if>
             <if test="USEYN != null">USEYN = #{USEYN},</if>
             <if test="UNIT_PRICE != null">UNIT_PRICE = #{UNIT_PRICE},</if>
             <if test="PROCESSCD != null">PROCESSCD = #{PROCESSCD},</if>
+            <if test="LOCATIONCD != null">LOCATIONCD = #{LOCATIONCD},</if>
+            <if test="LOCATIONCD_PROD != null">LOCATIONCD_PROD = #{LOCATIONCD_PROD},</if>
+            <if test="QTYPERBOX != null">QTYPERBOX = #{QTYPERBOX},</if>
             <if test="COMPANYCD != null">COMPANYCD = #{COMPANYCD},</if>
             <if test="EDITUSERID != null">EDITUSERID = #{EDITUSERID},</if>
             EDITDTM = GETDATE()

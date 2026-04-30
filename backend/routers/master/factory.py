@@ -17,7 +17,9 @@ def _not_found(key: str):
 def get_factories(search: Optional[str] = None, plant_cd: Optional[str] = None,
                   page: int = 1, size: int = 50):
     """사업장코드(plant_cd) 기준 필터링을 지원합니다."""
-    return factory_service.get_all(search=search, page=page, size=size, plant_cd=plant_cd)
+    result = factory_service.get_all(search=search, page=page, size=size, plant_cd=plant_cd)
+
+    return {"data": result}
 
 
 @router.get("/factory/next-code/{plant_cd}", summary="사업장별 다음 공장코드 채번")

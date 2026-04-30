@@ -50,14 +50,14 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"statusCode": 500, "message": str(exc)}
     )
 
-# ── 라우터 등록 ──
-app.include_router(master_router)
-app.include_router(logistics_router)
-app.include_router(production_router)
-app.include_router(status_router)
-app.include_router(inspection_router)
-app.include_router(system_router)
-app.include_router(auth_router)
+# ── API 라우터 등록 (모두 /api prefix 사용) ──
+app.include_router(master_router, prefix="/api")
+app.include_router(logistics_router, prefix="/api")
+app.include_router(production_router, prefix="/api")
+app.include_router(status_router, prefix="/api")
+app.include_router(inspection_router, prefix="/api")
+app.include_router(system_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 @app.get("/", tags=["Health"])
 def health_check():

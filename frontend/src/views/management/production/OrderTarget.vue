@@ -149,7 +149,7 @@ const selectedDetailRow = ref<any>(null);
 async function fetchPlants() {
   try {
     const r = await api.get('/api/master/plant', { params: { size: 100 } });
-    plants.value = r.data.data || [];
+    plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
   } catch {}
 }
 
@@ -165,9 +165,9 @@ async function fetchOrders() {
     if (searchParams.value.search) p.search = searchParams.value.search;
 
     const r = await api.get('/api/order/list', { params: p });
-    orders.value = r.data.data || [];
-    total.value = r.data.total || 0;
-    totalPages.value = r.data.totalPages || 1;
+    orders.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    total.value = (r.data?.data?.total ?? r.data?.total ?? 0) || 0;
+    totalPages.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0) || 1;
   } catch (e) {
     alert('수주 현황을 불러오지 못했습니다.');
   } finally {
@@ -189,8 +189,11 @@ async function fetchDetails(orderNo: string) {
   loadingDetails.value = true;
   try {
     const r = await api.get(`/api/order/detail/${orderNo}/items`);
+    // API 응답 구조에 맞게 데이터 추출 (data.data 또는 data)
+    const rawData = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data) ? r.data : (r.data?.data?.data || []));
+    
     // Add reactivity for checkbox and plan qty
-    details.value = (r.data || []).map((d: any) => ({
+    details.value = rawData.map((d: any) => ({
       ...d,
       _checked: false,
       _PLANQTY: d.REQQTY || 0

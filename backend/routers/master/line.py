@@ -15,7 +15,9 @@ def _not_found(key: str):
 
 @router.get("/line", summary="라인 목록 조회")
 def get_lines(search: Optional[str] = None, page: int = 1, size: int = 50):
-    return line_service.get_all(search=search, page=page, size=size)
+    result = line_service.get_all(search=search, page=page, size=size)
+
+    return {"data": result}
 
 
 @router.get("/line/{line_cd}", summary="라인 상세 조회")

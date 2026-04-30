@@ -369,8 +369,8 @@ async function fetchData() {
     if (searchPartNo.value) p.search = searchPartNo.value;
     if (includeDone.value) p.include_done = true;
     const r = await api.get('/api/production/field/workorders', { params: p });
-    masterRows.value = r.data.data || [];
-    totalRecords.value = r.data.total || 0;
+    masterRows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    totalRecords.value = (r.data?.data?.total ?? r.data?.total ?? 0) || 0;
   } catch {}
 }
 
@@ -398,13 +398,13 @@ async function loadTabData() {
   } else if (activeTab.value === 'history') {
     try {
       const r = await api.get(`/api/production/field/history/${wno}`);
-      historyRows.value = r.data || [];
+      historyRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []);
       console.log('History data:', historyRows.value);
     } catch {}
   } else if (activeTab.value === 'defect') {
     try {
       const r = await api.get(`/api/production/field/defect/${wno}`);
-      defectRows.value = r.data || [];
+      defectRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []);
     } catch {}
   }
 }

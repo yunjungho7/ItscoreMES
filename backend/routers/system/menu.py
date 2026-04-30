@@ -4,18 +4,19 @@ from models.system.menu import MenuCreate, MenuUpdate
 from services.system.menu import MenuService
 
 router = APIRouter(
-    prefix="/api/system/menus",
+    prefix="/system/menus",
     tags=["System - Menus"]
 )
 
 def get_menu_service():
     return MenuService()
 
-@router.get("", response_model=List[dict])
+@router.get("", response_model=dict)
 def get_menus(
     service: MenuService = Depends(get_menu_service)
 ):
-    return service.get_menus()
+    result = service.get_menus()
+    return {"data": result}
 
 @router.post("", response_model=dict)
 def create_menu(

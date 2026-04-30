@@ -15,12 +15,23 @@ def _not_found(key: str):
 
 @router.get("/bom", summary="BOM 목록 조회")
 def get_boms(search: Optional[str] = None, page: int = 1, size: int = 50):
-    return bom_service.get_all(search=search, page=page, size=size)
+    result = bom_service.get_all(search=search, page=page, size=size)
+
+    return {"data": result}
 
 
 @router.get("/bom/detail/{par_partno}", summary="BOM 자식 목록 조회")
 def get_bom_details(par_partno: str):
-    return bom_service.get_details(par_partno)
+    result = bom_service.get_details(par_partno)
+
+    return {"data": result}
+
+
+@router.get("/bom/reverse/{child_partno}", summary="BOM 부모 목록 조회 (역전개)")
+def get_bom_reverse(child_partno: str):
+    result = bom_service.get_where_used(child_partno)
+
+    return {"data": result}
 
 
 @router.get("/bom/{par_partno}/{child_partno}", summary="BOM 상세 조회")

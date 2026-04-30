@@ -52,7 +52,7 @@
         :rows="orderDetails" 
         :loading="loadingDetails" 
       >
-        <template #cell-CHK="{ row, index }">
+        <template #cell-CHK="{ row }">
           <input type="checkbox" v-model="row._checked" @click.stop class="detail-chk" />
         </template>
       </DataGrid>
@@ -138,7 +138,7 @@ function toggleAllDetails(e: Event) {
 async function fetchPlants() {
   try {
     const r = await api.get('/api/master/plant', { params: { size: 100 } });
-    plants.value = r.data.data || [];
+    plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
     if (plants.value.length > 0) plantCd.value = plants.value[0].PLANTCD;
   } catch (e) {
     console.error(e);
@@ -162,7 +162,7 @@ async function fetchOrders() {
     if (companySearch.value) params.company_cd = companySearch.value;
 
     const r = await api.get('/api/purchase/list', { params });
-    let data = r.data || [];
+    let data = Array.isArray(r.data) ? r.data : (r.data?.data || []);
 
     // 완료포함 체크가 해제되어 있으면 COMPLETED 상태 제외
     if (!includeCompleted.value) {

@@ -75,17 +75,17 @@ class InputMaterialRequest(BaseModel):
 # 생산계획
 # ════════════════════════════════════════
 
-@router.get("/api/production/plan", summary="생산계획 조회 (월별 피벗)")
+@router.get("/production/plan", summary="생산계획 조회 (월별 피벗)")
 def get_plan(plant_cd: Optional[str] = None, base_date: Optional[str] = None,
              search: Optional[str] = None):
     return plan_service.get_plan_list(plant_cd=plant_cd, base_date=base_date, search=search)
 
-@router.post("/api/production/plan", summary="생산계획 등록/수정", status_code=201)
+@router.post("/production/plan", summary="생산계획 등록/수정", status_code=201)
 def upsert_plan(body: PlanUpsert):
     plan_service.upsert(body.model_dump())
     return {"statusCode": 201, "message": "저장되었습니다."}
 
-@router.post("/api/production/plan/batch", summary="생산계획 일괄 저장", status_code=201)
+@router.post("/production/plan/batch", summary="생산계획 일괄 저장", status_code=201)
 def batch_upsert_plan(body: List[PlanUpsert]):
     for item in body:
         plan_service.upsert(item.model_dump())
@@ -96,29 +96,31 @@ def batch_upsert_plan(body: List[PlanUpsert]):
 # 작업지시
 # ════════════════════════════════════════
 
-@router.get("/api/production/workorder", summary="작업지시 목록 조회")
+@router.get("/production/workorder", summary="작업지시 목록 조회")
 def get_workorders(start_date: Optional[str] = None, end_date: Optional[str] = None,
                    plant_cd: Optional[str] = None, shift: Optional[str] = None,
                    ord_state: Optional[str] = None, search: Optional[str] = None,
+                   parent_only: Optional[bool] = None,
                    page: int = 1, size: int = 50):
     return workorder_service.get_all(start_date=start_date, end_date=end_date,
                                       plant_cd=plant_cd, shift=shift,
                                       ord_state=ord_state, search=search,
+                                      parent_only=parent_only,
                                       page=page, size=size)
 
-@router.get("/api/production/workorder/{workordno}/children", summary="하위 작업지시")
+@router.get("/production/workorder/{workordno}/children", summary="하위 작업지시")
 def get_workorder_children(workordno: str):
     return workorder_service.get_children(workordno)
 
-@router.post("/api/production/workorder", summary="작업지시 등록", status_code=201)
+@router.post("/production/workorder", summary="작업지시 등록", status_code=201)
 def create_workorder(body: WorkOrderCreate):
     return workorder_service.create(body.model_dump())
 
-@router.put("/api/production/workorder/{workordno}", summary="작업지시 수정")
+@router.put("/production/workorder/{workordno}", summary="작업지시 수정")
 def update_workorder(workordno: str, body: WorkOrderUpdate):
     return workorder_service.update(workordno, body.model_dump())
 
-@router.delete("/api/production/workorder/{workordno}", summary="작업지시 삭제")
+@router.delete("/production/workorder/{workordno}", summary="작업지시 삭제")
 def delete_workorder(workordno: str):
     if not workorder_service.delete(workordno):
         raise HTTPException(status_code=404, detail="작업지시를 찾을 수 없습니다.")
@@ -128,11 +130,11 @@ def delete_workorder(workordno: str):
 # 생산현황 (작업실적)
 # ════════════════════════════════════════
 
-@router.get("/api/production/status/result/{workordno}", summary="작업실적 목록 조회")
+@router.get("/production/status/result/{workordno}", summary="작업실적 목록 조회")
 def get_production_results(workordno: str):
     return status_service.get_results(workordno)
 
-@router.delete("/api/production/status/result/{lotno}", summary="작업실적 취소")
+@router.delete("/production/status/result/{lotno}", summary="작업실적 취소")
 def cancel_production_result(lotno: str):
     if not status_service.cancel_result(lotno):
         raise HTTPException(status_code=404, detail="작업실적을 찾을 수 없거나 이미 취소되었습니다.")
@@ -142,11 +144,11 @@ def cancel_production_result(lotno: str):
 # 투입자재
 # ════════════════════════════════════════
 
-@router.get("/api/production/input-material/{workordno}", summary="투입자재 목록 조회")
+@router.get("/production/input-material/{workordno}", summary="투입자재 목록 조회")
 def get_input_materials(workordno: str):
     return input_material_service.get_input_materials(workordno)
 
-@router.post("/api/production/field/input-material", summary="현장 자재 투입 저장")
+@router.post("/production/field/input-material", summary="현장 자재 투입 저장")
 def save_input_material(body: InputMaterialRequest):
     if not input_material_service.save_input(body.model_dump()):
         raise HTTPException(status_code=400, detail="자재 투입 저장에 실패했습니다.")
@@ -170,17 +172,17 @@ class LotCreate(BaseModel):
     LINECD: Optional[str] = None
     SHIFT: Optional[str] = None
 
-@router.get("/api/production/lot", summary="LOT 목록 조회")
+@router.get("/production/lot", summary="LOT 목록 조회")
 def get_lots(start_date: Optional[str] = None, end_date: Optional[str] = None,
              lot_no: Optional[str] = None, part_no: Optional[str] = None,
              page: int = 1, size: int = 50):
     return lot_service.get_all(start_date, end_date, lot_no, part_no, page, size)
 
-@router.post("/api/production/lot", summary="LOT 생성", status_code=201)
+@router.post("/production/lot", summary="LOT 생성", status_code=201)
 def create_lot(body: LotCreate):
     return lot_service.create(body.model_dump())
 
-@router.get("/api/production/lot/tracking/{lotno}", summary="LOT 추적")
+@router.get("/production/lot/tracking/{lotno}", summary="LOT 추적")
 def track_lot(lotno: str):
     return lot_service.get_tracking(lotno)
 
@@ -188,7 +190,7 @@ def track_lot(lotno: str):
 # 작업일보
 # ════════════════════════════════════════
 
-@router.get("/api/production/daily-report", summary="작업일보 목록 조회")
+@router.get("/production/daily-report", summary="작업일보 목록 조회")
 def get_daily_report(start_date: Optional[str] = None, end_date: Optional[str] = None,
                      plant_cd: Optional[str] = None, process_cd: Optional[str] = None,
                      shift: Optional[str] = None, page: int = 1, size: int = 50):
@@ -198,13 +200,13 @@ def get_daily_report(start_date: Optional[str] = None, end_date: Optional[str] =
 # 불량 관리
 # ════════════════════════════════════════
 
-@router.get("/api/production/fail-lot", summary="불량 LOT 목록 조회")
+@router.get("/production/fail-lot", summary="불량 LOT 목록 조회")
 def get_fail_lots(start_date: Optional[str] = None, end_date: Optional[str] = None,
                   plant_cd: Optional[str] = None, lot_no: Optional[str] = None,
                   fail_gubuns: Optional[str] = None, page: int = 1, size: int = 50):
     return fail_lot_service.get_all(start_date, end_date, plant_cd, lot_no, fail_gubuns, page, size)
 
-@router.post("/api/production/fail-lot/{action}", summary="불량 LOT 양품/폐기 처리")
+@router.post("/production/fail-lot/{action}", summary="불량 LOT 양품/폐기 처리")
 def process_fail_lots(action: str, items: List[dict]):
     if action not in ['recover', 'scrap']:
         raise HTTPException(status_code=400, detail="Invalid action")
@@ -219,7 +221,7 @@ def process_fail_lots(action: str, items: List[dict]):
 # 현장 생산관리
 # ════════════════════════════════════════
 
-@router.get("/api/production/field/workorders", summary="현장 작업지시 목록 조회")
+@router.get("/production/field/workorders", summary="현장 작업지시 목록 조회")
 def get_field_workorders(start_date: Optional[str] = None, end_date: Optional[str] = None,
                          shift: Optional[str] = None, ord_state: Optional[str] = None,
                          line_cd: Optional[str] = None, process_cd: Optional[str] = None,
@@ -233,23 +235,23 @@ def get_field_workorders(start_date: Optional[str] = None, end_date: Optional[st
                                          include_done=include_done,
                                          page=page, size=size)
 
-@router.get("/api/production/field/summary/{workordno}", summary="현장 생산실적 집계")
+@router.get("/production/field/summary/{workordno}", summary="현장 생산실적 집계")
 def get_field_summary(workordno: str):
     return field_service.get_summary(workordno)
 
-@router.get("/api/production/field/result/{workordno}", summary="현장 생산실적 LOT 상세")
+@router.get("/production/field/result/{workordno}", summary="현장 생산실적 LOT 상세")
 def get_field_result(workordno: str):
     return field_service.get_result(workordno)
 
-@router.get("/api/production/field/history/{workordno}", summary="현장 생산이력")
+@router.get("/production/field/history/{workordno}", summary="현장 생산이력")
 def get_field_history(workordno: str):
     return field_service.get_history(workordno)
 
-@router.get("/api/production/field/defect/{workordno}", summary="현장 불량이력")
+@router.get("/production/field/defect/{workordno}", summary="현장 불량이력")
 def get_field_defect(workordno: str):
     return field_service.get_defect(workordno)
 
-@router.post("/api/production/field/status-change", summary="현장 작업 상태 변경")
+@router.post("/production/field/status-change", summary="현장 작업 상태 변경")
 def change_field_status(body: StatusChangeRequest):
     if body.STATUS not in ['SETTING', 'STARTED', 'INSPECTING', 'DONE']:
         raise HTTPException(status_code=400, detail="유효하지 않은 상태값입니다.")
@@ -257,13 +259,13 @@ def change_field_status(body: StatusChangeRequest):
         raise HTTPException(status_code=404, detail="작업지시를 찾을 수 없습니다.")
     return {"statusCode": 200, "message": f"상태가 {body.STATUS}로 변경되었습니다."}
 
-@router.post("/api/production/field/result-save", summary="현장 중간 생산실적 저장")
+@router.post("/production/field/result-save", summary="현장 중간 생산실적 저장")
 def save_field_result(body: ResultSaveRequest):
     if not field_service.save_result(body.model_dump()):
         raise HTTPException(status_code=400, detail="실적 저장에 실패했습니다.")
     return {"statusCode": 200, "message": "실적이 저장되었습니다."}
 
-@router.post("/api/production/field/cancel-production", summary="현장 생산 취소")
+@router.post("/production/field/cancel-production", summary="현장 생산 취소")
 def cancel_field_production(body: dict):
     workordno = body.get('WORKORDNO')
     if not workordno:

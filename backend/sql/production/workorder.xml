@@ -1,85 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mapper namespace="workorder">
 
-  <!-- 작업지시 목록 건수 -->
-  <select id="countAll">
-    SELECT COUNT(*) FROM TBL_PROD_WORKORDER W
-    LEFT JOIN TBL_COM_GOODS G ON W.PARTNO = G.PARTNO
-    <where>
-      W.USEYN = 1
-      <if test="start_date != null">AND W.ORDDATE &gt;= #{start_date}</if>
-      <if test="end_date != null">AND W.ORDDATE &lt;= #{end_date}</if>
-      <if test="plant_cd != null">AND W.PLANTCD = #{plant_cd}</if>
-      <if test="shift != null">AND W.SHIFT = #{shift}</if>
-      <if test="ord_state != null">AND W.ORDSTATE = #{ord_state}</if>
-      <if test="search != null">AND (W.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
-    </where>
-  </select>
+    <select id="countAll">
+        SELECT COUNT(*) AS TOTAL FROM TBL_PROD_WORKORDER
+        <where>
+            <if test="start_date != null">AND ORDDATE &gt;= #{start_date}</if>
+            <if test="end_date != null">AND ORDDATE &lt;= #{end_date}</if>
+            <if test="plant_cd != null">AND PLANTCD = #{plant_cd}</if>
+            <if test="shift != null">AND SHIFT = #{shift}</if>
+            <if test="ord_state != null">AND ORDSTATE = #{ord_state}</if>
+            <if test="parent_only != null and (parent_only == true or parent_only == 'true' or parent_only == 1)">
+                AND (PAR_WORKORDNO IS NULL OR PAR_WORKORDNO = '')
+            </if>
+            <if test="search != null">
+                AND (WORKORDNO LIKE #{search} OR PARTNO LIKE #{search} OR PAR_WORKORDNO LIKE #{search})
+            </if>
+            AND USEYN = 1
+        </where>
+    </select>
 
-  <!-- 작업지시 목록 -->
-  <select id="selectAll">
-    SELECT W.WORKORDNO, W.ORDDATE, W.PARTNO, G.PARTNM, G.STANDARD, G.UNIT,
-           W.ORDQTY, W.ORDTYPE, W.PROCESSCD, W.LINECD, W.SHIFT,
-           W.ORDpriority, W.ORDSTATE, W.CLOSEYN, W.FIXEDYN,
-           W.PAR_WORKORDNO, W.PLANTCD, W.REMARK
-    FROM TBL_PROD_WORKORDER W
-    LEFT JOIN TBL_COM_GOODS G ON W.PARTNO = G.PARTNO
-    <where>
-      W.USEYN = 1
-      <if test="start_date != null">AND W.ORDDATE &gt;= #{start_date}</if>
-      <if test="end_date != null">AND W.ORDDATE &lt;= #{end_date}</if>
-      <if test="plant_cd != null">AND W.PLANTCD = #{plant_cd}</if>
-      <if test="shift != null">AND W.SHIFT = #{shift}</if>
-      <if test="ord_state != null">AND W.ORDSTATE = #{ord_state}</if>
-      <if test="search != null">AND (W.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search})</if>
-    </where>
-    ORDER BY W.ORDDATE DESC, W.ORDpriority
-    OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
-  </select>
+    <select id="selectAll">
+        SELECT W.*, G.PARTNM, G.STANDARD, G.UNIT, P.PROCESSNM, L.LINENM
+        FROM TBL_PROD_WORKORDER W
+        LEFT JOIN TBL_COM_GOODS G ON W.PARTNO = G.PARTNO
+        LEFT JOIN TBL_COM_PROCESS P ON W.PROCESSCD = P.PROCESSCD
+        LEFT JOIN TBL_COM_LINE L ON W.LINECD = L.LINECD
+        <where>
+            <if test="start_date != null">AND W.ORDDATE &gt;= #{start_date}</if>
+            <if test="end_date != null">AND W.ORDDATE &lt;= #{end_date}</if>
+            <if test="plant_cd != null">AND W.PLANTCD = #{plant_cd}</if>
+            <if test="shift != null">AND W.SHIFT = #{shift}</if>
+            <if test="ord_state != null">AND W.ORDSTATE = #{ord_state}</if>
+            <if test="parent_only != null and (parent_only == true or parent_only == 'true' or parent_only == 1)">
+                AND (W.PAR_WORKORDNO IS NULL OR LTRIM(RTRIM(W.PAR_WORKORDNO)) = '')
+            </if>
+            <if test="search != null">
+                AND (W.WORKORDNO LIKE #{search} OR W.PARTNO LIKE #{search} OR G.PARTNM LIKE #{search} OR W.PAR_WORKORDNO LIKE #{search})
+            </if>
+            AND W.USEYN = 1
+        </where>
+        ORDER BY W.ORDDATE DESC, W.WORKORDNO DESC
+        <if test="offset != null and limit != null">
+        OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+        </if>
+    </select>
 
-  <!-- 작업지시 상세 (하위 작업지시) -->
-  <select id="selectChildren">
-    SELECT W.WORKORDNO, W.ORDDATE, W.PARTNO, G.PARTNM, G.STANDARD, G.UNIT,
-           W.ORDQTY, W.PROCESSCD, W.LINECD, W.SHIFT, W.ORDSTATE, W.CLOSEYN, W.FIXEDYN
-    FROM TBL_PROD_WORKORDER W
-    LEFT JOIN TBL_COM_GOODS G ON W.PARTNO = G.PARTNO
-    WHERE W.PAR_WORKORDNO = #{PAR_WORKORDNO} AND W.USEYN = 1
-    ORDER BY W.ORDDATE, W.ORDpriority
-  </select>
+    <select id="selectChildren">
+        SELECT W.WORKORDNO AS WORKORDNO, W.WORKORDNO AS PAR_WORKORDNO, W.PARTNO, W.ORDQTY, W.ORDDATE, W.ORDSTATE,
+               G.PARTNM, G.STANDARD, G.UNIT, P.PROCESSNM, L.LINENM
+        FROM TBL_PROD_WORKORDER W
+        LEFT JOIN TBL_COM_GOODS G ON W.PARTNO = G.PARTNO
+        LEFT JOIN TBL_COM_PROCESS P ON W.PROCESSCD = P.PROCESSCD
+        LEFT JOIN TBL_COM_LINE L ON W.LINECD = L.LINECD
+        WHERE W.PAR_WORKORDNO = #{PAR_WORKORDNO} AND W.USEYN = 1
+        ORDER BY W.WORKORDNO ASC
+    </select>
 
-  <!-- 채번 -->
-  <select id="selectNextNum">
-    SELECT 'WO' + CONVERT(VARCHAR(8), GETDATE(), 112) + '-' +
-           RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(WORKORDNO,3) AS INT)),0) + 1 AS VARCHAR), 3)
-    FROM TBL_PROD_WORKORDER
-    WHERE WORKORDNO LIKE 'WO' + CONVERT(VARCHAR(8), GETDATE(), 112) + '%'
-  </select>
+    <select id="selectNextNum">
+        SELECT 'WO' + FORMAT(GETDATE(), 'yyyyMMdd') + '-' + 
+               FORMAT(ISNULL(MAX(CAST(RIGHT(WORKORDNO, 3) AS INT)), 0) + 1, '000') AS NEXTNUM
+        FROM TBL_PROD_WORKORDER
+        WHERE WORKORDNO LIKE 'WO' + FORMAT(GETDATE(), 'yyyyMMdd') + '%'
+    </select>
 
-  <!-- 등록 -->
-  <insert id="insert">
-    INSERT INTO TBL_PROD_WORKORDER
-    (WORKORDNO, PAR_WORKORDNO, PLANTCD, PROCESSCD, SHIFT, PARTNO, ORDQTY,
-     ORDTYPE, ORDpriority, ORDDATE, LINECD, ORDSTATE, USEYN,
-     REGUSERID, REGDTM, EDITUSERID, EDITDTM, REMARK)
-    VALUES (#{WORKORDNO}, #{PAR_WORKORDNO}, #{PLANTCD}, #{PROCESSCD}, #{SHIFT}, #{PARTNO}, #{ORDQTY},
-            #{ORDTYPE}, #{ORDpriority}, #{ORDDATE}, #{LINECD}, #{ORDSTATE}, 1,
-            #{REGUSERID}, GETDATE(), #{EDITUSERID}, GETDATE(), #{REMARK})
-  </insert>
+    <insert id="insert">
+        INSERT INTO TBL_PROD_WORKORDER (
+            WORKORDNO, PAR_WORKORDNO, PLANTCD, PROCESSCD, SHIFT, 
+            PARTNO, ORDQTY, ORDTYPE, ORDpriority, ORDDATE, 
+            ORDSTATE, LINECD, USEYN, REGUSERID, REGDTM, 
+            EDITUSERID, EDITDTM, REMARK
+        ) VALUES (
+            #{WORKORDNO}, #{PAR_WORKORDNO}, #{PLANTCD}, #{PROCESSCD}, #{SHIFT},
+            #{PARTNO}, #{ORDQTY}, #{ORDTYPE}, #{ORDpriority}, #{ORDDATE},
+            #{ORDSTATE}, #{LINECD}, 1, #{REGUSERID}, GETDATE(),
+            #{EDITUSERID}, GETDATE(), #{REMARK}
+        )
+    </insert>
 
-  <!-- 수정 -->
-  <update id="update">
-    UPDATE TBL_PROD_WORKORDER SET
-      ORDQTY = #{ORDQTY}, PROCESSCD = #{PROCESSCD}, SHIFT = #{SHIFT},
-      LINECD = #{LINECD}, ORDTYPE = #{ORDTYPE}, ORDpriority = #{ORDpriority},
-      ORDSTATE = #{ORDSTATE}, EDITUSERID = #{EDITUSERID}, EDITDTM = GETDATE(),
-      REMARK = #{REMARK}
-    WHERE WORKORDNO = #{WORKORDNO}
-  </update>
+    <update id="update">
+        UPDATE TBL_PROD_WORKORDER
+        <set>
+            <if test="PROCESSCD != null">PROCESSCD = #{PROCESSCD},</if>
+            <if test="SHIFT != null">SHIFT = #{SHIFT},</if>
+            <if test="ORDQTY != null">ORDQTY = #{ORDQTY},</if>
+            <if test="ORDTYPE != null">ORDTYPE = #{ORDTYPE},</if>
+            <if test="ORDpriority != null">ORDpriority = #{ORDpriority},</if>
+            <if test="ORDSTATE != null">ORDSTATE = #{ORDSTATE},</if>
+            <if test="LINECD != null">LINECD = #{LINECD},</if>
+            <if test="REMARK != null">REMARK = #{REMARK},</if>
+            EDITUSERID = #{EDITUSERID},
+            EDITDTM = GETDATE()
+        </set>
+        WHERE WORKORDNO = #{WORKORDNO}
+    </update>
 
-  <!-- 삭제(소프트) -->
-  <update id="softDelete">
-    UPDATE TBL_PROD_WORKORDER SET USEYN = 0, EDITDTM = GETDATE(), EDITUSERID = #{EDITUSERID}
-    WHERE WORKORDNO = #{WORKORDNO}
-  </update>
+    <delete id="softDelete">
+        UPDATE TBL_PROD_WORKORDER 
+        SET USEYN = 0, EDITUSERID = #{EDITUSERID}, EDITDTM = GETDATE()
+        WHERE WORKORDNO = #{WORKORDNO}
+    </delete>
 
 </mapper>

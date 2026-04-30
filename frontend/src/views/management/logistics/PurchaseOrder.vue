@@ -308,7 +308,7 @@ async function fetchAllGoods() {
 async function fetchAllCompanies() {
   try {
     const r = await api.get('/api/master/company', { params: { is_supplier: 1, size: 9999 } });
-    allCompanies.value = r.data.data || [];
+    allCompanies.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
     filterCompanies();
   } catch {}
 }
@@ -379,7 +379,7 @@ function selectCompany(c: any) {
 
 function genDateCols(){const cols:string[]=[];const b=new Date(baseDate.value);for(let i=0;i<14;i++){const dd=new Date(b);dd.setDate(dd.getDate()+i);cols.push(f(dd));}dateCols.value=cols;}
 
-async function fetchPlants(){try{const r=await api.get('/api/master/plant',{params:{size:100}});plants.value=r.data.data||[];}catch{}}
+async function fetchPlants(){try{const r=await api.get('/api/master/plant',{params:{size:100}});plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));}catch{}}
 
 async function fetchData(){
   genDateCols();
@@ -388,7 +388,7 @@ async function fetchData(){
     p.start_date=dateCols.value[0];p.end_date=dateCols.value[dateCols.value.length-1];
     if(searchText.value)p.search=searchText.value;
     const r=await api.get('/api/purchase/plan',{params:p});
-    const raw=r.data||[];
+    const raw = Array.isArray(r.data) ? r.data : (r.data?.data || []);
     const map:Record<string,any>={};
     for(const row of raw){
       const key = `${row.ORDERNUM}_${row.PARTNO}`;
@@ -456,7 +456,7 @@ async function refreshMaterials() {
     
     try {
       const r = await api.get(`/api/purchase/bom/${p.PARTNO}`);
-      const bomData = r.data || [];
+      const bomData = Array.isArray(r.data) ? r.data : (r.data?.data || []);
       
       for (const m of bomData) {
         const need = Math.ceil((m.REQQTY || 0) * (p.QTY || 0));

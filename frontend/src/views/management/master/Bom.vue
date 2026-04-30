@@ -309,8 +309,9 @@ async function fetchAllData() {
       api.get('/api/master/goods', { params: { size: 9999 } })
     ]);
     
-    allBoms.value = bomRes.data.data || [];
-    allGoods.value = goodsRes.data.data || [];
+    // API 응답 구조에 맞게 데이터 추출 (data.data.data 또는 data.data)
+    allBoms.value = Array.isArray(bomRes.data?.data) ? bomRes.data.data : (bomRes.data?.data?.data || []);
+    allGoods.value = Array.isArray(goodsRes.data?.data) ? goodsRes.data.data : (goodsRes.data?.data?.data || []);
     
     // Build goods mapping
     const map: Record<string, string> = {};
@@ -423,7 +424,7 @@ async function openAddChild(node: TreeNode) {
   form.PAR_PARTNO = node.partNo;
   try {
     const res = await api.get(`/api/master/bom/detail/${node.partNo}`);
-    form.details = res.data || [];
+    form.details = Array.isArray(res.data) ? res.data : (res.data?.data || []);
   } catch (e) {
     form.details = [];
   }
@@ -437,7 +438,7 @@ async function openEditNode(node: TreeNode) {
   form.PAR_PARTNO = par_partno;
   try {
     const res = await api.get(`/api/master/bom/detail/${par_partno}`);
-    form.details = res.data || [];
+    form.details = Array.isArray(res.data) ? res.data : (res.data?.data || []);
   } catch (e) {
     form.details = [];
   }
