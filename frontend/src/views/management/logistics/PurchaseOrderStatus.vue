@@ -20,8 +20,17 @@
     <div class="split-grids">
       <DataGrid :columns="mCols" :rows="mRows" :loading="ld" :selectedIndex="si" @row-click="onMaster" />
       <div class="detail-wrap">
-        <div class="dh">발주 품목 상세 <span v-if="sel">- {{ sel.ORDERNUM }}</span></div>
-        <DataGrid :columns="dCols" :rows="dRows" :loading="dl" />
+        <div class="dh">발주 품목 상세 <span v-if="sel">- {{ sel.ORDERNUM }}</span>
+          <span v-if="dRows.length > 0" class="chk-actions">
+            <label class="chk-all-label"><input type="checkbox" :checked="isAllChecked" @change="toggleAllDetails" class="detail-chk" /> 전체선택</label>
+            <span class="checked-count">{{ checkedDetailCount }} / {{ dRows.length }}건 선택</span>
+          </span>
+        </div>
+        <DataGrid :columns="dCols" :rows="dRows" :loading="dl">
+          <template #cell-CHK="{ row }">
+            <input type="checkbox" v-model="row._checked" @click.stop class="detail-chk" />
+          </template>
+        </DataGrid>
       </div>
     </div>
 
@@ -77,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import api from '../../../api';
 import DataGrid from '../../../components/common/DataGrid.vue';
 
@@ -95,6 +104,7 @@ const mCols=[
   {key:'REGUSERNM',label:'등록자',width:'90px'}
 ];
 const dCols=[
+  {key:'CHK',label:'선택',width:'50px'},
   {key:'PARTNO',label:'자재품번',width:'130px'},
   {key:'PARTNM',label:'품명',width:'150px'},
   {key:'STANDARD',label:'규격',width:'100px'},
@@ -126,18 +136,36 @@ async function fetchData(){
     mRows.value=r.data||[];
   }finally{ld.value=false;}}
 
+// 체크박스 관련
+const checkedDetailCount = computed(() => dRows.value.filter((d: any) => d._checked).length);
+const isAllChecked = computed(() => dRows.value.length > 0 && dRows.value.every((d: any) => d._checked));
+function toggleAllDetails(e: Event) {
+  const checked = (e.target as HTMLInputElement).checked;
+  dRows.value.forEach((d: any) => { d._checked = checked; });
+}
+
 async function onMaster(row:any,idx:number){
   si.value=idx; sel.value=row; dl.value=true;
   try{
     const r=await api.get(`/api/purchase/detail/${row.ORDERNUM}`);
-    dRows.value=r.data||[];
+    // 입고 완료된 품목(REMAINQTY <= 0) 제외
+    dRows.value=(r.data||[])
+      .filter((d:any)=>{
+        const remain = d.REMAINQTY !== undefined ? Number(d.REMAINQTY) : (Number(d.ORDERQTY) - Number(d.INQTY || 0));
+        return remain > 0;
+      })
+      .map((d:any)=>({...d, _checked: false}));
   }finally{dl.value=false;}}
 
 // --- 입고완료 기능 ---
 async function handleReceiveComplete(){
   if(!sel.value){alert('발주 건을 선택하세요.');return;}
   if(dRows.value.length===0){alert('상세 품목이 없습니다.');return;}
-  if(!confirm(`발주번호 [${sel.value.ORDERNUM}] 건을 입고 완료 처리하시겠습니까?`)) return;
+  
+  const checkedItems = dRows.value.filter((d:any) => d._checked);
+  if(checkedItems.length===0){alert('입고 처리할 품목을 선택(체크)해주세요.');return;}
+  
+  if(!confirm(`발주번호 [${sel.value.ORDERNUM}] 건을 입고 처리하시겠습니까?\n선택 품목 수: ${checkedItems.length}건 / 전체 ${dRows.value.length}건`)) return;
   
   try{
     const body={
@@ -146,10 +174,15 @@ async function handleReceiveComplete(){
       COMPANYCD: sel.value.COMPANYCD,
       INGUBUN: 'PURCHASE',
       INDAY: f(new Date()),
-      details: dRows.value.map(d=>({PARTNO:d.PARTNO, INLOTQTY:d.ORDERQTY, UNIT_PRICE:d.UNIT_PRICE||0}))
+      details: checkedItems.map((d:any)=>({
+        PARTNO:d.PARTNO,
+        INLOTQTY: Number(d.REMAINQTY) > 0 ? Number(d.REMAINQTY) : (Number(d.ORDERQTY) || 0),
+        ORDERQTY: Number(d.ORDERQTY) || 0,
+        UNIT_PRICE: Number(d.UNIT_PRICE) || 0
+      }))
     };
     await api.post('/api/receive/order', body);
-    alert('입고 처리가 완료되었습니다.');
+    alert(`입고 처리가 완료되었습니다. (${checkedItems.length}건)`);
     fetchData();
   }catch(e){alert('오류가 발생했습니다.');}
 }
@@ -196,7 +229,8 @@ onMounted(()=>{fetchPlants();fetchData();});
 
 <style scoped>
 .page-view{display:flex;flex-direction:column;gap:10px;height:100%}.search-section{background:#fff;border-radius:10px;padding:14px 18px;box-shadow:0 1px 6px rgba(0,0,0,.04)}.section-title{font-size:.82rem;font-weight:700;color:#667eea;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #f0f4ff}.search-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.search-row label{font-size:.85rem;font-weight:600;color:#636e72;white-space:nowrap}.search-row input,.search-row select{padding:7px 10px;border:1px solid #dfe6e9;border-radius:6px;font-size:.85rem}.search-row input[type=date]{width:140px}.search-row input[type=text]{width:150px}.search-row select{min-width:130px}.btn-search{background:#667eea;color:#fff;border:none;padding:7px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.85rem}.act-right{display:flex;gap:6px;margin-left:auto}.btn-recv{background:#3498db;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.84rem}.btn-cancel{background:#27ae60;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.84rem}.chk-label{font-size:.85rem;display:flex;align-items:center;gap:4px;color:#636e72;cursor:pointer}
-.split-grids{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}.split-grids>*{flex:1;min-height:0}.detail-wrap{display:flex;flex-direction:column;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.05);overflow:hidden}.dh{padding:10px 16px;background:#f8f9fa;font-size:.85rem;font-weight:600;color:#3a4a6b;border-bottom:1px solid #e9ecef}.dh span{color:#667eea}
+.split-grids{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}.split-grids>*{flex:1;min-height:0}.detail-wrap{display:flex;flex-direction:column;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.05);overflow:hidden}.dh{padding:10px 16px;background:#f8f9fa;font-size:.85rem;font-weight:600;color:#3a4a6b;border-bottom:1px solid #e9ecef;display:flex;align-items:center;gap:10px}.dh span{color:#667eea}
+.chk-actions{display:flex;align-items:center;gap:10px;margin-left:auto}.chk-all-label{display:flex;align-items:center;gap:4px;font-size:.8rem;font-weight:600;color:#475569;cursor:pointer}.checked-count{font-size:.78rem;font-weight:600;color:#2980b9;background:#ebf5fb;padding:2px 10px;border-radius:10px}.detail-chk{width:16px;height:16px;cursor:pointer;accent-color:#3498db}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center}.modal-box{background:#fff;border-radius:12px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}.modal-title{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;font-size:1.1rem;font-weight:700;border-bottom:2px solid #f0f4ff}.modal-actions{display:flex;gap:8px}.btn-close{background:#e74c3c;color:#fff;border:none;padding:7px 16px;border-radius:6px;font-weight:600;cursor:pointer}.form-row{display:flex;align-items:center;gap:10px;padding:14px 20px;flex-wrap:wrap}.form-row label{font-size:.85rem;font-weight:600;color:#636e72}.form-row input,.form-row select{padding:7px 10px;border:1px solid #dfe6e9;border-radius:6px;font-size:.85rem}.dual-grids{display:flex;gap:10px;padding:0 20px 20px}.sub-grid-wrap{flex:1;display:flex;flex-direction:column;gap:10px;border:1px solid #eee;border-radius:8px;padding:10px}.sub-title{font-size:.85rem;font-weight:700;color:#3a4a6b;display:flex;align-items:center;gap:10px}.btn-sm{background:#27ae60;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:.75rem}.btn-sm-del{background:#e74c3c;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:.75rem}.tbl-wrap{max-height:300px;overflow:auto}.sub-tbl{width:100%;border-collapse:collapse;font-size:.82rem}.sub-tbl th{background:#f8f9fa;padding:8px;text-align:left;border-bottom:1px solid #eee}.sub-tbl td{padding:6px 8px;border-bottom:1px solid #f9f9f9}.input-with-btn{display:flex;gap:4px}.cell-input{width:100%;padding:4px;border:1px solid #ddd;border-radius:4px}.btn-grid-search{background:#667eea;color:#fff;border:none;border-radius:4px;cursor:pointer}.btn-po{background:#667eea;color:#fff;border:none;padding:7px 18px;border-radius:6px;font-weight:600;cursor:pointer}
 .picker-modal{background:#fff;border-radius:12px;width:500px;max-height:500px;display:flex;flex-direction:column;overflow:hidden}.picker-header{padding:15px 20px;background:#f8f9fa;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}.btn-close-sm{background:none;border:none;font-size:1.2rem;cursor:pointer}.picker-search{padding:15px;display:flex;gap:10px}.picker-list{flex:1;overflow:auto;padding:0 15px 15px}.picker-tbl{width:100%;border-collapse:collapse;font-size:.85rem}.picker-tbl th{background:#f8f9fa;padding:10px;text-align:left;border-bottom:2px solid #eee}.picker-tbl td{padding:10px;border-bottom:1px solid #eee}.clickable{cursor:pointer}.clickable:hover{background:#f0f4ff}
 </style>

@@ -98,4 +98,54 @@
         WHERE ORDERNUM = #{ORDERNUM} AND PARTNO = #{PARTNO}
     </update>
 
+    <select id="selectPurchaseOrderRemainCount">
+        SELECT COUNT(*) AS REMAIN_CNT
+        FROM TBL_INOUT_PURCHASE_ORDER_DETAIL
+        WHERE ORDERNUM = #{ORDERNUM} AND USEYN = 1
+          AND ISNULL(INQTY, 0) &lt; ORDERQTY
+    </select>
+
+    <select id="selectNextLotNo">
+        SELECT 'L' + FORMAT(GETDATE(),'MMdd') + '-'
+             + RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(LOTNO,3) AS INT)),0)+1 AS VARCHAR), 3) AS NEXTLOTNO
+        FROM TBL_PROD_LOTSTATE
+        WHERE LOTNO LIKE 'L' + FORMAT(GETDATE(),'MMdd') + '-%'
+    </select>
+
+    <!-- 입고 취소용: 입고 헤더 조회 (ORDERNUM 확인용) -->
+    <select id="selectWarehouseHeader">
+        SELECT WAREHOUSENUM, ORDERNUM, COMPANYCD, PLANTCD, INGUBUN, WHSTATE
+        FROM TBL_INOUT_WAREHOUSE
+        WHERE WAREHOUSENUM = #{WAREHOUSENUM} AND USEYN = 1
+    </select>
+
+    <!-- 입고 취소용: 입고 상세 목록 조회 (복원 대상) -->
+    <select id="selectCancelDetails">
+        SELECT WAREHOUSENUM, WHDETAILNO, PARTNO, LOTNO, INLOTQTY, LOCATIONCODE
+        FROM TBL_INOUT_WAREHOUSE_DETAIL
+        WHERE WAREHOUSENUM = #{WAREHOUSENUM} AND USEYN = 1
+    </select>
+
+    <!-- 입고 취소용: LOT 상태 삭제 -->
+    <delete id="deleteLotState">
+        DELETE FROM TBL_PROD_LOTSTATE WHERE LOTNO = #{LOTNO}
+    </delete>
+
+    <!-- 입고 취소용: 재고 삭제 -->
+    <delete id="deleteStock">
+        DELETE FROM TBL_PROD_STOCK WHERE LOTNO = #{LOTNO}
+    </delete>
+
+    <!-- 입고 취소용: 발주 상세 입고수량 차감 복원 -->
+    <update id="revertPurchaseOrderDetailInQty">
+        UPDATE TBL_INOUT_PURCHASE_ORDER_DETAIL
+        SET INQTY = CASE WHEN ISNULL(INQTY, 0) - #{INLOTQTY} &lt; 0 THEN 0 ELSE ISNULL(INQTY, 0) - #{INLOTQTY} END
+        WHERE ORDERNUM = #{ORDERNUM} AND PARTNO = #{PARTNO}
+    </update>
+
+    <!-- 입고 취소용: 입고 상세 soft delete -->
+    <update id="softDeleteDetails">
+        UPDATE TBL_INOUT_WAREHOUSE_DETAIL SET USEYN = 0 WHERE WAREHOUSENUM = #{WAREHOUSENUM}
+    </update>
+
 </mapper>

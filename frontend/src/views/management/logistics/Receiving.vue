@@ -14,7 +14,7 @@
         <button class="btn-search" @click="fetchData">조회</button>
         <div class="act-right">
           <button class="btn-recv" @click="()=>window.alert('반품입고')">반품입고</button>
-          <button class="btn-cancel" @click="()=>window.alert('입고취소')">입고취소</button>
+          <button class="btn-cancel" @click="cancelReceive">입고취소</button>
           <button class="btn-del" @click="()=>window.alert('삭제이력')">삭제이력</button>
         </div>
       </div>
@@ -33,6 +33,10 @@ const window = globalThis.window;
 import { ref, onMounted } from 'vue'; 
 import api from '../../../api'; 
 import DataGrid from '../../../components/common/DataGrid.vue';
+import { useNotification } from '../../../composables/useNotification';
+
+const { notifySuccess, notifyError } = useNotification();
+
 const d=new Date(),m=new Date(d);m.setMonth(m.getMonth()-1);const f=(v:Date)=>v.toISOString().slice(0,10);
 const startDate=ref(f(m)),endDate=ref(f(d)),plantCd=ref(''),searchText=ref(''),orderNum=ref(''),plants=ref<any[]>([]);
 const mCols=[{key:'WAREHOUSENUM',label:'입고번호',width:'120px'},{key:'PLANTNM',label:'사업장',width:'120px'},{key:'COMPANYNM',label:'공급사',width:'140px'},{key:'ORDERNUM',label:'발주번호',width:'100px'},{key:'INDAY',label:'입고일자',width:'110px',type:'date'},{key:'TOTALAMT',label:'총금액',width:'120px'},{key:'INGUBUN',label:'구분',width:'80px'}];
@@ -42,6 +46,30 @@ async function fetchPlants(){try{const r=await api.get('/api/master/plant',{para
 async function fetchData(){ld.value=true;si.value=-1;sel.value=null;dRows.value=[];try{const p:any={page:pg.value,size:50};if(startDate.value)p.start_date=startDate.value;if(endDate.value)p.end_date=endDate.value;if(plantCd.value)p.plant_cd=plantCd.value;if(searchText.value)p.search=searchText.value;if(orderNum.value)p.order_num=orderNum.value;const r=await api.get('/api/receive/list',{params:p});mRows.value=r.data.data||[];tot.value=r.data.total;tp.value=r.data.totalPages;}finally{ld.value=false;}}
 async function onMaster(row:any,idx:number){si.value=idx;sel.value=row;dl.value=true;try{const r=await api.get(`/api/receive/detail/${row.WAREHOUSENUM}/items`);dRows.value=r.data||[];}finally{dl.value=false;}}
 function onPg(p:number){pg.value=p;fetchData();}
+
+async function cancelReceive() {
+  if (!sel.value) {
+    notifyError('입고 취소할 건을 선택해주세요.');
+    return;
+  }
+  const whNum = sel.value.WAREHOUSENUM;
+  const orderInfo = sel.value.ORDERNUM ? ` (발주번호: ${sel.value.ORDERNUM})` : '';
+  if (!confirm(`입고번호 [${whNum}]${orderInfo} 건을 취소하시겠습니까?\n\n※ 관련 재고가 삭제되고 발주 현황이 복원됩니다.`)) {
+    return;
+  }
+  try {
+    await api.delete(`/api/receive/delete/${whNum}`);
+    notifySuccess(`입고 취소가 완료되었습니다. (${whNum})`);
+    sel.value = null;
+    si.value = -1;
+    dRows.value = [];
+    fetchData();
+  } catch (e: any) {
+    const msg = e?.response?.data?.detail || e?.message || '알 수 없는 오류';
+    notifyError(`입고 취소 중 오류: ${typeof msg === 'string' ? msg : JSON.stringify(msg)}`);
+  }
+}
+
 onMounted(()=>{fetchPlants();fetchData();});
 </script>
 <style scoped>

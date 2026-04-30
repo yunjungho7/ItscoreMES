@@ -4,8 +4,8 @@
     <section class="search-section">
       <div class="section-title">생산 계획</div>
       <div class="search-row">
-        <label>생산기준월</label>
-        <input type="month" v-model="baseMonth" />
+        <label>생산기준일</label>
+        <input type="date" v-model="baseDate" />
         <label>사업장</label>
         <select v-model="plantCd">
           <option value="">전체</option>
@@ -26,41 +26,43 @@
         <thead>
           <tr class="day-num-row">
             <th class="freeze chk-col"><input type="checkbox" v-model="allChecked" @change="toggleAll" /></th>
+            <th class="freeze" style="min-width:100px">수주번호</th>
             <th class="freeze" style="min-width:100px">품번</th>
             <th class="freeze" style="min-width:130px">품명</th>
             <th class="freeze" style="min-width:70px">규격</th>
             <th class="freeze" style="min-width:60px">재고수량</th>
             <th class="freeze" style="min-width:60px">계획합계</th>
-            <th v-for="d in days" :key="d"
-                :class="['day-col', isToday(d) ? 'today' : '', isWeekend(d) ? 'weekend' : '']"
-                style="min-width:52px">{{ d }}</th>
+            <th v-for="dt in dates" :key="dt"
+                :class="['day-col', isToday(dt) ? 'today' : '', isWeekend(dt) ? 'weekend' : '']"
+                style="min-width:52px">{{ formatDateLabel(dt) }}</th>
           </tr>
           <tr class="day-label-row">
             <th class="freeze"></th>
             <th class="freeze"></th><th class="freeze"></th><th class="freeze"></th>
-            <th class="freeze"></th><th class="freeze"></th>
-            <th v-for="d in days" :key="'l'+d"
-                :class="['day-col', isToday(d) ? 'today' : '', isWeekend(d) ? 'weekend' : '']">
+            <th class="freeze"></th><th class="freeze"></th><th class="freeze"></th>
+            <th v-for="dt in dates" :key="'l'+dt"
+                :class="['day-col', isToday(dt) ? 'today' : '', isWeekend(dt) ? 'weekend' : '']">
               계획
             </th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="planData.data.length===0">
-            <td :colspan="6+days.length" class="empty">데이터 없음</td>
+            <td :colspan="7+dates.length" class="empty">데이터 없음</td>
           </tr>
           <tr v-for="(row, ri) in planData.data" :key="ri" :class="{'row-selected': row._checked}">
             <td class="freeze chk-col"><input type="checkbox" v-model="row._checked" /></td>
+            <td class="freeze">{{ row.ORDERNUM }}</td>
             <td class="freeze">{{ row.PARTNO }}</td>
             <td class="freeze">{{ row.PARTNM }}</td>
             <td class="freeze">{{ row.STANDARD }}</td>
             <td class="freeze num">{{ row.STOCKQTY || 0 }}</td>
             <td class="freeze num total-cell">{{ row.TOTAL || 0 }}</td>
-            <td v-for="d in days" :key="d"
-                :class="['day-col', isToday(d)?'today':'', isWeekend(d)?'weekend':'']">
+            <td v-for="dt in dates" :key="dt"
+                :class="['day-col', isToday(dt)?'today':'', isWeekend(dt)?'weekend':'']">
               <input type="number" class="cell-input"
-                     :value="row[String(d)] || ''"
-                     @change="onCellChange(row, d, $event)" />
+                     :value="row[dt] || ''"
+                     @change="onCellChange(row, dt, $event)" />
             </td>
           </tr>
         </tbody>
@@ -190,25 +192,28 @@ import api from '../../../api';
 
 const now = new Date();
 const f = (v: Date) => v.toISOString().slice(0, 10);
-const baseMonth = ref(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
+const baseDate = ref(f(now));
 const plantCd = ref(''), searchText = ref(''), plants = ref<any[]>([]);
 const planData = ref<any>(null);
 const allChecked = ref(false);
 const processes = ref<any[]>([]), lines = ref<any[]>([]);
 
-const days = computed(() => {
-  if (!planData.value) return [];
-  return Array.from({length: planData.value.days}, (_,i) => i + 1);
+const dates = computed(() => {
+  if (!planData.value || !planData.value.dates) return [];
+  return planData.value.dates;
 });
 
-function isToday(d: number) {
-  if (!planData.value) return false;
-  return planData.value.year === now.getFullYear() && planData.value.month === (now.getMonth()+1) && d === now.getDate();
+function isToday(dtStr: string) {
+  const dt = new Date(dtStr);
+  return dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth() && dt.getDate() === now.getDate();
 }
-function isWeekend(d: number) {
-  if (!planData.value) return false;
-  const dt = new Date(planData.value.year, planData.value.month - 1, d);
+function isWeekend(dtStr: string) {
+  const dt = new Date(dtStr);
   return dt.getDay() === 0 || dt.getDay() === 6;
+}
+function formatDateLabel(dtStr: string) {
+  const [, m, d] = dtStr.split('-');
+  return `${parseInt(m)}/${parseInt(d)}`;
 }
 
 function toggleAll() {
@@ -227,8 +232,7 @@ async function fetchLines() {
 
 async function fetchData() {
   try {
-    const [y,m] = baseMonth.value.split('-');
-    const params: any = { base_date: `${y}-${m}-01` };
+    const params: any = { base_date: baseDate.value };
     if (plantCd.value) params.plant_cd = plantCd.value;
     if (searchText.value) params.search = searchText.value;
     const r = await api.get('/api/production/plan', { params });
@@ -239,19 +243,17 @@ async function fetchData() {
 }
 
 // 셀 수정 시 즉시 저장
-async function onCellChange(row: any, day: number, event: Event) {
+async function onCellChange(row: any, dt: string, event: Event) {
   const val = parseInt((event.target as HTMLInputElement).value) || 0;
-  row[String(day)] = val;
+  row[dt] = val;
   let total = 0;
-  for (let d = 1; d <= planData.value.days; d++) total += (row[String(d)] || 0);
+  for (const d of planData.value.dates) total += (row[d] || 0);
   row.TOTAL = total;
 
-  const [y,m] = baseMonth.value.split('-');
-  const dt = `${y}-${m}-${String(day).padStart(2,'0')}`;
   try {
     await api.post('/api/production/plan', {
       PRODUCEDT: dt, PLANTCD: plantCd.value || plants.value[0]?.PLANTCD || '',
-      PARTNO: row.PARTNO, ORDERNUM: '', ORDERSEQ: 1, PRODUCEQTY: val
+      PARTNO: row.PARTNO, ORDERNUM: row.ORDERNUM || '', ORDERSEQ: row.ORDERSEQ || 1, PRODUCEQTY: val
     });
   } catch {}
 }
@@ -331,7 +333,7 @@ onMounted(() => { fetchPlants(); fetchProcesses(); fetchLines(); fetchData(); })
 
 /* 달력 그리드 */
 .plan-grid-wrap{flex:1;overflow:auto;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
-.plan-grid{width:max-content;border-collapse:collapse;font-size:.82rem}
+.plan-grid{width:100%;border-collapse:collapse;font-size:.82rem}
 .plan-grid thead{position:sticky;top:0;z-index:5}
 .day-num-row th{background:linear-gradient(180deg,#d6eaf8,#aed6f1);color:#1a5276;font-weight:700;padding:8px 4px;text-align:center;border-bottom:1px solid #85c1e9;white-space:nowrap}
 .day-label-row th{background:#eaf2f8;color:#5d6d7e;font-size:.75rem;font-weight:600;padding:4px;text-align:center;border-bottom:2px solid #85c1e9}
@@ -339,14 +341,14 @@ onMounted(() => { fetchPlants(); fetchProcesses(); fetchLines(); fetchData(); })
 .freeze{position:sticky;background:#fff;z-index:3}
 .chk-col{width:32px;min-width:32px;text-align:center}
 .freeze:nth-child(1){left:0}.freeze:nth-child(2){left:32px}.freeze:nth-child(3){left:132px}
-.freeze:nth-child(4){left:262px}.freeze:nth-child(5){left:332px}.freeze:nth-child(6){left:392px}
+.freeze:nth-child(4){left:232px}.freeze:nth-child(5){left:362px}.freeze:nth-child(6){left:432px}.freeze:nth-child(7){left:492px}
 thead .freeze{background:linear-gradient(180deg,#d6eaf8,#aed6f1)!important;z-index:6}
 .day-label-row .freeze{background:#eaf2f8!important}
 .num{text-align:right;padding-right:6px!important}
 .total-cell{font-weight:700;color:#2980b9}
 .today{background:#fff8e1!important}
 .weekend{background:#fef0f0!important}
-.cell-input{width:46px;padding:4px;border:1px solid #e2e8f0;border-radius:4px;font-size:.82rem;text-align:right;background:#fafbfc}
+.cell-input{width:100%;min-width:46px;box-sizing:border-box;padding:4px;border:1px solid #e2e8f0;border-radius:4px;font-size:.82rem;text-align:right;background:#fafbfc}
 .cell-input:focus{border-color:#2980b9;outline:none;background:#fff}
 .empty{text-align:center;color:#b2bec3;padding:60px!important}
 .row-selected{background:#e8f4fd!important}

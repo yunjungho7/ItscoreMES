@@ -76,12 +76,25 @@ class ReceiveService:
         cursor = conn.cursor()
         try:
             cursor.execute(q['query'], values)
+
+            # LOT 번호 기본 시퀀스 조회 (L + MMDD + '-' + 3자리 순번, 예: L0430-001)
+            lot_q = self.mapper.get_query('selectNextLotNo', {})
+            cursor.execute(lot_q['query'])
+            lot_row = cursor.fetchone()
+            base_lot_no = lot_row[0] if lot_row else 'L0000-001'
+            # 하이픈 뒤 3자리 순번 추출
+            lot_seq = int(base_lot_no.split('-')[-1])
+            # 하이픈 앞 접두사 (예: L0430)
+            lot_prefix = base_lot_no.rsplit('-', 1)[0]
+
             for i, d in enumerate(details):
                 d['WAREHOUSENUM'] = wh_num
                 d['WHDETAILNO'] = i + 1
                 d['INDAY'] = data.get('INDAY')
                 if not d.get('LOTNO'):
-                    d['LOTNO'] = f"L{wh_num[-3:]}-{i+1:03d}"
+                    # 간소화된 LOT번호: L0430-001 형식
+                    current_seq = lot_seq + i
+                    d['LOTNO'] = f"{lot_prefix}-{current_seq:03d}"
                 if not d.get('LOCATIONCODE'):
                     d['LOCATIONCODE'] = 'LOC001'
                 if not d.get('WAREHOUSECODE'):
@@ -125,12 +138,24 @@ class ReceiveService:
                     if up_q:
                         cursor.execute(up_q['query'], tuple(up_params.get(n) for n in up_q['params']))
 
-            # 발주기반 입고인 경우 발주상태를 'COMPLETED'로 변경
+            # 발주기반 입고인 경우 전체 입고 여부에 따라 상태 변경
             if order_num:
-                uq = self.mapper.get_query('updatePurchaseOrderState', {'ORDERNUM': order_num, 'ORDERSTATE': 'COMPLETED'})
-                if uq:
-                    uv = tuple({'ORDERNUM': order_num, 'ORDERSTATE': 'COMPLETED'}.get(name) for name in uq['params'])
-                    cursor.execute(uq['query'], uv)
+                # 미입고 잔여 건수 확인
+                remain_q = self.mapper.get_query('selectPurchaseOrderRemainCount', {'ORDERNUM': order_num})
+                if remain_q:
+                    cursor.execute(remain_q['query'], tuple({'ORDERNUM': order_num}.get(n) for n in remain_q['params']))
+                    remain_row = cursor.fetchone()
+                    remain_cnt = remain_row[0] if remain_row else 0
+                    
+                    if remain_cnt == 0:
+                        new_state = 'COMPLETED'
+                    else:
+                        new_state = 'PARTIAL'
+                    
+                    uq = self.mapper.get_query('updatePurchaseOrderState', {'ORDERNUM': order_num, 'ORDERSTATE': new_state})
+                    if uq:
+                        uv = tuple({'ORDERNUM': order_num, 'ORDERSTATE': new_state}.get(name) for name in uq['params'])
+                        cursor.execute(uq['query'], uv)
 
             conn.commit()
         except Exception as e:
@@ -141,16 +166,99 @@ class ReceiveService:
         return {"WAREHOUSENUM": wh_num}
 
     def delete(self, warehouse_num):
-        params = {'WAREHOUSENUM': warehouse_num, 'EDITUSERID': '1'}
-        q = self.mapper.get_query('softDelete', params)
-        values = tuple(params.get(name) for name in q['params'])
+        """입고 취소: LOT/재고 삭제, 발주 입고수량 복원, 발주 상태 재계산"""
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(q['query'], values)
-        affected = cursor.rowcount
-        conn.commit()
-        conn.close()
-        return affected > 0
+        try:
+            # 1. 입고 헤더 조회 (ORDERNUM 확인)
+            hdr_q = self.mapper.get_query('selectWarehouseHeader', {'WAREHOUSENUM': warehouse_num})
+            cursor.execute(hdr_q['query'], tuple({'WAREHOUSENUM': warehouse_num}.get(n) for n in hdr_q['params']))
+            hdr_cols = [col[0] for col in cursor.description]
+            hdr_row = cursor.fetchone()
+            if not hdr_row:
+                return False
+            header = dict(zip(hdr_cols, hdr_row))
+            order_num = header.get('ORDERNUM') or ''
+
+            # 2. 입고 상세 목록 조회
+            det_q = self.mapper.get_query('selectCancelDetails', {'WAREHOUSENUM': warehouse_num})
+            cursor.execute(det_q['query'], tuple({'WAREHOUSENUM': warehouse_num}.get(n) for n in det_q['params']))
+            det_cols = [col[0] for col in cursor.description]
+            details = [dict(zip(det_cols, r)) for r in cursor.fetchall()]
+
+            # 3. 각 상세 행별 LOT/재고 삭제 및 발주 INQTY 복원
+            for d in details:
+                lot_no = d.get('LOTNO')
+                if lot_no:
+                    # 재고 삭제
+                    sq = self.mapper.get_query('deleteStock', {'LOTNO': lot_no})
+                    if sq:
+                        cursor.execute(sq['query'], tuple({'LOTNO': lot_no}.get(n) for n in sq['params']))
+                    # LOT 상태 삭제
+                    lq = self.mapper.get_query('deleteLotState', {'LOTNO': lot_no})
+                    if lq:
+                        cursor.execute(lq['query'], tuple({'LOTNO': lot_no}.get(n) for n in lq['params']))
+
+                # 발주 기반이면 INQTY 차감 복원
+                if order_num:
+                    rv_params = {
+                        'ORDERNUM': order_num,
+                        'PARTNO': d['PARTNO'],
+                        'INLOTQTY': d.get('INLOTQTY') or 0
+                    }
+                    rv_q = self.mapper.get_query('revertPurchaseOrderDetailInQty', rv_params)
+                    if rv_q:
+                        cursor.execute(rv_q['query'], tuple(rv_params.get(n) for n in rv_q['params']))
+
+            # 4. 입고 상세 soft delete
+            sd_q = self.mapper.get_query('softDeleteDetails', {'WAREHOUSENUM': warehouse_num})
+            if sd_q:
+                cursor.execute(sd_q['query'], tuple({'WAREHOUSENUM': warehouse_num}.get(n) for n in sd_q['params']))
+
+            # 5. 입고 헤더 soft delete
+            params = {'WAREHOUSENUM': warehouse_num, 'EDITUSERID': '1'}
+            q = self.mapper.get_query('softDelete', params)
+            cursor.execute(q['query'], tuple(params.get(name) for name in q['params']))
+
+            # 6. 발주 상태 재계산
+            if order_num:
+                remain_q = self.mapper.get_query('selectPurchaseOrderRemainCount', {'ORDERNUM': order_num})
+                if remain_q:
+                    cursor.execute(remain_q['query'], tuple({'ORDERNUM': order_num}.get(n) for n in remain_q['params']))
+                    remain_row = cursor.fetchone()
+                    remain_cnt = remain_row[0] if remain_row else 0
+
+                    # 전체 품목 수 조회해서 전부 미입고면 ORDERED, 일부면 PARTIAL
+                    # remain_cnt = 미입고 건수이므로, 총 건수와 비교
+                    # 간단히: 전부 미입고 → ORDERED, 일부 입고 → PARTIAL, 전부 입고 → COMPLETED
+                    if remain_cnt == 0:
+                        new_state = 'COMPLETED'
+                    else:
+                        # 모든 품목이 INQTY=0인지 확인 → 전부 미입고면 ORDERED
+                        chk_q = self.mapper.get_query('selectPurchaseOrderRemainCount', {'ORDERNUM': order_num})
+                        # remain_cnt > 0 이면 미입고 잔여가 있음
+                        # 추가로 일부라도 입고되었는지 확인
+                        new_state = 'ORDERED'
+                        # PARTIAL인지 확인: INQTY > 0인 항목이 하나라도 있으면 PARTIAL
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM TBL_INOUT_PURCHASE_ORDER_DETAIL WHERE ORDERNUM = %s AND USEYN = 1 AND ISNULL(INQTY, 0) > 0",
+                            (order_num,)
+                        )
+                        has_in = cursor.fetchone()[0]
+                        if has_in > 0:
+                            new_state = 'PARTIAL'
+
+                    uq = self.mapper.get_query('updatePurchaseOrderState', {'ORDERNUM': order_num, 'ORDERSTATE': new_state})
+                    if uq:
+                        cursor.execute(uq['query'], tuple({'ORDERNUM': order_num, 'ORDERSTATE': new_state}.get(name) for name in uq['params']))
+
+            conn.commit()
+            return True
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
 
     def get_summary(self):
         q = self.mapper.get_query('selectSummary', {})

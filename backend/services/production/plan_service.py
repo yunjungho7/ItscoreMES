@@ -13,14 +13,16 @@ class ProducePlanService:
         self.mapper = XMLMapper(os.path.join(BASE_DIR, 'sql/production/produceplan.xml'))
 
     def get_plan_list(self, plant_cd=None, base_date=None, search=None):
-        """기준월의 생산계획을 일자별로 피벗하여 반환"""
+        """기준일의 생산계획을 14일치 피벗하여 반환"""
         if not base_date:
             base_date = date.today().strftime('%Y-%m-%d')
 
-        year, month = int(base_date[:4]), int(base_date[5:7])
-        days_in_month = monthrange(year, month)[1]
-        start = f'{year}-{month:02d}-01'
-        end = f'{year}-{month:02d}-{days_in_month:02d}'
+        base_dt = date.fromisoformat(base_date)
+        days_to_show = 31
+        end_dt = base_dt + timedelta(days=days_to_show - 1)
+        
+        start = base_date
+        end = end_dt.strftime('%Y-%m-%d')
 
         params = {'start_date': start, 'end_date': end}
         if plant_cd: params['plant_cd'] = plant_cd
@@ -35,26 +37,35 @@ class ProducePlanService:
         rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
         conn.close()
 
+        # dates array
+        dates = [(base_dt + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(days_to_show)]
+
         # 품번별 피벗
         pivot = {}
         for r in rows:
-            key = r['PARTNO']
+            key = f"{r['PARTNO']}_{r.get('ORDERNUM', '')}_{r.get('ORDERSEQ', 1)}"
             if key not in pivot:
                 pivot[key] = {
                     'PARTNO': r['PARTNO'], 'PARTNM': r.get('PARTNM',''),
                     'STANDARD': r.get('STANDARD',''), 'UNIT': r.get('UNIT',''),
+                    'ORDERNUM': r.get('ORDERNUM', ''), 'ORDERSEQ': r.get('ORDERSEQ', 1),
+                    'STOCKQTY': r.get('STOCKQTY', 0),
+                    'COMPANYNM': r.get('COMPANYNM', ''),
+                    'REQQTY': r.get('REQQTY', 0),
                     'TOTAL': 0
                 }
-                for d in range(1, days_in_month + 1):
-                    pivot[key][str(d)] = 0
-            day_num = str(r['PRODUCEDT'].day) if hasattr(r['PRODUCEDT'], 'day') else str(int(str(r['PRODUCEDT'])[8:10]))
-            qty = r.get('PRODUCEQTY', 0) or 0
-            pivot[key][day_num] = pivot[key].get(day_num, 0) + qty
-            pivot[key]['TOTAL'] = pivot[key].get('TOTAL', 0) + qty
+                for d in dates:
+                    pivot[key][d] = 0
+            
+            dt_str = str(r['PRODUCEDT'])[:10]
+            if dt_str in pivot[key]:
+                qty = r.get('PRODUCEQTY', 0) or 0
+                pivot[key][dt_str] += qty
+                pivot[key]['TOTAL'] += qty
 
         return {
-            'data': list(pivot.VALUES ()),
-            'year': year, 'month': month, 'days': days_in_month
+            'data': list(pivot.values()),
+            'dates': dates
         }
 
     def upsert(self, data: dict):

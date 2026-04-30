@@ -112,6 +112,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '불량관리' },
         component: () => import('../views/management/production/FailLot.vue'),
       },
+      {
+        path: 'production/order-target',
+        name: 'ProductionOrderTarget',
+        meta: { title: '생산대상(수주현황)' },
+        component: () => import('../views/management/production/OrderTarget.vue'),
+      },
 
       // ── 3. 검사 ──
       {

@@ -41,19 +41,28 @@
 
     <!-- Detail Grid (Purchase Order Items) -->
     <div class="grid-area detail-grid" style="flex: 1; min-height: 200px; margin-top: 10px;">
-      <div class="sub-title">발주 품목 상세 <span v-if="selectedOrderNum">[{{ selectedOrderNum }}]</span></div>
+      <div class="sub-title">발주 품목 상세 <span v-if="selectedOrderNum">[{{ selectedOrderNum }}]</span>
+        <span v-if="orderDetails.length > 0" class="chk-actions">
+          <label class="chk-all-label"><input type="checkbox" :checked="isAllChecked" @change="toggleAllDetails" class="detail-chk" /> 전체선택</label>
+          <span class="checked-count">{{ checkedDetailCount }} / {{ orderDetails.length }}건 선택</span>
+        </span>
+      </div>
       <DataGrid 
         :columns="detailCols" 
         :rows="orderDetails" 
         :loading="loadingDetails" 
-      />
+      >
+        <template #cell-CHK="{ row, index }">
+          <input type="checkbox" v-model="row._checked" @click.stop class="detail-chk" />
+        </template>
+      </DataGrid>
     </div>
 
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import api from '../../../api';
 import DataGrid from '../../../components/common/DataGrid.vue';
 import { useNotification } from '../../../composables/useNotification';
@@ -94,6 +103,7 @@ const masterCols = [
 
 // Detail Grid Columns
 const detailCols = [
+  { key: 'CHK', label: '선택', width: '50px' },
   { key: 'PARTNO', label: '자재품번', width: '140px' },
   { key: 'PARTNM', label: '품명', width: '220px' },
   { key: 'STANDARD', label: '규격', width: '120px' },
@@ -107,6 +117,21 @@ const detailCols = [
   { key: 'STOCKQTY', label: '재고수량', width: '90px', type: 'number' },
   { key: 'REMARK', label: '비고', width: '200px' },
 ];
+
+
+
+const checkedDetailCount = computed(() => {
+  return orderDetails.value.filter((d: any) => d._checked).length;
+});
+
+const isAllChecked = computed(() => {
+  return orderDetails.value.length > 0 && orderDetails.value.every((d: any) => d._checked);
+});
+
+function toggleAllDetails(e: Event) {
+  const checked = (e.target as HTMLInputElement).checked;
+  orderDetails.value.forEach((d: any) => { d._checked = checked; });
+}
 
 // --- API Fetching ---
 
@@ -162,7 +187,13 @@ async function fetchOrderDetails(orderNum: string) {
   loadingDetails.value = true;
   try {
     const r = await api.get(`/api/purchase/detail/${orderNum}`);
-    orderDetails.value = r.data || [];
+    // 입고 완료된 품목(REMAINQTY <= 0) 제외, _checked 속성 추가
+    orderDetails.value = (r.data || [])
+      .filter((d: any) => {
+        const remain = d.REMAINQTY !== undefined ? Number(d.REMAINQTY) : (Number(d.ORDERQTY) - Number(d.INQTY || 0));
+        return remain > 0;
+      })
+      .map((d: any) => ({ ...d, _checked: false }));
   } catch (e) {
     notifyError('상세 품목 조회 중 오류가 발생했습니다.');
   } finally {
@@ -191,13 +222,20 @@ async function processReceiving() {
     notifyError('입고 처리할 품목이 없습니다. 발주를 다시 선택해주세요.');
     return;
   }
+
+  // 체크된 품목만 필터링
+  const checkedItems = orderDetails.value.filter((d: any) => d._checked);
+  if (checkedItems.length === 0) {
+    notifyError('입고 처리할 품목을 선택(체크)해주세요.');
+    return;
+  }
   
-  if (!confirm(`선택한 발주(${order.ORDERNUM})를 입고 처리하시겠습니까?\n품목 수: ${orderDetails.value.length}건`)) {
+  if (!confirm(`선택한 발주(${order.ORDERNUM})를 입고 처리하시겠습니까?\n선택 품목 수: ${checkedItems.length}건 / 전체 ${orderDetails.value.length}건`)) {
     return;
   }
   
   try {
-    const details = orderDetails.value.map((d: any) => {
+    const details = checkedItems.map((d: any) => {
       const remain = d.REMAINQTY > 0 ? d.REMAINQTY : (d.ORDERQTY || 0);
       return {
         PARTNO: d.PARTNO,
@@ -257,8 +295,10 @@ onMounted(() => {
 .btn-excel { background:#3498db; color:#fff; border:none; padding:7px 14px; border-radius:6px; font-weight:600; cursor:pointer; font-size:.85rem; }
 .btn-print { background:#95a5a6; color:#fff; border:none; padding:7px 14px; border-radius:6px; font-weight:600; cursor:pointer; font-size:.85rem; }
 
-.sub-title { padding:8px 12px; font-size:.85rem; font-weight:700; color:#2c3e50; background:#f8f9fa; border:1px solid #e9ecef; border-bottom: none; display:flex; align-items:center; border-radius: 6px 6px 0 0; }
-.grid-area { display:flex; flex-direction:column; background:#fff; border:1px solid #e9ecef; border-radius:6px; overflow:hidden; }
-
+.sub-title { padding:8px 12px; font-size:.85rem; font-weight:700; color:#2c3e50; background:#f8f9fa; border:1px solid #e9ecef; border-bottom: none; display:flex; align-items:center; gap:10px; border-radius: 6px 6px 0 0; }
+.checked-count { font-size:.78rem; font-weight:600; color:#2980b9; background:#ebf5fb; padding:2px 10px; border-radius:10px; }
+.detail-chk { width:16px; height:16px; cursor:pointer; accent-color:#3498db; }
+.chk-actions { display:flex; align-items:center; gap:10px; margin-left:auto; }
+.chk-all-label { display:flex; align-items:center; gap:4px; font-size:.8rem; font-weight:600; color:#475569; cursor:pointer; }
 .grid-area { display:flex; flex-direction:column; background:#fff; border:1px solid #e9ecef; border-radius:6px; overflow:hidden; }
 </style>
