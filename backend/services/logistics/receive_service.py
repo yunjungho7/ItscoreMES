@@ -77,24 +77,30 @@ class ReceiveService:
         try:
             cursor.execute(q['query'], values)
 
-            # LOT 번호 기본 시퀀스 조회 (L + MMDD + '-' + 3자리 순번, 예: L0430-001)
+            # LOT 번호 기본 시퀀스 조회 (L + YYMMDD + 3자리 순번, 예: L260501001)
+            import datetime
             lot_q = self.mapper.get_query('selectNextLotNo', {})
             cursor.execute(lot_q['query'])
             lot_row = cursor.fetchone()
-            base_lot_no = lot_row[0] if lot_row else 'L0000-001'
-            # 하이픈 뒤 3자리 순번 추출
-            lot_seq = int(base_lot_no.split('-')[-1])
-            # 하이픈 앞 접두사 (예: L0430)
-            lot_prefix = base_lot_no.rsplit('-', 1)[0]
+            base_lot_no = lot_row[0] if lot_row else f"L{datetime.datetime.now().strftime('%y%m%d')}001"
+            
+            # 뒤 3자리 순번 추출 및 접두사(L+YYMMDD) 분리
+            if len(base_lot_no) >= 10:
+                lot_seq = int(base_lot_no[-3:])
+                lot_prefix = base_lot_no[:-3]
+            else:
+                # 예외 케이스 처리 (기존 데이터 등)
+                lot_seq = 1
+                lot_prefix = f"L{datetime.datetime.now().strftime('%y%m%d')}"
 
             for i, d in enumerate(details):
                 d['WAREHOUSENUM'] = wh_num
                 d['WHDETAILNO'] = i + 1
                 d['INDAY'] = data.get('INDAY')
                 if not d.get('LOTNO'):
-                    # 간소화된 LOT번호: L0430-001 형식
+                    # 간소화된 LOT번호: L260501001 형식
                     current_seq = lot_seq + i
-                    d['LOTNO'] = f"{lot_prefix}-{current_seq:03d}"
+                    d['LOTNO'] = f"{lot_prefix}{current_seq:03d}"
                 if not d.get('LOCATIONCODE'):
                     d['LOCATIONCODE'] = 'LOC001'
                 if not d.get('WAREHOUSECODE'):

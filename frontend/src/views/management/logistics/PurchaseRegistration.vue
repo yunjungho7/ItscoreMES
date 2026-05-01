@@ -187,8 +187,10 @@ async function fetchOrderDetails(orderNum: string) {
   loadingDetails.value = true;
   try {
     const r = await api.get(`/api/purchase/detail/${orderNum}`);
+    const data = Array.isArray(r.data) ? r.data : (r.data?.data || []);
+    
     // 입고 완료된 품목(REMAINQTY <= 0) 제외, _checked 속성 추가
-    orderDetails.value = (r.data || [])
+    orderDetails.value = data
       .filter((d: any) => {
         const remain = d.REMAINQTY !== undefined ? Number(d.REMAINQTY) : (Number(d.ORDERQTY) - Number(d.INQTY || 0));
         return remain > 0;

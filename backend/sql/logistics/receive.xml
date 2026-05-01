@@ -104,13 +104,14 @@
         WHERE ORDERNUM = #{ORDERNUM} AND USEYN = 1
           AND ISNULL(INQTY, 0) &lt; ORDERQTY
     </select>
+<!-- 신규 LOT 번호 채번 (MMDD -> YYMMDD 간소화) -->
+<select id="selectNextLotNo">
+  SELECT 'L' + CONVERT(VARCHAR(6), GETDATE(), 12) +
+         RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(LOTNO,3) AS INT)),0) + 1 AS VARCHAR), 3) AS NEXTLOTNO
+  FROM TBL_PROD_LOTSTATE
+  WHERE LOTNO LIKE 'L' + CONVERT(VARCHAR(6), GETDATE(), 12) + '%'
+</select>
 
-    <select id="selectNextLotNo">
-        SELECT 'L' + FORMAT(GETDATE(),'MMdd') + '-'
-             + RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(LOTNO,3) AS INT)),0)+1 AS VARCHAR), 3) AS NEXTLOTNO
-        FROM TBL_PROD_LOTSTATE
-        WHERE LOTNO LIKE 'L' + FORMAT(GETDATE(),'MMdd') + '-%'
-    </select>
 
     <!-- 입고 취소용: 입고 헤더 조회 (ORDERNUM 확인용) -->
     <select id="selectWarehouseHeader">

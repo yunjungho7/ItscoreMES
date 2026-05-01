@@ -113,16 +113,12 @@ class FieldService:
         cursor.execute(q['query'], values)
         affected = cursor.rowcount
         
-        # 작업종료 시 투입된 자재 내역 삭제
-        if status == 'DONE':
-            cursor.execute("DELETE FROM TBL_PROD_STOCK_HISTORY WHERE REF_NO = %s AND STOCKCHANGEGUBUN = '투입'", (workordno,))
-
         conn.commit()
         conn.close()
         return affected > 0
 
     def save_result(self, data):
-        """실적 등록 (LOT 생성, 불량 등록 및 투입 자재 내역 삭제)"""
+        """실적 등록 (LOT 생성, 불량 등록 및 투입 자재 내역 차감)"""
         workordno = data.get('WORKORDNO')
         prod_qty = data.get('PROD_QTY', 0)
         fail_qty = data.get('FAIL_QTY', 0)
@@ -132,11 +128,15 @@ class FieldService:
 
         import datetime
         now = datetime.datetime.now()
-        lot_no = f"L{now.strftime('%Y%m%d%H%M%S%f')[:17]}"
+        date_prefix = now.strftime('%y%m%d') # YYMMDD (6자리)
 
         # 마스터 정보 조회
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        # 0. LOT 번호 채번 (L + YYMMDDHHMMSS)
+        lot_no = f"L{now.strftime('%y%m%d%H%M%S')}"
+
         cursor.execute("SELECT PARTNO, LINECD, PROCESSCD, SHIFT FROM TBL_PROD_WORKORDER WHERE WORKORDNO = %s", (workordno,))
         row = cursor.fetchone()
         if not row:
@@ -151,9 +151,12 @@ class FieldService:
         unit = unit_row[0] if unit_row else 'EA'
 
         # 1. 실적 등록 (신규 LOT 생성)
+        good_qty = prod_qty - fail_qty
+        if good_qty < 0: good_qty = 0 # 안전장치
+        
         res_params = {
             'LOTNO': lot_no, 'WORKORDNO': workordno, 'PARTNO': part_no,
-            'LOTQTY': prod_qty, 'UNIT': unit, 'LINECD': line_cd,
+            'LOTQTY': good_qty, 'UNIT': unit, 'LINECD': line_cd,
             'PROCESSCD': process_cd, 'SHIFT': shift,
             'LOCATIONCODE': 'LOC001', 'WAREHOUSECODE': 'WH001'
         }
@@ -161,6 +164,8 @@ class FieldService:
         cursor.execute(q_res['query'], tuple(res_params.get(n) for n in q_res['params']))
 
         # 1-1. 생산 실적 재고 이력 추가 (입고 처리)
+        import datetime
+        now = datetime.datetime.now()
         hist_no = f"H{now.strftime('%Y%m%d%H%M%S%f')[:17]}"
         cursor.execute("""
             INSERT INTO TBL_PROD_STOCK_HISTORY (
@@ -168,10 +173,10 @@ class FieldService:
                 STOCKCHANGEGUBUN, CHANGEDAY, REMARK, REF_NO, 
                 REGUSERID, REGDTM
             ) VALUES (%s, %s, %s, %s, '생산', %s, '현장생산완료', %s, 1, GETDATE())
-        """, (lot_no, 'LOC001', hist_no, prod_qty, now.strftime('%Y-%m-%d'), workordno))
+        """, (lot_no, 'LOC001', hist_no, good_qty, now.strftime('%Y-%m-%d'), workordno))
 
         # 1-2. 실제 재고 테이블 반영
-        cursor.execute("INSERT INTO TBL_PROD_STOCK (LOTNO, LOCATIONCODE, STOCKQTY) VALUES (%s, %s, %s)", (lot_no, 'LOC001', prod_qty))
+        cursor.execute("INSERT INTO TBL_PROD_STOCK (LOTNO, LOCATIONCODE, STOCKQTY) VALUES (%s, %s, %s)", (lot_no, 'LOC001', good_qty))
 
         # 2. 불량 등록
         if fail_qty > 0:
@@ -179,8 +184,57 @@ class FieldService:
             q_fail = self.mapper.get_query('insertFailQty', fail_params)
             cursor.execute(q_fail['query'], tuple(fail_params.get(n) for n in q_fail['params']))
 
-        # 3. 투입된 자재 내역 삭제 (신규 LOT 생성 시 기존 투입 자재 소비 처리로 간주하여 삭제)
-        cursor.execute("DELETE FROM TBL_PROD_STOCK_HISTORY WHERE REF_NO = %s AND STOCKCHANGEGUBUN = '투입'", (workordno,))
+        # 3. 투입된 자재 내역 차감 (생산실적수량 만큼)
+        # 투입된 고유 품번들 조회
+        cursor.execute("""
+            SELECT DISTINCT S.PARTNO 
+            FROM TBL_PROD_STOCK_HISTORY H
+            JOIN TBL_PROD_LOTSTATE S ON H.LOTNO = S.LOTNO
+            WHERE H.REF_NO = %s AND H.STOCKCHANGEGUBUN = '투입'
+        """, (workordno,))
+        input_parts = [r[0] for r in cursor.fetchall()]
+
+        for child_part in input_parts:
+            # BOM 소요량 조회 (SUM 처리 및 USEYN 체크)
+            cursor.execute("""
+                SELECT SUM(REQQTY) 
+                FROM TBL_COM_BOM 
+                WHERE PAR_PARTNO = %s AND CHILD_PARTNO = %s AND USEYN = 1
+            """, (part_no, child_part))
+            bom_row = cursor.fetchone()
+            req_qty = bom_row[0] if bom_row and bom_row[0] is not None else 0
+            
+            if req_qty <= 0:
+                continue
+            
+            needed = prod_qty * req_qty
+            
+            # 해당 품번의 투입 내역 조회 (FIFO)
+            cursor.execute("""
+                SELECT H.STOCKHISTORYNO, H.QTY, H.LOTNO, H.LOCATIONCODE
+                FROM TBL_PROD_STOCK_HISTORY H
+                JOIN TBL_PROD_LOTSTATE S ON H.LOTNO = S.LOTNO
+                WHERE H.REF_NO = %s AND S.PARTNO = %s AND H.STOCKCHANGEGUBUN = '투입'
+                ORDER BY H.REGDTM ASC
+            """, (workordno, child_part))
+            inputs = cursor.fetchall()
+            
+            for h_no, h_qty, m_lot, m_loc in inputs:
+                if needed <= 0: break
+                abs_qty = abs(h_qty)
+                consume_qty = 0
+                
+                if abs_qty <= needed:
+                    cursor.execute("DELETE FROM TBL_PROD_STOCK_HISTORY WHERE STOCKHISTORYNO = %s", (h_no,))
+                    consume_qty = abs_qty
+                    needed -= abs_qty
+                else:
+                    new_qty = (abs_qty - needed) * -1
+                    cursor.execute("UPDATE TBL_PROD_STOCK_HISTORY SET QTY = %s WHERE STOCKHISTORYNO = %s", (new_qty, h_no))
+                    consume_qty = needed
+                    needed = 0
+                
+                # 실제 자재 재고 차감 로직 제거 (자재투입 시 이미 차감되므로 HISTORY만 관리)
 
         conn.commit()
         conn.close()

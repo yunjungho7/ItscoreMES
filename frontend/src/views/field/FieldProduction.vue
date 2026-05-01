@@ -138,10 +138,10 @@
           </div>
           <div class="result-actions">
             <button class="btn-status mat-input" @click="toggleInputMode">📦 자재투입</button>
-            <button class="btn-status start" @click="changeStatus('STARTED')">▶ 작업시작</button>
-            <button class="btn-status cancel" @click="cancelProduction">⟲ 작업취소</button>
-            <button class="btn-status mid" @click="saveIntermediateResult">✚ 중간실적</button>
-            <button class="btn-status done" @click="changeStatus('DONE')">■ 작업완료</button>
+            <button class="btn-status start" :disabled="selectedRow?.ORDSTATE !== 'NEW'" @click="changeStatus('STARTED')">▶ 작업시작</button>
+            <button class="btn-status cancel" :disabled="selectedRow?.ORDSTATE !== 'STARTED' || (summary.TOT_PROD_QTY || 0) > 0" @click="cancelProduction">⟲ 작업취소</button>
+            <button class="btn-status mid" :disabled="!canSaveIntermediate" @click="saveIntermediateResult">✚ 중간실적</button>
+            <button class="btn-status done" :disabled="!canFinishWork" @click="changeStatus('DONE')">■ 작업완료</button>
           </div>
         </div>
 
@@ -164,7 +164,33 @@
             </tr>
           </tbody>
         </table>
-        <!-- 메인 화면 생산실적 상세 그리드 삭제됨 -->
+
+        <!-- 메인 화면 생산실적 상세 그리드 (투입된 자재 목록) -->
+        <div class="detail-grid-wrap" style="margin-top: 10px; border-top: 1px solid #cbd5e0;">
+          <div class="sub-title" style="padding: 8px 12px; font-weight: bold; font-size: 0.82rem; color: #4a5568; background: #f8f9fa;">
+            투입된 자재 목록 (작업 진행중)
+          </div>
+          <table class="detail-grid">
+            <thead>
+              <tr>
+                <th>품번</th><th>품명</th><th>규격</th><th>단위</th><th>투입수량</th><th>투입LOT</th><th>관리</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="resultRows.filter(r => r.RECORD_GUBUN === 'INPUT').length === 0">
+                <td colspan="7" class="empty">투입된 자재가 없습니다. [자재투입] 버튼을 눌러 등록하세요.</td>
+              </tr>
+              <tr v-for="(r, i) in resultRows.filter(r => r.RECORD_GUBUN === 'INPUT')" :key="i">
+                <td>{{ r.PARTNO }}</td><td>{{ r.PARTNM }}</td><td>{{ r.STANDARD }}</td>
+                <td class="center">{{ r.UNIT }}</td><td class="right" style="color: #2ecc71; font-weight: bold;">{{ r.INPUT_QTY }}</td>
+                <td>{{ r.LOTNO }}</td>
+                <td class="center">
+                  <button class="btn-grid-del" @click="deleteInput(r)">삭제</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- 자재투입 모달 -->
@@ -211,7 +237,7 @@
                 <table class="mat-grid">
                   <thead>
                     <tr>
-                      <th style="width:30px"><input type="checkbox" /></th>
+                      <th style="width:30px"><input type="checkbox" :checked="isAllMatChecked" @change="toggleAllMat" /></th>
                       <th style="width:80px">구분</th>
                       <th>LOT No.</th>
                       <th>품번</th>
@@ -231,7 +257,9 @@
                     <tr v-for="(r, i) in resultRows" :key="i" 
                         :class="{ 'row-input': r.RECORD_GUBUN === 'INPUT', 'row-stock': r.RECORD_GUBUN === 'STOCK', 'row-clickable': true }"
                         @click="onRowClick(r)">
-                      <td class="center" @click.stop><input type="checkbox" /></td>
+                      <td class="center" @click.stop>
+                        <input type="checkbox" v-model="r._checked" v-if="r.RECORD_GUBUN === 'STOCK'" />
+                      </td>
                       <td class="center">
                         <span v-if="r.RECORD_GUBUN === 'INPUT'" class="badge-input">투입완료</span>
                         <span v-else class="badge-stock">가용재고</span>
@@ -336,7 +364,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import api from '../../api';
 
 // ── 검색 조건 ──
@@ -370,9 +398,42 @@ const resultRows = ref<any[]>([]);
 const historyRows = ref<any[]>([]);
 const defectRows = ref<any[]>([]);
 
+// ── 버튼 활성화 조건 ──
+const remainingQty = computed(() => {
+  const ord = Number(summary.value.ORD_QTY || 0);
+  const tot = Number(summary.value.TOT_PROD_QTY || 0);
+  return ord - tot;
+});
+
+const canSaveIntermediate = computed(() => {
+  if (!selectedRow.value || selectedRow.value.ORDSTATE !== 'STARTED') return false;
+  const prod = Number(summary.value.PROD_QTY || 0);
+  return prod > 0 && prod < remainingQty.value;
+});
+
+const canFinishWork = computed(() => {
+  if (!selectedRow.value || selectedRow.value.ORDSTATE !== 'STARTED') return false;
+  const prod = Number(summary.value.PROD_QTY || 0);
+  // 작업지시수량 - 총생산실적수량 <= 생산실적수량 (즉, 이번 생산으로 목표 달성 또는 초과)
+  return prod >= remainingQty.value && prod > 0;
+});
+
 // ── 자재 투입 관련 ──
 const isInputMode = ref(false);
 const matInput = ref({ MAT_LOTNO: '', INPUT_QTY: 0 });
+const isLoading = ref(false);
+
+const isAllMatChecked = computed(() => {
+  const stockRows = resultRows.value.filter(r => r.RECORD_GUBUN === 'STOCK');
+  return stockRows.length > 0 && stockRows.every(r => r._checked);
+});
+
+function toggleAllMat(e: any) {
+  const chk = e.target.checked;
+  resultRows.value.forEach(r => {
+    if (r.RECORD_GUBUN === 'STOCK') r._checked = chk;
+  });
+}
 
 function onRowClick(row: any) {
   // 가용재고 항목을 클릭한 경우 해당 LOT 정보와 수량을 폼에 자동 입력
@@ -415,17 +476,43 @@ async function deleteInput(row: any) {
 }
 
 async function saveInputMaterial() {
-  if (!matInput.value.MAT_LOTNO) { alert('자재 LOT를 입력하세요.'); return; }
-  if (!matInput.value.INPUT_QTY || matInput.value.INPUT_QTY <= 0) { alert('투입수량을 입력하세요.'); return; }
+  const checkedRows = resultRows.value.filter(r => r.RECORD_GUBUN === 'STOCK' && r._checked);
+  
+  if (isLoading.value) return;
+  isLoading.value = true;
 
-  // 재고 수량 유효성 검사
-  // 현재 입력된 LOT가 그리드의 '가용재고' 항목 중 하나라면 해당 재고와 비교
-  const stockRow = resultRows.value.find(r => r.LOTNO === matInput.value.MAT_LOTNO && r.RECORD_GUBUN === 'STOCK');
-  if (stockRow) {
-    if (matInput.value.INPUT_QTY > stockRow.STOCK_QTY) {
-      alert(`투입수량이 가용재고(${stockRow.STOCK_QTY})를 초과할 수 없습니다.`);
+  if (checkedRows.length > 0) {
+    try {
+      // 체크된 모든 항목 투입 처리
+      await Promise.all(checkedRows.map(r => 
+        api.post('/api/production/field/input-material', {
+          WORKORDNO: selectedRow.value.WORKORDNO,
+          MAT_LOTNO: r.LOTNO,
+          INPUT_QTY: r.STOCK_QTY
+        })
+      ));
+      alert('선택된 자재들이 투입되었습니다.');
+      isInputMode.value = false; // 모달 닫기
+      await loadTabData(); // 메인 화면 갱신
       return;
+    } catch (err: any) {
+      alert('일부 자재 투입 실패: ' + (err.response?.data?.message || err.message));
+      await loadTabData();
+      return;
+    } finally {
+      isLoading.value = false;
     }
+  }
+
+  // 수동 입력 처리 (체크박스가 없는 경우)
+  if (!matInput.value.MAT_LOTNO) { alert('투입할 자재를 선택하거나 LOT 번호를 입력하세요.'); isLoading.value = false; return; }
+  if (!matInput.value.INPUT_QTY || matInput.value.INPUT_QTY <= 0) { alert('투입수량을 입력하세요.'); isLoading.value = false; return; }
+
+  const stockRow = resultRows.value.find(r => r.LOTNO === matInput.value.MAT_LOTNO && r.RECORD_GUBUN === 'STOCK');
+  if (stockRow && matInput.value.INPUT_QTY > stockRow.STOCK_QTY) {
+    alert(`투입수량이 가용재고(${stockRow.STOCK_QTY})를 초과할 수 없습니다.`);
+    isLoading.value = false;
+    return;
   }
 
   try {
@@ -435,12 +522,13 @@ async function saveInputMaterial() {
       INPUT_QTY: matInput.value.INPUT_QTY
     });
     alert('자재가 투입되었습니다.');
+    isInputMode.value = false; // 모달 닫기
     matInput.value = { MAT_LOTNO: '', INPUT_QTY: 0 };
-    
-    // 데이터 즉시 갱신 (모달 그리드 반영)
-    await loadTabData();
+    await loadTabData(); // 메인 화면 갱신
   } catch (err: any) {
     alert('투입 실패: ' + (err.response?.data?.message || err.message));
+  } finally {
+    isLoading.value = false;
   }
 }
 
@@ -496,7 +584,8 @@ async function loadTabData() {
         api.get(`/api/production/field/result/${wno}`)
       ]);
       summary.value = rs.data || {};
-      resultRows.value = rr.data || [];
+      // 체크 상태 초기화 속성 추가
+      resultRows.value = (rr.data || []).map((r: any) => ({ ...r, _checked: false }));
     } catch {}
   } else if (activeTab.value === 'history') {
     try {
@@ -522,6 +611,7 @@ function clearDetail() {
 // ── 상태 변경 ──
 async function changeStatus(status: string) {
   if (!selectedRow.value) { alert('작업지시를 선택하세요.'); return; }
+  if (isLoading.value) return;
   
   const currentStatus = selectedRow.value.ORDSTATE;
   
@@ -538,32 +628,44 @@ async function changeStatus(status: string) {
   // 작업 완료 시 생산실적 수량이 입력되어 있으면 자동 저장 시도
   if (status === 'DONE' && (summary.value.PROD_QTY > 0)) {
     if (confirm(`입력된 생산실적(${summary.value.PROD_QTY})을 저장하고 작업을 종료하시겠습니까?`)) {
+      isLoading.value = true;
       try {
         await api.post('/api/production/field/result-save', {
           WORKORDNO: selectedRow.value.WORKORDNO,
           PROD_QTY: summary.value.PROD_QTY,
           FAIL_QTY: summary.value.FAIL_QTY || 0
         });
+        // 저장 후 입력 필드 초기화
+        summary.value.PROD_QTY = 0;
+        summary.value.FAIL_QTY = 0;
       } catch (err: any) {
         alert('실적 저장 실패로 작업을 종료할 수 없습니다: ' + (err.response?.data?.message || err.message));
+        isLoading.value = false;
         return;
       }
     }
   }
 
+  isLoading.value = true;
   try {
     await api.post('/api/production/field/status-change', {
       WORKORDNO: selectedRow.value.WORKORDNO,
       STATUS: status
     });
     alert(`상태가 변경되었습니다.`);
-    fetchData();
-  } catch {}
+    await fetchData();
+  } catch (err: any) {
+    alert('상태 변경 실패: ' + (err.response?.data?.message || err.message));
+  } finally {
+    isLoading.value = false;
+  }
 }
 
 // ── 중간 실적 저장 ──
 async function saveIntermediateResult() {
   if (!selectedRow.value) { alert('작업지시를 선택하세요.'); return; }
+  if (isLoading.value) return;
+
   if (selectedRow.value.ORDSTATE !== 'STARTED') {
     alert('작업중 상태에서만 중간실적 등록이 가능합니다.');
     return;
@@ -583,21 +685,26 @@ async function saveIntermediateResult() {
     return;
   }
 
+  isLoading.value = true;
   try {
     await api.post('/api/production/field/result-save', {
       WORKORDNO: selectedRow.value.WORKORDNO,
       PROD_QTY: summary.value.PROD_QTY,
       FAIL_QTY: summary.value.FAIL_QTY || 0
     });
-    alert('중간 실적이 저장되었습니다.');
-    await fetchData(); // 마스터 그리드 갱신 (신규 LOT번호 확인)
-    await loadTabData(); // 집계 데이터 갱신
-    // 입력 필드 명시적 초기화 (데이터 로드 후 수행)
+    
+    // UI 즉시 반영을 위해 로컬 값 초기화 및 데이터 갱신
     summary.value.PROD_QTY = 0;
     summary.value.FAIL_QTY = 0;
     summary.value.GOOD_QTY = 0;
+
+    alert('중간 실적이 저장되었습니다.');
+    await fetchData(); // 마스터 그리드 갱신 (신규 LOT번호 확인)
+    await loadTabData(); // 집계 데이터 갱신
   } catch (err: any) {
     alert('저장 실패: ' + (err.response?.data?.message || err.message));
+  } finally {
+    isLoading.value = false;
   }
 }
 
@@ -732,6 +839,7 @@ onMounted(() => { fetchMasterData(); fetchData(); });
 .btn-status.mid { background:linear-gradient(180deg,#e8f8f5,#a3e4d7); color:#117a65; }
 .btn-status.cancel { background:linear-gradient(180deg,#f2f4f4,#ccd1d1); color:#424949; }
 .btn-status.done { background:linear-gradient(180deg,#fde8e8,#f5b7b1); color:#922b21; }
+.btn-status:disabled { background:#bdc3c7 !important; border-color:#bdc3c7 !important; color:#fff !important; cursor:not-allowed; opacity:0.6; }
 
 /* 집계 테이블 */
 .summary-table { width:100%; border-collapse:collapse; flex-shrink:0; }

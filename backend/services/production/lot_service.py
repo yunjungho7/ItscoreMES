@@ -45,7 +45,9 @@ class LotService:
         cursor.execute(q['query'])
         row = cursor.fetchone()
         conn.close()
-        return row[0] if row and row[0] else 'L00000000-001'
+        import datetime
+        default_lot = f"L{datetime.datetime.now().strftime('%y%m%d')}001"
+        return row[0] if row and row[0] else default_lot
 
     def create(self, data: dict):
         lot_no = self.get_next_num()

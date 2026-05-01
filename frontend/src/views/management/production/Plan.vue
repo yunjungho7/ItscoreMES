@@ -63,13 +63,15 @@
             <td class="freeze num">{{ row.STOCKQTY || 0 }}</td>
             <td class="freeze num total-cell">{{ row.TOTAL || 0 }}</td>
             <td v-for="dt in dates" :key="dt"
-                :class="['day-col', isToday(dt)?'today':'', isWeekend(dt)?'weekend':'']"
-                @click.stop="onCellClick(row, dt)">
-              <input type="number" class="cell-input"
-                     :value="row[dt] || ''"
-                     @click.stop="onCellClick(row, dt)"
-                     @focus="onCellClick(row, dt)"
-                     @change="onCellChange(row, dt, $event)" />
+                :class="[
+                  'day-col', 
+                  isToday(dt)?'today':'', 
+                  isWeekend(dt)?'weekend':'',
+                  (selectedCell?.ri === ri && selectedCell?.dt === dt) ? 'selected-cell' : ''
+                ]"
+                class="num"
+                @click.stop="onCellClick(row, ri, dt)">
+              {{ row[dt] || 0 }}
             </td>
           </tr>
         </tbody>
@@ -320,14 +322,17 @@ async function fetchLines() {
 
 const loading = ref(false);
 const lastFocusedDate = ref<string | null>(null);
+const selectedCell = ref<{ ri: number, dt: string } | null>(null);
 
 const hasChecked = computed(() => {
   return planData.value?.data?.some((r: any) => r._checked) || false;
 });
 
-function onCellClick(row: any, dt: string) {
+function onCellClick(row: any, ri: number, dt: string) {
   row._checked = true;
+  row._selectedDate = dt;
   lastFocusedDate.value = dt;
+  selectedCell.value = { ri, dt };
 }
 
 async function fetchData() {
@@ -340,7 +345,10 @@ async function fetchData() {
     
     const res = r.data;
     if (res && res.data) {
-      res.data.forEach((row: any) => row._checked = false);
+      res.data.forEach((row: any) => {
+        row._checked = false;
+        row._selectedDate = null;
+      });
       planData.value = res;
     } else {
       planData.value = { data: [], dates: [] };
@@ -472,8 +480,8 @@ async function openWoModal() {
   }
   
   for (const row of checked) {
-    const defaultDate = lastFocusedDate.value || f(now);
-    const initialQty = Number(row.TOTAL || 0);
+    const rowDate = row._selectedDate || lastFocusedDate.value || f(now);
+    const initialQty = row._selectedDate ? Number(row[rowDate] || 0) : Number(row.TOTAL || 0);
     const rootPartNo = row.PARTNO;
     const rootPartNm = row.PARTNM || '수주품목';
 
@@ -482,14 +490,14 @@ async function openWoModal() {
         PARTNO: rootPartNo, PARTNM: rootPartNm, 
         STANDARD: row.STANDARD || '', UNIT: row.UNIT || '', 
         LOCATIONCD: row.LOCATIONCD || '',
-        ORDDATE: defaultDate, PROCESSCD: row.PROCESSCD || '', 
+        ORDDATE: rowDate, PROCESSCD: row.PROCESSCD || '', 
         LINECD: row.LINECD || '',
         SHIFT: '주간', ORDQTY: initialQty, STOCKQTY: row.STOCKQTY || 0,
         _sel: true, _level: 0
       });
       visited.clear();
       visited.add(rootPartNo);
-      await explodeBom(rootPartNo, initialQty, 0, defaultDate);
+      await explodeBom(rootPartNo, initialQty, 0, rowDate);
     }
   }
 
@@ -593,6 +601,7 @@ thead .freeze{background:linear-gradient(180deg,#d6eaf8,#aed6f1)!important;z-ind
 .empty{text-align:center;color:#b2bec3;padding:60px!important}
 .row-selected{background:#e8f4fd!important}
 .row-selected .freeze{background:#e8f4fd!important}
+.selected-cell { background-color: #bbdefb !important; outline: 2px solid #2196f3; z-index: 4; }
 
 /* ═══ 작업지시 모달 ═══ */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }

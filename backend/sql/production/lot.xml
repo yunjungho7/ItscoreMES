@@ -34,10 +34,10 @@
 
   <!-- 신규 LOT 번호 채번 -->
   <select id="selectNextLotNum">
-    SELECT 'L' + CONVERT(VARCHAR(8), GETDATE(), 112) + '-' +
+    SELECT 'L' + CONVERT(VARCHAR(6), GETDATE(), 12) +
            RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(LOTNO,3) AS INT)),0) + 1 AS VARCHAR), 3)
     FROM TBL_PROD_LOTSTATE
-    WHERE LOTNO LIKE 'L' + CONVERT(VARCHAR(8), GETDATE(), 112) + '%'
+    WHERE LOTNO LIKE 'L' + CONVERT(VARCHAR(6), GETDATE(), 12) + '%'
   </select>
 
   <!-- LOT 생성 (State) -->
