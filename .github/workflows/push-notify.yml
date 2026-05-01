@@ -1,0 +1,24 @@
+name: Push Notification to Telegram
+
+on:
+  push:
+    branches: [master, main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram Notification
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            🔔 **GitHub Push 알림**
+            📦 **저장소:** `${{ github.repository }}`
+            👤 **Pusher:** `${{ github.actor }}`
+            🌿 **Branch:** `${{ github.ref_name }}`
+            🔨 **커밋:** `${{ github.sha }}`
+            📝 **메시지:** ${{ github.event.head_commit.message }}
+            🕐 **시간:** ${{ github.event.head_commit.timestamp }}
