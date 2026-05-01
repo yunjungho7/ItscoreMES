@@ -9,16 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send Telegram Notification
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          format: markdown
-          message: |
-            🔔 **GitHub Push 알림**
-            📦 **저장소:** `${{ github.repository }}`
-            👤 **Pusher:** `${{ github.actor }}`
-            🌿 **Branch:** `${{ github.ref_name }}`
-            🔨 **커밋:** `${{ github.sha }}`
-            📝 **메시지:** ${{ github.event.head_commit.message }}
-            🕐 **시간:** ${{ github.event.head_commit.timestamp }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "parse_mode=Markdown" \
+            -d "text=🔔 **GitHub Push 알림**%0A📦 **저장소:** \`${{ github.repository }}\`%0A👤 **Pusher:** \`${{ github.actor }}\`%0A🌿 **Branch:** \`${{ github.ref_name }}\`%0A🔨 **커밋:** \`${{ github.sha }}\`%0A📝 **메시지:** ${{ github.event.head_commit.message }}%0A🕐 **시간:** ${{ github.event.head_commit.timestamp }}"
