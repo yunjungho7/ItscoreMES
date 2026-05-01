@@ -138,14 +138,14 @@
               <thead>
                 <tr>
                   <th style="width:30px">선택</th>
-                  <th style="width:90px">작업일자</th>
+                  <th style="width:110px">작업일자</th>
                   <th style="width:110px">품번</th>
                   <th style="width:130px">품명</th>
                   <th style="width:80px">규격</th>
-                  <th style="width:60px">공정</th>
-                  <th style="width:70px">라인</th>
-                  <th style="width:60px">근무조</th>
-                  <th style="width:70px">지시수량</th>
+                  <th style="width:100px">공정</th>
+                  <th style="width:100px">라인</th>
+                  <th style="width:70px">근무조</th>
+                  <th style="width:80px">지시수량</th>
                   <th style="width:60px">상태</th>
                 </tr>
               </thead>
@@ -153,16 +153,31 @@
                 <tr v-if="regItems.length===0">
                   <td colspan="10" class="empty">등록 후 추가 버튼으로 품목을 추가하세요.</td>
                 </tr>
-                <tr v-for="(item, i) in regItems" :key="i" :class="{'row-selected': item._sel}">
+                <tr v-for="(item, i) in regItems" :key="i" :class="{'row-selected': item._sel, 'top-row': item._isTop}">
                   <td class="chk"><input type="checkbox" v-model="item._sel" /></td>
-                  <td>{{ item.ORDDATE }}</td>
+                  <td><input type="date" v-model="item.ORDDATE" class="grid-edit-input" /></td>
                   <td>{{ item.PARTNO }}</td>
                   <td>{{ item.PARTNM }}</td>
                   <td>{{ item.STANDARD }}</td>
-                  <td>{{ item.PROCESSCD }}</td>
-                  <td>{{ item.LINECD }}</td>
-                  <td>{{ item.SHIFT }}</td>
-                  <td class="num">{{ item.ORDQTY }}</td>
+                  <td>
+                    <select v-model="item.PROCESSCD" class="grid-edit-select">
+                      <option value="">선택</option>
+                      <option v-for="pr in processes" :key="pr.PROCESSCD" :value="pr.PROCESSCD">{{ pr.PROCESSNM }}</option>
+                    </select>
+                  </td>
+                  <td>
+                    <select v-model="item.LINECD" class="grid-edit-select">
+                      <option value="">선택</option>
+                      <option v-for="ln in lines" :key="ln.LINECD" :value="ln.LINECD">{{ ln.LINENM }}</option>
+                    </select>
+                  </td>
+                  <td>
+                    <select v-model="item.SHIFT" class="grid-edit-select">
+                      <option value="주간">주간</option>
+                      <option value="야간">야간</option>
+                    </select>
+                  </td>
+                  <td class="num"><input type="number" v-model.number="item.ORDQTY" class="grid-edit-input text-right" /></td>
                   <td>{{ item.ORDSTATE }}</td>
                 </tr>
               </tbody>
@@ -204,8 +219,7 @@
 </template>
 
 <script setup lang="ts">
-const window = globalThis.window;
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import api from '../../../api';
 import DataGrid from '../../../components/common/DataGrid.vue';
 
@@ -309,53 +323,141 @@ async function fetchPartInfo() {
       const g = rows[0];
       regForm.value.PARTNM = g.PARTNM || '';
       regForm.value.UNIT = g.UNIT || '';
+      await loadBomItems(g.PARTNO);
     }
-  } catch {}
+  } catch (e) { console.error('Part info fetch error:', e); }
+}
+
+async function loadBomItems(partNo: string) {
+  if (!partNo) return;
+  try {
+    const r = await api.get(`/api/master/bom/detail/${partNo}`);
+    const rows = Array.isArray(r.data?.data) ? r.data.data : (r.data?.data?.data || []);
+    
+    // 원자재/부자재 제외 필터링
+    const filtered = rows.filter((b: any) => {
+      const type = b.PARTTYPE || '';
+      const nm = b.PARTNM || '';
+      const isRaw = type === 'PARTGUBUN003' || nm.includes('원자재') || nm.includes('원재료');
+      const isSub = type === 'PARTGUBUN004' || nm.includes('부자재') || nm.includes('부재료');
+      return !isRaw && !isSub;
+    });
+
+    // 1. 최상위 품목 자신을 첫 번째 하위 작지로 추가
+    const topItem = {
+      ORDDATE: regForm.value.ORDDATE,
+      PARTNO: regForm.value.PARTNO,
+      PARTNM: regForm.value.PARTNM,
+      STANDARD: '', 
+      UNIT: regForm.value.UNIT,
+      PROCESSCD: regForm.value.PROCESSCD || '', 
+      LINECD: regForm.value.LINECD || '',
+      SHIFT: regForm.value.SHIFT,
+      ORDQTY: regForm.value.ORDQTY || 0,
+      ORDSTATE: 'NEW',
+      _sel: true,
+      _isTop: true,
+      _reqQty: 1
+    };
+
+    // 2. BOM 하위 품목들 추가
+    const childItems = filtered.map((b: any) => ({
+      ORDDATE: regForm.value.ORDDATE,
+      PARTNO: b.CHILD_PARTNO,
+      PARTNM: b.PARTNM,
+      STANDARD: b.STANDARD,
+      UNIT: b.UNIT,
+      PROCESSCD: b.PROCESSCD || '', 
+      LINECD: '',
+      SHIFT: regForm.value.SHIFT,
+      ORDQTY: (regForm.value.ORDQTY || 0) * (b.REQQTY || 1),
+      ORDSTATE: 'NEW',
+      _sel: true,
+      _reqQty: b.REQQTY || 1
+    }));
+
+    regItems.value = [topItem, ...childItems];
+  } catch (err) { console.error('BOM 로드 실패:', err); }
 }
 
 function addItem() {
-  if (!regForm.value.PARTNO) { window.alert('품번을 입력하세요.'); return; }
-  if (!regForm.value.ORDQTY || regForm.value.ORDQTY <= 0) { window.alert('지시수량을 입력하세요.'); return; }
+  if (!regForm.value.PARTNO) { alert('품번을 입력하세요.'); return; }
   regItems.value.push({
     ORDDATE: regForm.value.ORDDATE, PARTNO: regForm.value.PARTNO,
     PARTNM: regForm.value.PARTNM, STANDARD: '', UNIT: regForm.value.UNIT,
     PROCESSCD: regForm.value.PROCESSCD, LINECD: regForm.value.LINECD,
-    SHIFT: regForm.value.SHIFT, ORDQTY: regForm.value.ORDQTY,
-    ORDSTATE: 'NEW', _sel: false
+    SHIFT: regForm.value.SHIFT, ORDQTY: regForm.value.ORDQTY || 0,
+    ORDSTATE: 'NEW', _sel: true
   });
 }
 function removeItems() {
   regItems.value = regItems.value.filter(r => !r._sel);
 }
 
+// 상단 폼 변경 시 그리드 동기화
+watch(() => regForm.value.ORDQTY, (newQty) => {
+  regItems.value.forEach(item => { if (item._reqQty) item.ORDQTY = (newQty || 0) * item._reqQty; });
+});
+watch(() => regForm.value.ORDDATE, (v) => {
+  regItems.value.forEach(item => { if (item._isTop) item.ORDDATE = v; });
+});
+watch(() => regForm.value.SHIFT, (v) => {
+  regItems.value.forEach(item => { if (item._isTop) item.SHIFT = v; });
+});
+watch(() => regForm.value.PROCESSCD, (v) => {
+  regItems.value.forEach(item => { if (item._isTop) item.PROCESSCD = v; });
+});
+watch(() => regForm.value.LINECD, (v) => {
+  regItems.value.forEach(item => { if (item._isTop) item.LINECD = v; });
+});
+
 async function handleSave() {
-  if (regItems.value.length === 0) { window.alert('추가 버튼으로 품목을 먼저 추가하세요.'); return; }
-  let savedCount = 0;
+  console.log('handleSave called');
+  const selected = regItems.value.filter(r => r._sel);
+  if (selected.length === 0) { alert('저장할 품목을 선택하세요.'); return; }
+  
+  const payload = {
+    header: {
+      PLANTCD: regForm.value.PLANTCD,
+      PARTNO: regForm.value.PARTNO,
+      ORDDATE: regForm.value.ORDDATE,
+      ORDQTY: regForm.value.ORDQTY,
+      PROCESSCD: regForm.value.PROCESSCD || null,
+      LINECD: regForm.value.LINECD || null,
+      SHIFT: regForm.value.SHIFT,
+      ORDTYPE: regForm.value.ORDTYPE,
+      ORDpriority: regForm.value.ORDpriority,
+      REMARK: regForm.value.REMARK
+    },
+    items: selected.map(item => ({
+      PLANTCD: regForm.value.PLANTCD,
+      PARTNO: item.PARTNO,
+      ORDDATE: item.ORDDATE,
+      ORDQTY: item.ORDQTY,
+      PROCESSCD: item.PROCESSCD || null,
+      LINECD: item.LINECD || null,
+      SHIFT: item.SHIFT,
+      ORDTYPE: regForm.value.ORDTYPE,
+      ORDpriority: regForm.value.ORDpriority,
+      REMARK: regForm.value.REMARK
+    }))
+  };
+
+  console.log('Sending Batch Payload:', payload);
+
   try {
-    for (const item of regItems.value) {
-      await api.post('/api/production/workorder', {
-        PLANTCD: regForm.value.PLANTCD,
-        PARTNO: item.PARTNO,
-        ORDDATE: item.ORDDATE,
-        ORDQTY: item.ORDQTY,
-        PROCESSCD: item.PROCESSCD || null,
-        LINECD: item.LINECD || null,
-        SHIFT: item.SHIFT,
-        ORDTYPE: regForm.value.ORDTYPE,
-        ORDpriority: regForm.value.ORDpriority,
-        REMARK: regForm.value.REMARK
-      });
-      savedCount++;
-    }
-    window.alert(`${savedCount}건 작업지시가 등록되었습니다.`);
+    const r = await api.post('/api/production/workorder/batch', payload);
+    console.log('Save response:', r.data);
+    alert(`작업지시가 등록되었습니다. (상위: ${r.data.parent_workordno}, 하위: ${r.data.child_count}건)`);
     showReg.value = false;
     fetchData();
-  } catch {}
+  } catch (err: any) {
+    console.error('Save error:', err);
+    alert('등록 중 오류가 발생했습니다: ' + (err.response?.data?.detail || err.message));
+  }
 }
 
-function handleRegDelete() {
-  regItems.value = [];
-}
+function handleRegDelete() { regItems.value = []; }
 
 // ── 품목 선택 ──
 const showItemPicker = ref(false), itemSearch = ref(''), itemsList = ref<any[]>([]);
@@ -363,13 +465,14 @@ async function fetchItems() {
   try {
     const r = await api.get('/api/master/goods', { params: { search: itemSearch.value, size: 50 } });
     itemsList.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
-  } catch {}
+  } catch (e) { console.error('Fetch items error:', e); }
 }
 function selectItem(g: any) {
   regForm.value.PARTNO = g.PARTNO;
   regForm.value.PARTNM = g.PARTNM || '';
   regForm.value.UNIT = g.UNIT || '';
   showItemPicker.value = false;
+  loadBomItems(g.PARTNO);
 }
 
 onMounted(() => { fetchPlants(); fetchProcesses(); fetchLines(); fetchData(); });
@@ -422,11 +525,15 @@ onMounted(() => { fetchPlants(); fetchProcesses(); fetchLines(); fetchData(); })
 .reg-grid{width:100%;border-collapse:collapse;font-size:.83rem}
 .reg-grid thead{position:sticky;top:0;z-index:2}
 .reg-grid th{background:linear-gradient(180deg,#d6eaf8,#aed6f1);color:#1a5276;font-weight:600;padding:9px 6px;text-align:left;border-bottom:2px solid #85c1e9;white-space:nowrap;font-size:.82rem}
-.reg-grid td{padding:5px 6px;border-bottom:1px solid #f0f2f5}
+.reg-grid td{padding:4px 6px;border-bottom:1px solid #f0f2f5}
 .reg-grid .chk{text-align:center}
 .reg-grid .empty{text-align:center;color:#b2bec3;padding:40px 16px!important}
 .num{text-align:right}
 .row-selected{background:#eaf2f8}
+.top-row { background: #fffde7; font-weight: bold; }
+.grid-edit-input, .grid-edit-select { width: 100%; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 4px; font-size: 0.8rem; }
+.grid-edit-input:focus, .grid-edit-select:focus { border-color: #2980b9; outline: none; }
+.text-right { text-align: right; }
 .reg-btns{display:flex;gap:8px;padding:8px 24px 16px;justify-content:flex-end}
 .btn-add-item{background:#27ae60;color:#fff;border:none;padding:7px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.84rem}
 .btn-del-item{background:#e74c3c;color:#fff;border:none;padding:7px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.84rem}

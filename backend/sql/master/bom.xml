@@ -11,9 +11,10 @@
     </select>
 
     <select id="selectAll">
-        SELECT B.*, G.PARTNM, G.STANDARD, G.UNIT, G.PROCESSCD, G.PARTTYPE
+        SELECT B.*, G.PARTNM, G.STANDARD, G.UNIT, G.PROCESSCD, G.PARTTYPE, G.LOCATIONCD, P.LINECD
         FROM TBL_COM_BOM B
         LEFT JOIN TBL_COM_GOODS G ON B.CHILD_PARTNO = G.PARTNO
+        LEFT JOIN TBL_COM_PROCESS P ON G.PROCESSCD = P.PROCESSCD
         <where>
             <if test="search != null">
                 B.PAR_PARTNO = #{search}

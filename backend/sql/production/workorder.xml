@@ -46,7 +46,7 @@
     </select>
 
     <select id="selectChildren">
-        SELECT W.WORKORDNO AS WORKORDNO, W.WORKORDNO AS PAR_WORKORDNO, W.PARTNO, W.ORDQTY, W.ORDDATE, W.ORDSTATE,
+        SELECT W.WORKORDNO, W.PAR_WORKORDNO, W.PARTNO, W.ORDQTY, W.ORDDATE, W.ORDSTATE, W.ORDTYPE, W.ORDpriority,
                G.PARTNM, G.STANDARD, G.UNIT, P.PROCESSNM, L.LINENM
         FROM TBL_PROD_WORKORDER W
         LEFT JOIN TBL_COM_GOODS G ON W.PARTNO = G.PARTNO
@@ -54,6 +54,20 @@
         LEFT JOIN TBL_COM_LINE L ON W.LINECD = L.LINECD
         WHERE W.PAR_WORKORDNO = #{PAR_WORKORDNO} AND W.USEYN = 1
         ORDER BY W.WORKORDNO ASC
+    </select>
+
+    <select id="selectNextNumParent">
+        SELECT 'WP' + FORMAT(GETDATE(), 'yyyyMMdd') + '-' + 
+               FORMAT(ISNULL(MAX(CAST(RIGHT(WORKORDNO, 3) AS INT)), 0) + 1, '000') AS NEXTNUM
+        FROM TBL_PROD_WORKORDER
+        WHERE WORKORDNO LIKE 'WP' + FORMAT(GETDATE(), 'yyyyMMdd') + '%'
+    </select>
+
+    <select id="selectNextNumChild">
+        SELECT 'WC' + FORMAT(GETDATE(), 'yyyyMMdd') + '-' + 
+               FORMAT(ISNULL(MAX(CAST(RIGHT(WORKORDNO, 3) AS INT)), 0) + 1, '000') AS NEXTNUM
+        FROM TBL_PROD_WORKORDER
+        WHERE WORKORDNO LIKE 'WC' + FORMAT(GETDATE(), 'yyyyMMdd') + '%'
     </select>
 
     <select id="selectNextNum">

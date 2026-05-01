@@ -45,6 +45,10 @@ class WorkOrderCreate(BaseModel):
     PAR_WORKORDNO: Optional[str] = None
     REMARK: Optional[str] = None
 
+class WorkOrderBatchCreate(BaseModel):
+    header: WorkOrderCreate
+    items: List[WorkOrderCreate]
+
 class WorkOrderUpdate(BaseModel):
     ORDQTY: Optional[Decimal] = None
     PROCESSCD: Optional[str] = None
@@ -115,6 +119,10 @@ def get_workorder_children(workordno: str):
 @router.post("/production/workorder", summary="작업지시 등록", status_code=201)
 def create_workorder(body: WorkOrderCreate):
     return workorder_service.create(body.model_dump())
+
+@router.post("/production/workorder/batch", summary="작업지시 일괄 등록 (상하위)", status_code=201)
+def create_workorder_batch(body: WorkOrderBatchCreate):
+    return workorder_service.create_batch(body.header.model_dump(), [item.model_dump() for item in body.items])
 
 @router.put("/production/workorder/{workordno}", summary="작업지시 수정")
 def update_workorder(workordno: str, body: WorkOrderUpdate):

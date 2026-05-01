@@ -16,6 +16,7 @@
     <select id="selectAll">
         SELECT G.*, 
                P.PROCESSNM,
+               P.LINECD,
                L1.LOCATIONNAME,
                L2.LOCATIONNAME AS LOCATIONNAME_PROD,
                C.COMPANYNM
@@ -39,6 +40,7 @@
     <select id="selectById">
         SELECT G.*, 
                P.PROCESSNM,
+               P.LINECD,
                L1.LOCATIONNAME,
                L2.LOCATIONNAME AS LOCATIONNAME_PROD,
                C.COMPANYNM

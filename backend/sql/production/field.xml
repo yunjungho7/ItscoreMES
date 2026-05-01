@@ -7,6 +7,7 @@
     LEFT JOIN TBL_COM_GOODS G ON W.PARTNO = G.PARTNO
     <where>
       W.USEYN = 1
+      AND (W.PAR_WORKORDNO IS NOT NULL AND LTRIM(RTRIM(W.PAR_WORKORDNO)) != '')
       <if test="include_done != 'true'">AND W.ORDSTATE != 'DONE'</if>
       <if test="start_date != null">AND W.ORDDATE &gt;= #{start_date}</if>
       <if test="end_date != null">AND W.ORDDATE &lt;= #{end_date}</if>
@@ -29,6 +30,7 @@
     LEFT JOIN TBL_COM_GOODS G ON W.PARTNO = G.PARTNO
     <where>
       W.USEYN = 1
+      AND (W.PAR_WORKORDNO IS NOT NULL AND LTRIM(RTRIM(W.PAR_WORKORDNO)) != '')
       <if test="include_done != 'true'">AND W.ORDSTATE != 'DONE'</if>
       <if test="start_date != null">AND W.ORDDATE &gt;= #{start_date}</if>
       <if test="end_date != null">AND W.ORDDATE &lt;= #{end_date}</if>
