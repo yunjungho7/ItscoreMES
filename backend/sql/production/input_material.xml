@@ -33,4 +33,12 @@
     )
   </insert>
 
+  <!-- 자재 투입 삭제 (재고 이력 제거) -->
+  <delete id="deleteInputMaterial">
+    DELETE FROM TBL_PROD_STOCK_HISTORY
+    WHERE REF_NO = #{WORKORDNO}
+      AND LOTNO = #{MAT_LOTNO}
+      AND STOCKCHANGEGUBUN = '투입'
+  </delete>
+
 </mapper>

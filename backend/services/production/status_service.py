@@ -25,13 +25,21 @@ class StatusService:
 
     def cancel_result(self, lotno):
         params = {'LOTNO': lotno}
-        q = self.mapper.get_query('cancelResult', params)
-        values = tuple(params.get(name) for name in q['params'])
         
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(q['query'], values)
+        
+        # 1. 불량 데이터 삭제
+        cursor.execute("DELETE FROM TBL_PROD_FAILQTY WHERE LOTNO = %s", (lotno,))
+        
+        # 2. 재고 데이터 삭제
+        cursor.execute("DELETE FROM TBL_PROD_STOCK WHERE LOTNO = %s", (lotno,))
+
+        # 3. 실적 데이터 삭제 (또는 취소 상태 변경)
+        q = self.mapper.get_query('cancelResult', params)
+        cursor.execute(q['query'], tuple(params.get(n) for n in q['params']))
         affected = cursor.rowcount
+        
         conn.commit()
         conn.close()
         

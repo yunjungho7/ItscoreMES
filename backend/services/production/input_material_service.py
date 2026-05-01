@@ -48,9 +48,35 @@ class InputMaterialService:
         q = self.mapper.get_query('insertInputMaterial', params)
         cursor.execute(q['query'], tuple(params.get(n) for n in q['params']))
         
-        # 실제 재고 수량 차감 (TBL_PROD_STOCK 등 반영 로직이 있다면 추가)
-        # 여기서는 히스토리 기반이므로 히스토리만 쌓음
+        # 실제 재고 수량 차감 (TBL_PROD_LOTSTATE 및 TBL_PROD_STOCK 반영)
+        cursor.execute("UPDATE TBL_PROD_LOTSTATE SET LOTQTY = LOTQTY - %s WHERE LOTNO = %s", (data['INPUT_QTY'], data['MAT_LOTNO']))
+        cursor.execute("UPDATE TBL_PROD_STOCK SET STOCKQTY = STOCKQTY - %s WHERE LOTNO = %s AND LOCATIONCODE = %s", (data['INPUT_QTY'], data['MAT_LOTNO'], loc_cd))
         
+        conn.commit()
+        conn.close()
+        return True
+
+    def delete_input(self, data):
+        """자재 투입 실적 삭제 및 재고 복원"""
+        params = {
+            'WORKORDNO': data['WORKORDNO'],
+            'MAT_LOTNO': data['MAT_LOTNO']
+        }
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 삭제 전 투입되었던 수량 및 위치 확인 (복원을 위해)
+        cursor.execute("SELECT ABS(QTY), LOCATIONCODE FROM TBL_PROD_STOCK_HISTORY WHERE REF_NO = %s AND LOTNO = %s AND STOCKCHANGEGUBUN = '투입'", (data['WORKORDNO'], data['MAT_LOTNO']))
+        row = cursor.fetchone()
+        if row:
+            input_qty, loc_cd = row
+            # 1. 히스토리 삭제
+            q = self.mapper.get_query('deleteInputMaterial', params)
+            cursor.execute(q['query'], tuple(params.get(n) for n in q['params']))
+            # 2. 재고 복원
+            cursor.execute("UPDATE TBL_PROD_LOTSTATE SET LOTQTY = LOTQTY + %s WHERE LOTNO = %s", (input_qty, data['MAT_LOTNO']))
+            cursor.execute("UPDATE TBL_PROD_STOCK SET STOCKQTY = STOCKQTY + %s WHERE LOTNO = %s AND LOCATIONCODE = %s", (input_qty, data['MAT_LOTNO'], loc_cd))
+
         conn.commit()
         conn.close()
         return True

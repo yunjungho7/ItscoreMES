@@ -220,11 +220,13 @@
                       <th>투입수량</th>
                       <th>소요량</th>
                       <th>재고수량</th>
+                      <th>위치</th>
+                      <th style="width:60px">관리</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-if="resultRows.length === 0">
-                      <td colspan="9" style="text-align:center; padding:20px; color:#999;">데이터 없음</td>
+                      <td colspan="11" style="text-align:center; padding:20px; color:#999;">데이터 없음</td>
                     </tr>
                     <tr v-for="(r, i) in resultRows" :key="i" 
                         :class="{ 'row-input': r.RECORD_GUBUN === 'INPUT', 'row-stock': r.RECORD_GUBUN === 'STOCK', 'row-clickable': true }"
@@ -241,6 +243,10 @@
                       <td class="right" :style="{ color: r.RECORD_GUBUN === 'INPUT' ? '#2ecc71' : 'inherit', fontWeight: 'bold' }">{{ r.INPUT_QTY || 0 }}</td>
                       <td class="right">{{ r.NEED_QTY }}</td>
                       <td class="right">{{ r.STOCK_QTY || 0 }}</td>
+                      <td>{{ r.LOCATIONNAME }}</td>
+                      <td class="center" @click.stop>
+                        <button v-if="r.RECORD_GUBUN === 'INPUT'" class="btn-grid-del" @click="deleteInput(r)">삭제</button>
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -412,6 +418,16 @@ async function saveInputMaterial() {
   if (!matInput.value.MAT_LOTNO) { alert('자재 LOT를 입력하세요.'); return; }
   if (!matInput.value.INPUT_QTY || matInput.value.INPUT_QTY <= 0) { alert('투입수량을 입력하세요.'); return; }
 
+  // 재고 수량 유효성 검사
+  // 현재 입력된 LOT가 그리드의 '가용재고' 항목 중 하나라면 해당 재고와 비교
+  const stockRow = resultRows.value.find(r => r.LOTNO === matInput.value.MAT_LOTNO && r.RECORD_GUBUN === 'STOCK');
+  if (stockRow) {
+    if (matInput.value.INPUT_QTY > stockRow.STOCK_QTY) {
+      alert(`투입수량이 가용재고(${stockRow.STOCK_QTY})를 초과할 수 없습니다.`);
+      return;
+    }
+  }
+
   try {
     await api.post('/api/production/field/input-material', {
       WORKORDNO: selectedRow.value.WORKORDNO,
@@ -519,6 +535,22 @@ async function changeStatus(status: string) {
     return;
   }
 
+  // 작업 완료 시 생산실적 수량이 입력되어 있으면 자동 저장 시도
+  if (status === 'DONE' && (summary.value.PROD_QTY > 0)) {
+    if (confirm(`입력된 생산실적(${summary.value.PROD_QTY})을 저장하고 작업을 종료하시겠습니까?`)) {
+      try {
+        await api.post('/api/production/field/result-save', {
+          WORKORDNO: selectedRow.value.WORKORDNO,
+          PROD_QTY: summary.value.PROD_QTY,
+          FAIL_QTY: summary.value.FAIL_QTY || 0
+        });
+      } catch (err: any) {
+        alert('실적 저장 실패로 작업을 종료할 수 없습니다: ' + (err.response?.data?.message || err.message));
+        return;
+      }
+    }
+  }
+
   try {
     await api.post('/api/production/field/status-change', {
       WORKORDNO: selectedRow.value.WORKORDNO,
@@ -558,6 +590,7 @@ async function saveIntermediateResult() {
       FAIL_QTY: summary.value.FAIL_QTY || 0
     });
     alert('중간 실적이 저장되었습니다.');
+    await fetchData(); // 마스터 그리드 갱신 (신규 LOT번호 확인)
     await loadTabData(); // 집계 데이터 갱신
     // 입력 필드 명시적 초기화 (데이터 로드 후 수행)
     summary.value.PROD_QTY = 0;
@@ -607,6 +640,7 @@ async function deleteHistoryRow(row: any) {
     await api.delete(`/api/production/status/result/${row.LOTNO}`);
     alert('실적이 삭제되었습니다.');
     loadTabData(); // 상세 갱신
+    fetchData(); // 마스터 그리드 갱신
   } catch (err: any) {
     alert('삭제 실패: ' + (err.response?.data?.message || err.message));
   }

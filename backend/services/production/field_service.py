@@ -154,10 +154,24 @@ class FieldService:
         res_params = {
             'LOTNO': lot_no, 'WORKORDNO': workordno, 'PARTNO': part_no,
             'LOTQTY': prod_qty, 'UNIT': unit, 'LINECD': line_cd,
-            'PROCESSCD': process_cd, 'SHIFT': shift
+            'PROCESSCD': process_cd, 'SHIFT': shift,
+            'LOCATIONCODE': 'LOC001', 'WAREHOUSECODE': 'WH001'
         }
         q_res = self.mapper.get_query('insertProductionResult', res_params)
         cursor.execute(q_res['query'], tuple(res_params.get(n) for n in q_res['params']))
+
+        # 1-1. 생산 실적 재고 이력 추가 (입고 처리)
+        hist_no = f"H{now.strftime('%Y%m%d%H%M%S%f')[:17]}"
+        cursor.execute("""
+            INSERT INTO TBL_PROD_STOCK_HISTORY (
+                LOTNO, LOCATIONCODE, STOCKHISTORYNO, QTY, 
+                STOCKCHANGEGUBUN, CHANGEDAY, REMARK, REF_NO, 
+                REGUSERID, REGDTM
+            ) VALUES (%s, %s, %s, %s, '생산', %s, '현장생산완료', %s, 1, GETDATE())
+        """, (lot_no, 'LOC001', hist_no, prod_qty, now.strftime('%Y-%m-%d'), workordno))
+
+        # 1-2. 실제 재고 테이블 반영
+        cursor.execute("INSERT INTO TBL_PROD_STOCK (LOTNO, LOCATIONCODE, STOCKQTY) VALUES (%s, %s, %s)", (lot_no, 'LOC001', prod_qty))
 
         # 2. 불량 등록
         if fail_qty > 0:
@@ -185,6 +199,8 @@ class FieldService:
             # 2. 불량 내역 삭제
             placeholders = ','.join(['%s'] * len(lots))
             cursor.execute(f"DELETE FROM TBL_PROD_FAILQTY WHERE LOTNO IN ({placeholders})", tuple(lots))
+            # 2-1. 재고 데이터 삭제
+            cursor.execute(f"DELETE FROM TBL_PROD_STOCK WHERE LOTNO IN ({placeholders})", tuple(lots))
             # 3. LOT 실적 삭제
             cursor.execute(f"DELETE FROM TBL_PROD_LOTSTATE WHERE WORKORDNO = %s", (workordno,))
         

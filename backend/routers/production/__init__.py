@@ -162,6 +162,13 @@ def save_input_material(body: InputMaterialRequest):
         raise HTTPException(status_code=400, detail="자재 투입 저장에 실패했습니다.")
     return {"statusCode": 200, "message": "자재가 투입되었습니다."}
 
+@router.delete("/production/field/input-material", summary="현장 자재 투입 삭제")
+def delete_field_input_material(workordno: str, mat_lotno: str):
+    body = {'WORKORDNO': workordno, 'MAT_LOTNO': mat_lotno}
+    if not input_material_service.delete_input(body):
+        raise HTTPException(status_code=400, detail="자재 투입 삭제에 실패했습니다.")
+    return {"statusCode": 200, "message": "자재 투입이 삭제되었습니다."}
+
 # ════════════════════════════════════════
 # LOT 관리
 # ════════════════════════════════════════
