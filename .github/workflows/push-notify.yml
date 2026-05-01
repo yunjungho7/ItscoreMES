@@ -12,16 +12,5 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          REPO: ${{ github.repository }}
-          ACTOR: ${{ github.actor }}
-          BRANCH: ${{ github.ref_name }}
-          SHA: ${{ github.sha }}
-          MESSAGE: ${{ github.event.head_commit.message }}
-          TIMESTAMP: ${{ github.event.head_commit.timestamp }}
         run: |
-          TEXT="🔔 GitHub Push 알림%0A📦 저장소: ${REPO}%0A👤 Pusher: ${ACTOR}%0A🌿 Branch: ${BRANCH}%0A🔨 Commit: ${SHA}%0A📝 Message: ${MESSAGE}%0A🕐 Time: ${TIMESTAMP}"
-          
-          curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${CHAT_ID}" \
-            --data-urlencode "parse_mode=Markdown" \
-            --data-urlencode "text=${TEXT}"
+          curl -s "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=Test+Notification+from+GitHub+Actions"
