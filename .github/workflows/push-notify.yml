@@ -12,5 +12,34 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          MSG: ${{ github.event.head_commit.message }}
         run: |
-          curl -s "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=Test+Notification+from+GitHub+Actions"
+          python3 -c "
+import urllib.request
+import json
+
+bot_token = '${BOT_TOKEN}'
+chat_id = '${CHAT_ID}'
+repo = '${REPO}'
+actor = '${ACTOR}'
+branch = '${BRANCH}'
+sha = '${SHA}'
+msg = '''${MSG}'''
+
+text = f'''🔔 GitHub Push Alert
+📦 Repo: {repo}
+👤 Actor: {actor}
+🌿 Branch: {branch}
+🔨 Commit: {sha[:7]}
+📝 Message: {msg}'''
+
+url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+data = urllib.parse.urlencode({'chat_id': chat_id, 'text': text}).encode('utf-8')
+req = urllib.request.Request(url, data=data)
+response = urllib.request.urlopen(req)
+print(response.read().decode())
+"
