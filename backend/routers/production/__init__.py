@@ -186,6 +186,10 @@ def get_lots(start_date: Optional[str] = None, end_date: Optional[str] = None,
              page: int = 1, size: int = 50):
     return lot_service.get_all(start_date, end_date, lot_no, part_no, page, size)
 
+@router.get("/production/lot/available/{part_no}", summary="가용 재고 LOT 조회")
+def get_available_lots(part_no: str):
+    return lot_service.get_available_lots(part_no)
+
 @router.post("/production/lot", summary="LOT 생성", status_code=201)
 def create_lot(body: LotCreate):
     return lot_service.create(body.model_dump())

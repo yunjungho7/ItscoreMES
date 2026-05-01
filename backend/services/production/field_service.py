@@ -112,12 +112,17 @@ class FieldService:
         cursor = conn.cursor()
         cursor.execute(q['query'], values)
         affected = cursor.rowcount
+        
+        # 작업종료 시 투입된 자재 내역 삭제
+        if status == 'DONE':
+            cursor.execute("DELETE FROM TBL_PROD_STOCK_HISTORY WHERE REF_NO = %s AND STOCKCHANGEGUBUN = '투입'", (workordno,))
+
         conn.commit()
         conn.close()
         return affected > 0
 
     def save_result(self, data):
-        """실적 등록 (LOT 생성 및 불량 등록)"""
+        """실적 등록 (LOT 생성, 불량 등록 및 투입 자재 내역 삭제)"""
         workordno = data.get('WORKORDNO')
         prod_qty = data.get('PROD_QTY', 0)
         fail_qty = data.get('FAIL_QTY', 0)
@@ -145,7 +150,7 @@ class FieldService:
         unit_row = cursor.fetchone()
         unit = unit_row[0] if unit_row else 'EA'
 
-        # 1. 실적 등록
+        # 1. 실적 등록 (신규 LOT 생성)
         res_params = {
             'LOTNO': lot_no, 'WORKORDNO': workordno, 'PARTNO': part_no,
             'LOTQTY': prod_qty, 'UNIT': unit, 'LINECD': line_cd,
@@ -159,6 +164,9 @@ class FieldService:
             fail_params = {'LOTNO': lot_no, 'FAILQTY': fail_qty}
             q_fail = self.mapper.get_query('insertFailQty', fail_params)
             cursor.execute(q_fail['query'], tuple(fail_params.get(n) for n in q_fail['params']))
+
+        # 3. 투입된 자재 내역 삭제 (신규 LOT 생성 시 기존 투입 자재 소비 처리로 간주하여 삭제)
+        cursor.execute("DELETE FROM TBL_PROD_STOCK_HISTORY WHERE REF_NO = %s AND STOCKCHANGEGUBUN = '투입'", (workordno,))
 
         conn.commit()
         conn.close()

@@ -75,4 +75,15 @@
     ORDER BY H.CHANGEDAY DESC, H.STOCKHISTORYNO DESC
   </select>
 
+  <!-- 가용 재고 LOT 조회 -->
+  <select id="selectAvailableLots">
+    SELECT S.LOTNO, S.PARTNO, G.PARTNM, G.STANDARD, S.LOTQTY, S.UNIT, S.LOCATIONCODE
+    FROM TBL_PROD_LOTSTATE S
+    JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
+    WHERE S.PARTNO = #{part_no}
+      AND S.LOTQTY &gt; 0
+      AND S.LOTSTATE != 'CANCELED'
+    ORDER BY S.LOTCREATIONDAY ASC, S.LOTNO ASC
+  </select>
+
 </mapper>

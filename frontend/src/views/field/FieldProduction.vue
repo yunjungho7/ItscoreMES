@@ -145,18 +145,6 @@
           </div>
         </div>
 
-        <!-- 자재 투입 입력 영역 (토글형) -->
-        <div v-if="isInputMode" class="material-input-box">
-          <div class="mi-row">
-            <label>자재 LOT</label>
-            <input type="text" v-model="matInput.MAT_LOTNO" class="mi-input" placeholder="스캔 또는 입력" @keyup.enter="saveInputMaterial" />
-            <label>투입수량</label>
-            <input type="number" v-model.number="matInput.INPUT_QTY" class="mi-input" style="width:80px" />
-            <button class="btn-mi-save" @click="saveInputMaterial">투입</button>
-            <button class="btn-mi-close" @click="isInputMode = false">✕</button>
-          </div>
-        </div>
-
         <table class="summary-table">
           <thead>
             <tr>
@@ -176,25 +164,100 @@
             </tr>
           </tbody>
         </table>
-        <div class="detail-grid-wrap">
-          <table class="detail-grid">
-            <thead>
-              <tr>
-                <th>LOT No.</th><th>품번</th><th>품명</th><th>규격</th>
-                <th>누입수량</th><th>단위</th><th>소요량</th><th>재고수량</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="resultRows.length === 0"><td colspan="8" class="empty">데이터 없음</td></tr>
-              <tr v-for="(r, i) in resultRows" :key="i">
-                <td>{{ r.LOTNO }}</td><td>{{ r.PARTNO }}</td><td>{{ r.PARTNM }}</td><td>{{ r.STANDARD }}</td>
-                <td class="right">{{ r.INPUT_QTY }}</td><td class="center">{{ r.UNIT }}</td>
-                <td class="right">{{ r.NEED_QTY }}</td><td class="right">{{ r.STOCK_QTY }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <!-- 메인 화면 생산실적 상세 그리드 삭제됨 -->
       </div>
+
+      <!-- 자재투입 모달 -->
+      <Teleport to="body">
+        <div v-if="isInputMode" class="mat-modal-overlay">
+          <div class="mat-modal-window">
+            <div class="mat-modal-header">
+              <span class="mat-modal-title">자재투입등록</span>
+              <div class="mat-modal-actions">
+                <button class="mat-btn-apply" @click="saveInputMaterial">
+                  <span class="icon-v">✔️</span> 적용
+                </button>
+                <button class="mat-btn-close" @click="isInputMode = false">
+                  <span class="icon-x">❌</span> 닫기
+                </button>
+              </div>
+            </div>
+            <div class="mat-modal-content">
+              <div class="mat-sub-header">
+                <span class="sub-icon">🔄</span>
+                <span class="sub-title">자재투입</span>
+              </div>
+
+              <div class="mat-input-form">
+                <div class="form-group">
+                  <label><span class="dot"></span> 투입LOT No.</label>
+                  <div class="input-with-btn">
+                    <input type="text" v-model="matInput.MAT_LOTNO" @keyup.enter="saveInputMaterial" placeholder="LOT 번호를 입력하세요" />
+                    <button class="btn-lookup">🔍</button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><span class="dot"></span> 적용수량</label>
+                  <input type="number" v-model.number="matInput.INPUT_QTY" class="qty-input" />
+                </div>
+              </div>
+
+              <div class="mat-sub-header">
+                <span class="sub-icon">🔄</span>
+                <span class="sub-title">자재투입내역 및 가용재고 (행 클릭 시 자동 선택)</span>
+              </div>
+
+              <div class="mat-grid-area">
+                <table class="mat-grid">
+                  <thead>
+                    <tr>
+                      <th style="width:30px"><input type="checkbox" /></th>
+                      <th style="width:80px">구분</th>
+                      <th>LOT No.</th>
+                      <th>품번</th>
+                      <th>품명</th>
+                      <th style="width:40px">단위</th>
+                      <th>투입수량</th>
+                      <th>소요량</th>
+                      <th>재고수량</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-if="resultRows.length === 0">
+                      <td colspan="9" style="text-align:center; padding:20px; color:#999;">데이터 없음</td>
+                    </tr>
+                    <tr v-for="(r, i) in resultRows" :key="i" 
+                        :class="{ 'row-input': r.RECORD_GUBUN === 'INPUT', 'row-stock': r.RECORD_GUBUN === 'STOCK', 'row-clickable': true }"
+                        @click="onRowClick(r)">
+                      <td class="center" @click.stop><input type="checkbox" /></td>
+                      <td class="center">
+                        <span v-if="r.RECORD_GUBUN === 'INPUT'" class="badge-input">투입완료</span>
+                        <span v-else class="badge-stock">가용재고</span>
+                      </td>
+                      <td :style="{ fontWeight: r.RECORD_GUBUN === 'INPUT' ? '700' : 'normal' }">{{ r.LOTNO || '-' }}</td>
+                      <td>{{ r.PARTNO }}</td>
+                      <td>{{ r.PARTNM }}</td>
+                      <td class="center">{{ r.UNIT }}</td>
+                      <td class="right" :style="{ color: r.RECORD_GUBUN === 'INPUT' ? '#2ecc71' : 'inherit', fontWeight: 'bold' }">{{ r.INPUT_QTY || 0 }}</td>
+                      <td class="right">{{ r.NEED_QTY }}</td>
+                      <td class="right">{{ r.STOCK_QTY || 0 }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="mat-modal-footer">
+                <div class="record-info">
+                  <button class="btn-nav">|◀</button>
+                  <button class="btn-nav">◀</button>
+                  <input type="text" :value="'Record ' + (resultRows.length > 0 ? '1' : '0') + ' of ' + resultRows.length" readonly class="nav-text" />
+                  <button class="btn-nav">▶</button>
+                  <button class="btn-nav">▶|</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Teleport>
 
       <!-- 탭 2: 생산이력 -->
       <div v-if="activeTab === 'history'" class="tab-content">
@@ -305,6 +368,14 @@ const defectRows = ref<any[]>([]);
 const isInputMode = ref(false);
 const matInput = ref({ MAT_LOTNO: '', INPUT_QTY: 0 });
 
+function onRowClick(row: any) {
+  // 가용재고 항목을 클릭한 경우 해당 LOT 정보와 수량을 폼에 자동 입력
+  if (row.RECORD_GUBUN === 'STOCK') {
+    matInput.value.MAT_LOTNO = row.LOTNO;
+    matInput.value.INPUT_QTY = row.STOCK_QTY; // 기본적으로 전체 가용 수량 제안
+  }
+}
+
 function toggleInputMode() {
   if (!selectedRow.value) { alert('작업지시를 선택하세요.'); return; }
   
@@ -316,6 +387,24 @@ function toggleInputMode() {
   isInputMode.value = !isInputMode.value;
   if (isInputMode.value) {
     matInput.value = { MAT_LOTNO: '', INPUT_QTY: 0 };
+    loadTabData(); // 모달 오픈 시 데이터 갱신 (BOM 및 투입 내역)
+  }
+}
+
+async function deleteInput(row: any) {
+  if (!confirm(`투입된 '${row.LOTNO}' 자재를 삭제하시겠습니까?`)) return;
+
+  try {
+    await api.delete('/api/production/field/input-material', {
+      params: {
+        workordno: selectedRow.value.WORKORDNO,
+        mat_lotno: row.LOTNO
+      }
+    });
+    alert('자재 투입이 삭제되었습니다.');
+    await loadTabData();
+  } catch (err: any) {
+    alert('삭제 실패: ' + (err.response?.data?.message || err.message));
   }
 }
 
@@ -331,11 +420,9 @@ async function saveInputMaterial() {
     });
     alert('자재가 투입되었습니다.');
     matInput.value = { MAT_LOTNO: '', INPUT_QTY: 0 };
-    // 투입 자재 목록이 탭에 있다면 갱신
-    if (activeTab.value === 'result') {
-      const rr = await api.get(`/api/production/field/result/${selectedRow.value.WORKORDNO}`);
-      resultRows.value = rr.data || [];
-    }
+    
+    // 데이터 즉시 갱신 (모달 그리드 반영)
+    await loadTabData();
   } catch (err: any) {
     alert('투입 실패: ' + (err.response?.data?.message || err.message));
   }
@@ -432,14 +519,6 @@ async function changeStatus(status: string) {
     return;
   }
 
-  if (status === 'DONE') {
-    const totalQty = Number(summary.value.TOT_PROD_QTY) || 0;
-    if (totalQty <= 0) {
-      alert('총 생산실적 수량이 0인 경우 작업 종료를 할 수 없습니다.');
-      return;
-    }
-  }
-
   try {
     await api.post('/api/production/field/status-change', {
       WORKORDNO: selectedRow.value.WORKORDNO,
@@ -459,6 +538,16 @@ async function saveIntermediateResult() {
   }
   if (!summary.value.PROD_QTY || summary.value.PROD_QTY <= 0) {
     alert('생산실적 수량을 입력하세요.');
+    return;
+  }
+
+  // 지시수량과 생산수량 비교 체크
+  const ordQty = Number(summary.value.ORD_QTY || 0);
+  const totProdQty = Number(summary.value.TOT_PROD_QTY || 0);
+  const currentProdQty = Number(summary.value.PROD_QTY || 0);
+
+  if (totProdQty + currentProdQty >= ordQty) {
+    alert('총 생산수량이 지시수량과 같거나 초과되었습니다. [작업완료] 처리를 이용해 주세요.');
     return;
   }
 
@@ -628,6 +717,72 @@ onMounted(() => { fetchMasterData(); fetchData(); });
 .detail-grid .center { text-align:center; }
 .detail-grid .right { text-align:right; }
 .detail-grid .empty { text-align:center; color:#a0aec0; padding:30px!important; }
+
+/* 자재투입 모달 스타일 */
+.mat-modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 2000;
+}
+.mat-modal-window {
+  width: 900px; max-width: 95vw; background: #fff; border: 1px solid #777; box-shadow: 5px 5px 20px rgba(0,0,0,0.3);
+  display: flex; flex-direction: column; animation: fadeIn 0.2s ease-out;
+}
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+
+.mat-modal-header {
+  background: #5d9b9d; padding: 5px 12px; display: flex; justify-content: space-between; align-items: center;
+  color: #000; font-weight: bold; border-bottom: 1px solid #4a7d7e;
+}
+.mat-modal-title { font-size: 0.95rem; }
+.mat-modal-actions { display: flex; gap: 5px; }
+.mat-modal-actions button {
+  padding: 2px 12px; border: 1px solid #777; border-radius: 2px; cursor: pointer;
+  display: flex; align-items: center; gap: 6px; font-weight: bold; font-size: 0.85rem; background: #fdfdfd; box-shadow: 1px 1px 1px rgba(0,0,0,0.1);
+}
+.mat-modal-actions button:hover { background: #eee; }
+.icon-v { color: #2ecc71; font-size: 0.9rem; }
+.icon-x { color: #e74c3c; font-size: 0.9rem; }
+
+.mat-modal-content { padding: 8px; background: #e0e6e9; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.mat-sub-header { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.sub-title { font-weight: bold; font-size: 0.9rem; color: #333; }
+.sub-icon { color: #5d9b9d; font-size: 1rem; }
+
+.mat-input-form {
+  background: #f8f9fa; border: 1px solid #b0c4de; padding: 12px 20px; display: flex; gap: 50px; flex-shrink: 0;
+}
+.form-group { display: flex; align-items: center; gap: 12px; }
+.form-group label { display: flex; align-items: center; gap: 6px; font-weight: bold; white-space: nowrap; font-size: 0.85rem; color: #444; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #90be6d; display: inline-block; border: 1px solid #7fb05e; }
+
+.input-with-btn { display: flex; align-items: stretch; }
+.input-with-btn input { width: 280px; padding: 4px 8px; border: 1px solid #aebac1; font-size: 0.9rem; }
+.btn-lookup { padding: 0 8px; background: #f0f0f0; border: 1px solid #aebac1; border-left: none; cursor: pointer; font-size: 0.8rem; }
+.qty-input { width: 100px; padding: 4px 8px; border: 1px solid #aebac1; text-align: right; font-weight: bold; font-size: 1.1rem; color: #2c3e50; }
+
+.mat-grid-area { background: #fff; border: 1px solid #b0c4de; flex: 1; overflow: auto; min-height: 250px; }
+.mat-grid { width: 100%; border-collapse: collapse; min-width: 800px; }
+.mat-grid thead { position: sticky; top: 0; z-index: 1; }
+.mat-grid th { background: #f0f4f7; border: 1px solid #cbd5e0; padding: 6px; font-size: 0.8rem; color: #333; font-weight: 600; text-align: left; }
+.mat-grid td { border: 1px solid #edf2f7; padding: 4px 8px; font-size: 0.8rem; color: #444; }
+.mat-grid tr:nth-child(even) { background: #fafbfc; }
+.mat-grid .center { text-align: center; }
+.mat-grid .right { text-align: right; }
+
+.row-clickable { cursor: pointer; transition: background 0.2s; }
+.row-clickable:hover { background: #eaf2f8 !important; }
+.row-input { background: #fff; }
+.row-stock { background: #fdfdfd; color: #666; }
+
+.badge-input { background: #2ecc71; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; }
+.badge-stock { background: #95a5a6; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; }
+
+.mat-modal-footer {
+  background: #f0f4f7; border-top: 1px solid #cbd5e0; padding: 4px 10px; flex-shrink: 0;
+}
+.record-info { display: flex; align-items: center; gap: 2px; }
+.btn-nav { padding: 2px 6px; background: #fff; border: 1px solid #cbd5e0; cursor: pointer; font-size: 0.75rem; color: #555; }
+.nav-text { width: 120px; text-align: center; font-size: 0.75rem; padding: 2px; border: 1px solid #cbd5e0; background: #f9fafb; outline: none; }
 
 /* 탭 툴바 */
 .tab-toolbar { display:flex; justify-content:space-between; align-items:center; padding:6px 12px; border-bottom:1px solid #edf0f3; flex-shrink:0; }

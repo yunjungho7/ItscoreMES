@@ -95,4 +95,18 @@ class LotService:
         
         return rows
 
+    def get_available_lots(self, part_no):
+        params = {'part_no': part_no}
+        q = self.mapper.get_query('selectAvailableLots', params)
+        values = tuple(params.get(name) for name in q['params'])
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(q['query'], values)
+        columns = [col[0] for col in cursor.description]
+        rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        conn.close()
+        
+        return rows
+
 lot_service = LotService()
