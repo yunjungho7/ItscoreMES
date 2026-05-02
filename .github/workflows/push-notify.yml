@@ -53,7 +53,6 @@ jobs:
             cd "$FRONTEND_PATH"
             
             # 기존 프로세스 종료
-            pkill -f "npm run dev" 2>/dev/null || true
             pkill -f "serve -s dist" 2>/dev/null || true
             sleep 2
             
@@ -62,15 +61,14 @@ jobs:
               echo "📦 프론트엔드 빌드 중..."
               npm run build 2>&1 | tail -20
               
-              # 빌드 결과 서빙 (포트 80)
+              # 빌드 결과 서빙 (포트 80, sudo 불필요 - setcap 적용됨)
               if [ -d "dist" ]; then
                 # 포트 80 사용 중인 프로세스 확인 및 종료
                 sudo lsof -ti:80 | xargs sudo kill -9 2>/dev/null || true
                 sleep 1
                 
-                # 포트 80으로 서빙 (sudo 필요, npx 전체 경로 사용)
-                NODE_PATH=$(which node | xargs dirname)
-                nohup sudo $NODE_PATH/npx serve -s dist -l 80 > /home/itscore/frontend.log 2>&1 &
+                # sudo 없이 서빙 (node에 cap_net_bind_service 권한 있음)
+                nohup serve -s dist -l 80 > /home/itscore/frontend.log 2>&1 &
                 sleep 2
                 
                 # 확인
