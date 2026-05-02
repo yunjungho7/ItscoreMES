@@ -68,8 +68,9 @@ jobs:
                 sudo lsof -ti:80 | xargs sudo kill -9 2>/dev/null || true
                 sleep 1
                 
-                # 포트 80으로 서빙 (sudo 필요)
-                nohup sudo npx serve -s dist -l 80 > /home/itscore/frontend.log 2>&1 &
+                # 포트 80으로 서빙 (sudo 필요, npx 전체 경로 사용)
+                NODE_PATH=$(which node | xargs dirname)
+                nohup sudo $NODE_PATH/npx serve -s dist -l 80 > /home/itscore/frontend.log 2>&1 &
                 sleep 2
                 
                 # 확인
