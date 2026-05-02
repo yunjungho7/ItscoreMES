@@ -12,7 +12,10 @@
           <option v-for="p in plants" :key="p.PLANTCD" :value="p.PLANTCD">{{ p.PLANTNM }}</option>
         </select>
         <label>품번/품명</label>
-        <input type="text" v-model="searchText" placeholder="품번 또는 품명" @keyup.enter="fetchData" />
+        <div class="input-search-wrap" style="display:inline-flex; align-items:stretch;">
+          <input type="text" v-model="searchText" placeholder="품번 또는 품명" @keyup.enter="fetchData" style="border-radius: 3px 0 0 3px;" />
+          <button class="btn-s" @click="openItemLookup" style="border-left:none; border:1px solid #bdc3c7; background:#f8fafc; cursor:pointer; padding:0 8px; border-radius:0 3px 3px 0;">🔍</button>
+        </div>
         <button class="btn-search" @click="fetchData">조회</button>
         <div class="act-right">
           <button class="btn-wo" @click="openWoModal" :disabled="!hasChecked">✅ 작업 지시서 생성</button>
@@ -78,203 +81,34 @@
       </table>
     </div>
 
-    <!-- ═══ 작업지시서 생성 모달 ═══ -->
-    <div v-if="showWoModal" class="modal-overlay" @click.self="showWoModal=false">
-      <div class="modal-container">
-        <!-- ═══ 헤더 ═══ -->
-        <div class="modal-header">
-          <div class="title">
-            작업 지시 등록<span class="sub-title">[frmWorkOrderRegPopUp]</span>
-          </div>
-          <div class="header-actions">
-            <button class="btn-action" @click="handleWoSave">
-              <i class="fas fa-save"></i> 저장
-            </button>
-            <button class="btn-action" @click="removeWoItems">
-              <i class="fas fa-cut"></i> 삭제
-            </button>
-            <button class="btn-action btn-close" @click="showWoModal=false">
-              <i class="fas fa-times-circle"></i> 닫기
-            </button>
-          </div>
-        </div>
+    <!-- ═══ 작업지시서 생성 모달 연동 ═══ -->
+    <WorkOrderRegModal 
+      :visible="showWoModal"
+      :form="woForm"
+      :items="woItems"
+      :plants="plants"
+      :processes="processes"
+      :lines="lines"
+      @close="showWoModal = false"
+      @save="handleWoSave"
+      @open-picker="openWoPicker"
+      @remove-items="removeWoItems"
+    />
 
-        <!-- ═══ 바디 ═══ -->
-        <div class="modal-body">
-          <!-- 1. 작업 지시 정보 (폼) -->
-          <fieldset class="info-fieldset">
-            <legend>작업 지시 정보</legend>
-            <div class="form-container">
-              <!-- Left Column -->
-              <div class="form-col">
-                <div class="form-row">
-                  <label class="bullet-label"><span class="bullet green"></span>작업 지시 번호</label>
-                  <div class="input-group">
-                    <input type="text" readonly style="flex:1" placeholder="자동채번" />
-                    <button class="btn-icon">>></button>
-                  </div>
-                </div>
-                <div class="form-row">
-                  <label class="bullet-label"><span class="bullet orange"></span>품번/품명</label>
-                  <div class="input-group multi-input">
-                    <input type="text" :value="woItems[0]?.PARTNO || ''" style="flex:1" readonly />
-                    <input type="text" :value="woItems[0]?.PARTNM || ''" style="flex:1" readonly />
-                    <button class="btn-icon" @click="openPicker('header')"><i class="fas fa-binoculars" style="color: #64748b;"></i></button>
-                  </div>
-                </div>
-                <div class="form-row">
-                  <label class="bullet-label"><span class="bullet orange"></span>작업지시일</label>
-                  <div class="input-group multi-input">
-                    <input type="date" v-model="woForm.ORDDATE" style="width: 140px;" />
-                    <label class="chk-label"><input type="checkbox" v-model="woForm.SAT" /> 토요일</label>
-                    <label class="chk-label"><input type="checkbox" v-model="woForm.SUN" /> 일요일</label>
-                  </div>
-                </div>
-                <div class="form-row">
-                  <label class="bullet-label"><span class="bullet orange"></span>근무조</label>
-                  <select v-model="woForm.SHIFT">
-                    <option value="주간">주간</option>
-                    <option value="야간">야간</option>
-                  </select>
-                </div>
-                <div class="form-row">
-                  <label class="bullet-label"><span class="bullet orange"></span>지시 수량</label>
-                  <input type="number" :value="woItems[0]?.ORDQTY || 0" readonly />
-                </div>
-              </div>
-
-              <!-- Right Column -->
-              <div class="form-col">
-                <div class="form-row">
-                  <label class="bullet-label"><span class="bullet orange"></span>사업장</label>
-                  <select v-model="woForm.PLANTCD">
-                    <option v-for="p in plants" :key="p.PLANTCD" :value="p.PLANTCD">{{ p.PLANTNM }}</option>
-                  </select>
-                </div>
-                <div class="form-row">
-                  <label class="bullet-label"><span class="bullet orange"></span>작지구분</label>
-                  <select v-model="woForm.ORDTYPE">
-                    <option value="일반">일반</option>
-                    <option value="긴급">긴급</option>
-                    <option value="재작업">재작업</option>
-                  </select>
-                </div>
-                <div class="form-row">
-                  <label class="bullet-label"><span class="bullet green"></span>단위</label>
-                  <input type="text" :value="woItems[0]?.UNIT || ''" readonly />
-                </div>
-                <div class="form-row">
-                  <label class="bullet-label"><span class="bullet orange"></span>우선순위</label>
-                  <input type="number" v-model.number="woForm.ORDpriority" />
-                </div>
-              </div>
-            </div>
-          </fieldset>
-
-          <!-- 2. 그리드 툴바 -->
-          <div class="toolbar">
-            <button class="btn-grid-action" @click="openPicker('grid')">
-              <i class="fas fa-download"></i> 추가
-            </button>
-            <button class="btn-grid-action" @click="removeWoItems">
-              <i class="fas fa-cut"></i> 삭제
-            </button>
-          </div>
-
-          <!-- 3. 품목 그리드 -->
-          <div class="grid-container">
-            <table class="data-grid">
-              <thead>
-                <tr>
-                  <th style="width: 40px">선택</th>
-                  <th style="width: 100px">작업일자</th>
-                  <th style="width: 120px">품번</th>
-                  <th style="width: 180px">품목명</th>
-                  <th style="width: 80px">규격</th>
-                  <th style="width: 60px">단위</th>
-                  <th style="width: 80px">로케이션</th>
-                  <th style="width: 100px">공정</th>
-                  <th style="width: 100px">라인</th>
-                  <th style="width: 70px">근무조</th>
-                  <th style="width: 80px">지시수량</th>
-                  <th style="width: 60px">상태</th>
-                  <th style="width: 70px">재고수량</th>
-                  <th style="width: 70px">소요량</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(item, i) in woItems" :key="i" :class="{'selected-row': item._sel, 'parent-row': item._level === 0}">
-                  <td class="text-center"><input type="checkbox" v-model="item._sel" /></td>
-                  <td class="text-center"><input type="date" v-model="item.ORDDATE" class="grid-edit-input" /></td>
-                  <td class="text-center">{{ item.PARTNO }}</td>
-                  <td>{{ item.PARTNM }}</td>
-                  <td>{{ item.STANDARD }}</td>
-                  <td class="text-center">{{ item.UNIT }}</td>
-                  <td class="text-center">
-                    <select v-model="item.PROCESSCD" class="grid-edit-select">
-                      <option value="">선택</option>
-                      <option v-for="pr in processes" :key="pr.PROCESSCD" :value="pr.PROCESSCD">{{ pr.PROCESSNM }}</option>
-                    </select>
-                  </td>
-                  <td class="text-center">
-                    <select v-model="item.LINECD" class="grid-edit-select">
-                      <option value="">선택</option>
-                      <option v-for="ln in lines" :key="ln.LINECD" :value="ln.LINECD">{{ ln.LINENM }}</option>
-                    </select>
-                  </td>
-                  <td class="text-center">
-                    <select v-model="item.SHIFT" class="grid-edit-select">
-                      <option value="주간">주간</option>
-                      <option value="야간">야간</option>
-                    </select>
-                  </td>
-                  <td class="text-right">
-                    <input type="number" v-model.number="item.ORDQTY" class="grid-edit-input text-right" />
-                  </td>
-                  <td class="text-center"><span class="status-new">신규</span></td>
-                  <td class="text-right">{{ item.STOCKQTY || 0 }}</td>
-                  <td class="text-right">{{ item.ORDQTY || 0 }}</td>
-                </tr>
-                <tr v-if="woItems.length === 0">
-                  <td colspan="14" class="empty-msg">선택된 품목이 없습니다.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══ 품목 선택 팝업 ═══ -->
-    <div v-if="showItemPicker" class="modal-overlay" @click.self="showItemPicker=false">
-      <div class="picker-modal">
-        <div class="picker-header">
-          <h3>품목 선택</h3>
-          <button class="btn-close-sm" @click="showItemPicker=false">✕</button>
-        </div>
-        <div class="picker-search">
-          <input type="text" v-model="itemSearch" placeholder="품번/품명 검색" @keyup.enter="fetchItems" />
-          <button class="btn-search" @click="fetchItems">조회</button>
-        </div>
-        <div class="picker-list">
-          <table class="picker-tbl">
-            <thead><tr><th>품번</th><th>품명</th><th>규격</th><th>단위</th></tr></thead>
-            <tbody>
-              <tr v-for="g in itemsList" :key="g.PARTNO" @click="selectItem(g)" class="clickable">
-                <td>{{ g.PARTNO }}</td><td>{{ g.PARTNM }}</td><td>{{ g.STANDARD }}</td><td>{{ g.UNIT }}</td>
-              </tr>
-              <tr v-if="itemsList.length===0"><td colspan="4" class="empty">결과 없음</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <ItemPicker 
+      :visible="isItemPickerOpen" 
+      :initial-search="searchText || itemSearch"
+      @close="isItemPickerOpen = false"
+      @select="onItemPicked"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import api from '../../../api';
+import ItemPicker from '../../pickers/ItemPicker.vue';
+import WorkOrderRegModal from '../../modals/WorkOrderRegModal.vue';
 
 const now = new Date();
 const f = (v: Date) => v.toISOString().slice(0, 10);
@@ -283,6 +117,41 @@ const plantCd = ref(''), searchText = ref(''), plants = ref<any[]>([]);
 const planData = ref<any>(null);
 const allChecked = ref(false);
 const processes = ref<any[]>([]), lines = ref<any[]>([]);
+
+const isItemPickerOpen = ref(false);
+const itemSearch = ref('');
+const pickerTarget = ref<'header'|'grid'>('grid');
+
+function openItemLookup() {
+  pickerTarget.value = 'grid'; 
+  isItemPickerOpen.value = true;
+}
+
+function openWoPicker(target: 'header'|'grid') {
+  pickerTarget.value = target;
+  isItemPickerOpen.value = true;
+}
+
+function onItemPicked(g: any) {
+  if (pickerTarget.value === 'header') {
+    alert('헤더 품목 변경은 수주 데이터를 기준으로 하므로, 그리드에 품목을 추가해 주세요.');
+  } else {
+    if (!showWoModal.value) {
+      searchText.value = g.PARTNO;
+      fetchData();
+    } else {
+      woItems.value.push({
+        PARTNO: g.PARTNO, PARTNM: g.PARTNM,
+        STANDARD: g.STANDARD || '', UNIT: g.UNIT || '',
+        LOCATIONCD: g.LOCATIONCD || '',
+        ORDDATE: woForm.value.ORDDATE, PROCESSCD: g.PROCESSCD || '', 
+        LINECD: g.LINECD || '',
+        SHIFT: woForm.value.SHIFT, ORDQTY: 0, STOCKQTY: 0,
+        _sel: true, _level: 1
+      });
+    }
+  }
+}
 
 const dates = computed(() => {
   if (!planData.value || !planData.value.dates) return [];
@@ -361,28 +230,6 @@ async function fetchData() {
   }
 }
 
-// 셀 수정 시 즉시 저장
-async function onCellChange(row: any, dt: string, event: Event) {
-  const val = parseInt((event.target as HTMLInputElement).value) || 0;
-  row[dt] = val;
-  let total = 0;
-  for (const d of planData.value.dates) total += (row[d] || 0);
-  row.TOTAL = total;
-
-  try {
-    await api.post('/api/production/plan', {
-      PRODUCEDT: dt, 
-      PLANTCD: row.PLANTCD || plantCd.value || plants.value[0]?.PLANTCD || '',
-      PARTNO: row.PARTNO, 
-      ORDERNUM: row.ORDERNUM || '', 
-      ORDERSEQ: row.ORDERSEQ || 1, 
-      PRODUCEQTY: val
-    });
-  } catch (e) {
-    console.error('Cell change save error:', e);
-  }
-}
-
 // ═══ 작업지시서 생성 모달 ═══
 const showWoModal = ref(false);
 const woForm = ref({
@@ -391,43 +238,7 @@ const woForm = ref({
 });
 const woItems = ref<any[]>([]);
 
-// ── 품목 선택 ──
-const showItemPicker = ref(false), itemSearch = ref(''), itemsList = ref<any[]>([]);
-const pickerTarget = ref<'header'|'grid'>('grid');
-
-function openPicker(target: 'header'|'grid') {
-  pickerTarget.value = target;
-  itemSearch.value = '';
-  itemsList.value = [];
-  showItemPicker.value = true;
-}
-
-async function fetchItems() {
-  try {
-    const r = await api.get('/api/master/goods', { params: { search: itemSearch.value, size: 50 } });
-    itemsList.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
-  } catch (e) { console.error('Fetch items error:', e); }
-}
-
-async function selectItem(g: any) {
-  if (pickerTarget.value === 'header') {
-    alert('헤더 품목 변경은 수주 데이터를 기준으로 하므로, 그리드에 품목을 추가해 주세요.');
-  } else {
-    woItems.value.push({
-      PARTNO: g.PARTNO, PARTNM: g.PARTNM,
-      STANDARD: g.STANDARD || '', UNIT: g.UNIT || '',
-      LOCATIONCD: g.LOCATIONCD || '',
-      ORDDATE: woForm.value.ORDDATE, PROCESSCD: g.PROCESSCD || '', 
-      LINECD: g.LINECD || '',
-      SHIFT: woForm.value.SHIFT, ORDQTY: 0, STOCKQTY: 0,
-      _sel: true, _level: 1
-    });
-  }
-  showItemPicker.value = false;
-}
-
 async function openWoModal() {
-  console.log('openWoModal called');
   if (!planData.value) return;
   const checked = planData.value.data.filter((r: any) => r._checked);
   if (checked.length === 0) { alert('생산계획에서 품목을 선택해 주세요.'); return; }
@@ -510,7 +321,6 @@ function removeWoItems() {
 }
 
 async function handleWoSave() {
-  console.log('handleWoSave called');
   const selected = woItems.value.filter(r => r._sel);
   if (selected.length === 0) { alert('저장할 품목을 선택하세요.'); return; }
 
@@ -550,16 +360,13 @@ async function handleWoSave() {
         }))
       };
 
-      console.log('Sending Batch Payload (Plan):', payload);
-      const res = await api.post('/api/production/workorder/batch', payload);
-      console.log('Batch response:', res.data);
+      await api.post('/api/production/workorder/batch', payload);
     }
 
     alert('작업지시가 등록되었습니다.');
     showWoModal.value = false;
     fetchData();
   } catch (e: any) {
-    console.error('Work order save error:', e);
     alert('등록 중 오류 발생: ' + (e.response?.data?.detail || e.message));
   }
 }
@@ -603,43 +410,6 @@ thead .freeze{background:linear-gradient(180deg,#d6eaf8,#aed6f1)!important;z-ind
 .row-selected .freeze{background:#e8f4fd!important}
 .selected-cell { background-color: #bbdefb !important; outline: 2px solid #2196f3; z-index: 4; }
 
-/* ═══ 작업지시 모달 ═══ */
+/* ═══ 작업지시 모달 (기존 스타일 제거됨) ═══ */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-.modal-container { width: 1050px; background: #f4f6f8; border: 1px solid #94a3b8; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; }
-.modal-header { background: #629b9b; color: white; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4d7c7c; }
-.title { font-size: 1.15rem; font-weight: bold; }
-.sub-title { font-size: 0.9rem; font-weight: normal; margin-left: 6px; opacity: 0.9; }
-.header-actions { display: flex; gap: 4px; }
-.btn-action { background: #f8fafc; border: 1px solid #cbd5e1; color: #334155; padding: 4px 10px; font-size: 0.9rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; }
-.btn-action:hover { background: #e2e8f0; }
-.btn-close { color: #dc2626; }
-.btn-close:hover { background: #fee2e2; }
-.modal-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-.info-fieldset { border: 1px solid #cbd5e1; padding: 12px; margin: 0; background: #fff; }
-.info-fieldset legend { padding: 0 4px; color: #334155; font-weight: bold; }
-.form-container { display: flex; gap: 40px; }
-.form-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.form-row { display: flex; align-items: center; height: 26px; }
-.bullet-label { width: 100px; display: flex; align-items: center; font-size: 0.85rem; color: #334155; font-weight: bold; }
-.bullet { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; border: 3px solid; border-right-color: transparent; transform: rotate(-45deg); }
-.bullet.green { border-color: #84cc16; }
-.bullet.orange { border-color: #f97316; }
-.form-row input, .form-row select { height: 24px; border: 1px solid #cbd5e1; padding: 0 4px; font-size: 0.85rem; }
-.form-row input:read-only { background: #f1f5f9; }
-.input-group { display: flex; flex: 1; gap: 4px; }
-.btn-icon { height: 24px; padding: 0 6px; background: #e2e8f0; border: 1px solid #cbd5e1; cursor: pointer; font-size: 0.8rem; }
-.chk-label { display: flex; align-items: center; font-size: 0.85rem; gap: 2px; margin-left: 6px; }
-.toolbar { display: flex; justify-content: flex-end; gap: 4px; }
-.btn-grid-action { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.85rem; cursor: pointer; color: #475569; display: flex; align-items: center; gap: 4px; }
-.grid-container { background: #fff; border: 1px solid #cbd5e1; height: 250px; overflow-y: auto; }
-.data-grid { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.data-grid th, .data-grid td { border: 1px solid #e2e8f0; padding: 4px; }
-.data-grid th { background: #f8fafc; color: #334155; font-weight: normal; position: sticky; top: 0; z-index: 10; }
-.selected-row { background: #eff6ff; }
-.parent-row { font-weight: bold; background: #f8fafc; }
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.grid-edit-input, .grid-edit-select { width: 100%; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 4px; font-size: 0.8rem; }
-.status-new { font-size: 0.75rem; color: #dc2626; }
-.empty-msg { text-align: center; color: #94a3b8; padding: 30px !important; }
 </style>

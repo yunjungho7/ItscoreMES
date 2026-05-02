@@ -109,7 +109,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import api from '../../../api';
-import StandardRegModal from './StandardRegModal.vue';
+import StandardRegModal from '../../modals/StandardRegModal.vue';
 
 const searchPart = ref('');
 const searchGubun = ref('');

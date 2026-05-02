@@ -1,35 +1,44 @@
 <template>
   <div class="page-view">
-    <!-- ═══ 검색 영역 ═══ -->
+    <!-- ═══ 검색 영역 (SalesOrder 스타일) ═══ -->
     <section class="search-section">
-      <div class="section-title">작업 지시</div>
+      <div class="section-title">작업 지시 현황</div>
       <div class="search-row">
-        <label>작업일시</label>
+        <label>작업기간</label>
         <input type="date" v-model="startDate" />
         <span>~</span>
         <input type="date" v-model="endDate" />
+        
         <label>사업장</label>
         <select v-model="plantCd">
           <option value="">전체</option>
           <option v-for="p in plants" :key="p.PLANTCD" :value="p.PLANTCD">{{ p.PLANTNM }}</option>
         </select>
+        
         <label>품번/품명</label>
-        <input type="text" v-model="searchText" placeholder="품번 또는 품명" @keyup.enter="fetchData" />
+        <div class="input-with-btn">
+          <input type="text" v-model="searchText" placeholder="검색어 입력" @keyup.enter="fetchData" />
+          <button class="btn-search-sm" @click="isMainItemPickerOpen = true">🔍</button>
+        </div>
+        
         <label>근무조</label>
         <select v-model="shift">
-          <option value="">(선택하세요)</option>
+          <option value="">전체</option>
           <option value="주간">주간</option>
           <option value="야간">야간</option>
         </select>
-        <label>작지상태</label>
+        
+        <label>상태</label>
         <select v-model="ordState">
-          <option value="">(선택하세요)</option>
+          <option value="">전체</option>
           <option value="NEW">신규</option>
           <option value="STARTED">작업중</option>
           <option value="DONE">완료</option>
           <option value="HOLD">보류</option>
         </select>
+        
         <button class="btn-search" @click="fetchData">조회</button>
+        
         <div class="act-right">
           <button class="btn-add" @click="openRegister">＋ 작업지시 등록</button>
         </div>
@@ -38,183 +47,46 @@
 
     <!-- ═══ 마스터 그리드 ═══ -->
     <div class="split-grids">
-      <DataGrid :columns="mCols" :rows="mRows" :loading="ld" :selectedIndex="si"
-                :page="pg" :totalPages="tp" :total="tot"
-                @row-click="onMaster" @page-change="onPg" />
+      <div class="grid-wrap">
+        <div class="dh">작업지시 목록 <span v-if="tot"> - Total {{ tot }}건</span></div>
+        <DataGrid :columns="mCols" :rows="mRows" :loading="ld" :selectedIndex="si"
+                  :page="pg" :totalPages="tp" :total="tot"
+                  @row-click="onMaster" @page-change="onPg" />
+      </div>
+      
       <div class="detail-wrap">
-        <div class="dh">하위 작업지시 <span v-if="sel">- {{ sel.WORKORDNO }}</span></div>
+        <div class="dh">하위 작업지시 상세 <span v-if="sel"> [{{ sel.WORKORDNO }}]</span></div>
         <DataGrid :columns="dCols" :rows="dRows" :loading="dl" />
       </div>
     </div>
 
-    <!-- ═══ 작업지시 등록 모달 ═══ -->
-    <div v-if="showReg" class="modal-overlay" @click.self="showReg=false">
-      <div class="reg-modal">
-        <div class="reg-header">
-          <h2>작업 지시 등록</h2>
-          <div class="reg-actions">
-            <button class="btn-save" @click="handleSave">💾 저장</button>
-            <button class="btn-del2" @click="handleRegDelete">🗑 삭제</button>
-            <button class="btn-close" @click="showReg=false">❌ 닫기</button>
-          </div>
-        </div>
-        <div class="reg-body">
-          <fieldset class="reg-fieldset">
-            <legend>작업 지시 정보</legend>
-            <div class="reg-form-grid">
-              <div class="form-field full-width">
-                <label>작업 지시 번호</label>
-                <input type="text" v-model="regForm.WORKORDNO" readonly placeholder="자동채번" />
-              </div>
-              <div class="form-field">
-                <label>품번/품명</label>
-                <div class="input-with-btn">
-                  <input type="text" v-model="regForm.PARTNO" placeholder="품번" @blur="fetchPartInfo" />
-                  <span class="part-name">{{ regForm.PARTNM }}</span>
-                  <button class="btn-search-sm" @click="showItemPicker=true">🔍</button>
-                </div>
-              </div>
-              <div class="form-field">
-                <label>사업장</label>
-                <select v-model="regForm.PLANTCD">
-                  <option v-for="p in plants" :key="p.PLANTCD" :value="p.PLANTCD">{{ p.PLANTNM }}</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>작업지시일</label>
-                <input type="date" v-model="regForm.ORDDATE" />
-              </div>
-              <div class="form-field">
-                <label>작지구분</label>
-                <select v-model="regForm.ORDTYPE">
-                  <option value="일반">일반</option>
-                  <option value="긴급">긴급</option>
-                  <option value="재작업">재작업</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>근무조</label>
-                <select v-model="regForm.SHIFT">
-                  <option value="주간">주간</option>
-                  <option value="야간">야간</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>단위</label>
-                <input type="text" v-model="regForm.UNIT" readonly />
-              </div>
-              <div class="form-field">
-                <label>지시 수량</label>
-                <input type="number" v-model.number="regForm.ORDQTY" />
-              </div>
-              <div class="form-field">
-                <label>우선순위</label>
-                <input type="number" v-model.number="regForm.ORDpriority" />
-              </div>
-              <div class="form-field">
-                <label>공정</label>
-                <select v-model="regForm.PROCESSCD">
-                  <option value="">선택</option>
-                  <option v-for="pr in processes" :key="pr.PROCESSCD" :value="pr.PROCESSCD">{{ pr.PROCESSNM }}</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>라인</label>
-                <select v-model="regForm.LINECD">
-                  <option value="">선택</option>
-                  <option v-for="ln in lines" :key="ln.LINECD" :value="ln.LINECD">{{ ln.LINENM }}</option>
-                </select>
-              </div>
-              <div class="form-field">
-                <label>비고</label>
-                <input type="text" v-model="regForm.REMARK" />
-              </div>
-            </div>
-          </fieldset>
-          <!-- 등록 하단 그리드 (등록된 품목) -->
-          <div class="reg-grid-header"><span>등록 품목</span></div>
-          <div class="reg-grid-wrap">
-            <table class="reg-grid">
-              <thead>
-                <tr>
-                  <th style="width:30px">선택</th>
-                  <th style="width:110px">작업일자</th>
-                  <th style="width:110px">품번</th>
-                  <th style="width:130px">품명</th>
-                  <th style="width:80px">규격</th>
-                  <th style="width:100px">공정</th>
-                  <th style="width:100px">라인</th>
-                  <th style="width:70px">근무조</th>
-                  <th style="width:80px">지시수량</th>
-                  <th style="width:60px">상태</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="regItems.length===0">
-                  <td colspan="10" class="empty">등록 후 추가 버튼으로 품목을 추가하세요.</td>
-                </tr>
-                <tr v-for="(item, i) in regItems" :key="i" :class="{'row-selected': item._sel, 'top-row': item._isTop}">
-                  <td class="chk"><input type="checkbox" v-model="item._sel" /></td>
-                  <td><input type="date" v-model="item.ORDDATE" class="grid-edit-input" /></td>
-                  <td>{{ item.PARTNO }}</td>
-                  <td>{{ item.PARTNM }}</td>
-                  <td>{{ item.STANDARD }}</td>
-                  <td>
-                    <select v-model="item.PROCESSCD" class="grid-edit-select">
-                      <option value="">선택</option>
-                      <option v-for="pr in processes" :key="pr.PROCESSCD" :value="pr.PROCESSCD">{{ pr.PROCESSNM }}</option>
-                    </select>
-                  </td>
-                  <td>
-                    <select v-model="item.LINECD" class="grid-edit-select">
-                      <option value="">선택</option>
-                      <option v-for="ln in lines" :key="ln.LINECD" :value="ln.LINECD">{{ ln.LINENM }}</option>
-                    </select>
-                  </td>
-                  <td>
-                    <select v-model="item.SHIFT" class="grid-edit-select">
-                      <option value="주간">주간</option>
-                      <option value="야간">야간</option>
-                    </select>
-                  </td>
-                  <td class="num"><input type="number" v-model.number="item.ORDQTY" class="grid-edit-input text-right" /></td>
-                  <td>{{ item.ORDSTATE }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="reg-btns">
-            <button class="btn-add-item" @click="addItem">📥 추가</button>
-            <button class="btn-del-item" @click="removeItems">🗑 삭제</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- ═══ 작업지시 등록 모달 연동 ═══ -->
+    <WorkOrderModal 
+      :visible="showReg"
+      :form="regForm"
+      :items="regItems"
+      :plants="plants"
+      :processes="processes"
+      :lines="lines"
+      @close="showReg = false"
+      @save="handleSave"
+      @clear="regItems = []"
+      @open-item-picker="showItemPicker = true"
+      @add-item="addItem"
+      @remove-items="removeItems"
+    />
 
-    <!-- ═══ 품목 선택 팝업 ═══ -->
-    <div v-if="showItemPicker" class="modal-overlay" @click.self="showItemPicker=false">
-      <div class="picker-modal">
-        <div class="picker-header">
-          <h3>품목 선택</h3>
-          <button class="btn-close-sm" @click="showItemPicker=false">✕</button>
-        </div>
-        <div class="picker-search">
-          <input type="text" v-model="itemSearch" placeholder="품번/품명 검색" @keyup.enter="fetchItems" />
-          <button class="btn-search" @click="fetchItems">조회</button>
-        </div>
-        <div class="picker-list">
-          <table class="picker-tbl">
-            <thead><tr><th>품번</th><th>품명</th><th>규격</th><th>단위</th></tr></thead>
-            <tbody>
-              <tr v-for="g in itemsList" :key="g.PARTNO" @click="selectItem(g)" class="clickable">
-                <td>{{ g.PARTNO }}</td><td>{{ g.PARTNM }}</td><td>{{ g.STANDARD }}</td><td>{{ g.UNIT }}</td>
-              </tr>
-              <tr v-if="itemsList.length===0"><td colspan="4" class="empty">결과 없음</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <!-- 공용 피커 -->
+    <ItemPicker 
+      :visible="showItemPicker" 
+      @close="showItemPicker = false"
+      @select="selectItem"
+    />
+    <ItemPicker 
+      :visible="isMainItemPickerOpen" 
+      @close="isMainItemPickerOpen = false" 
+      @select="(g) => searchText = g.PARTNO" 
+    />
   </div>
 </template>
 
@@ -222,6 +94,8 @@
 import { ref, onMounted, watch } from 'vue';
 import api from '../../../api';
 import DataGrid from '../../../components/common/DataGrid.vue';
+import ItemPicker from '../../pickers/ItemPicker.vue';
+import WorkOrderModal from '../../modals/WorkOrderModal.vue';
 
 const d = new Date(), m7 = new Date(d); m7.setDate(m7.getDate() - 2);
 const f = (v: Date) => v.toISOString().slice(0, 10);
@@ -229,6 +103,8 @@ const f = (v: Date) => v.toISOString().slice(0, 10);
 const startDate = ref(f(m7)), endDate = ref(f(d)), plantCd = ref('');
 const searchText = ref(''), shift = ref(''), ordState = ref('');
 const plants = ref<any[]>([]), processes = ref<any[]>([]), lines = ref<any[]>([]);
+
+const isMainItemPickerOpen = ref(false);
 
 const mCols = [
   { key: 'WORKORDNO', label: '작업지시번호', width: '130px' },
@@ -314,27 +190,11 @@ function openRegister() {
   showReg.value = true;
 }
 
-async function fetchPartInfo() {
-  if (!regForm.value.PARTNO) return;
-  try {
-    const r = await api.get('/api/master/goods', { params: { search: regForm.value.PARTNO, size: 1 } });
-    const rows = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
-    if (rows.length > 0) {
-      const g = rows[0];
-      regForm.value.PARTNM = g.PARTNM || '';
-      regForm.value.UNIT = g.UNIT || '';
-      await loadBomItems(g.PARTNO);
-    }
-  } catch (e) { console.error('Part info fetch error:', e); }
-}
-
 async function loadBomItems(partNo: string) {
   if (!partNo) return;
   try {
     const r = await api.get(`/api/master/bom/detail/${partNo}`);
     const rows = Array.isArray(r.data?.data) ? r.data.data : (r.data?.data?.data || []);
-    
-    // 원자재/부자재 제외 필터링
     const filtered = rows.filter((b: any) => {
       const type = b.PARTTYPE || '';
       const nm = b.PARTNM || '';
@@ -343,7 +203,6 @@ async function loadBomItems(partNo: string) {
       return !isRaw && !isSub;
     });
 
-    // 1. 최상위 품목 자신을 첫 번째 하위 작지로 추가
     const topItem = {
       ORDDATE: regForm.value.ORDDATE,
       PARTNO: regForm.value.PARTNO,
@@ -360,7 +219,6 @@ async function loadBomItems(partNo: string) {
       _reqQty: 1
     };
 
-    // 2. BOM 하위 품목들 추가
     const childItems = filtered.map((b: any) => ({
       ORDDATE: regForm.value.ORDDATE,
       PARTNO: b.CHILD_PARTNO,
@@ -412,7 +270,6 @@ watch(() => regForm.value.LINECD, (v) => {
 });
 
 async function handleSave() {
-  console.log('handleSave called');
   const selected = regItems.value.filter(r => r._sel);
   if (selected.length === 0) { alert('저장할 품목을 선택하세요.'); return; }
   
@@ -443,30 +300,18 @@ async function handleSave() {
     }))
   };
 
-  console.log('Sending Batch Payload:', payload);
-
   try {
     const r = await api.post('/api/production/workorder/batch', payload);
-    console.log('Save response:', r.data);
     alert(`작업지시가 등록되었습니다. (상위: ${r.data.parent_workordno}, 하위: ${r.data.child_count}건)`);
     showReg.value = false;
     fetchData();
   } catch (err: any) {
-    console.error('Save error:', err);
     alert('등록 중 오류가 발생했습니다: ' + (err.response?.data?.detail || err.message));
   }
 }
 
-function handleRegDelete() { regItems.value = []; }
-
 // ── 품목 선택 ──
-const showItemPicker = ref(false), itemSearch = ref(''), itemsList = ref<any[]>([]);
-async function fetchItems() {
-  try {
-    const r = await api.get('/api/master/goods', { params: { search: itemSearch.value, size: 50 } });
-    itemsList.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
-  } catch (e) { console.error('Fetch items error:', e); }
-}
+const showItemPicker = ref(false);
 function selectItem(g: any) {
   regForm.value.PARTNO = g.PARTNO;
   regForm.value.PARTNM = g.PARTNM || '';
@@ -479,75 +324,21 @@ onMounted(() => { fetchPlants(); fetchProcesses(); fetchLines(); fetchData(); })
 </script>
 
 <style scoped>
+/* 페이지 레이아웃 */
 .page-view{display:flex;flex-direction:column;gap:10px;height:100%}
 .search-section{background:#fff;border-radius:10px;padding:14px 18px;box-shadow:0 1px 6px rgba(0,0,0,.04)}
-.section-title{font-size:.82rem;font-weight:700;color:#2980b9;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #d6eaf8}
+.section-title{font-size:.82rem;font-weight:700;color:#667eea;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #f0f4ff}
 .search-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .search-row label{font-size:.85rem;font-weight:600;color:#636e72;white-space:nowrap}
 .search-row input,.search-row select{padding:7px 10px;border:1px solid #dfe6e9;border-radius:6px;font-size:.85rem}
-.search-row input[type=date]{width:140px}.search-row input[type=text]{width:130px}.search-row select{min-width:110px}
-.btn-search{background:#2980b9;color:#fff;border:none;padding:7px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.85rem}
-.act-right{display:flex;gap:6px;margin-left:auto}
-.btn-add{background:linear-gradient(135deg,#2980b9,#1a5276);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.84rem}
-.split-grids{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
-.split-grids>*{flex:1;min-height:0}
-.detail-wrap{display:flex;flex-direction:column;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.05);overflow:hidden}
-.dh{padding:10px 16px;background:#eaf2f8;font-size:.85rem;font-weight:600;color:#1a5276;border-bottom:1px solid #d6eaf8}.dh span{color:#2980b9}
-
-/* 등록 모달 */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center}
-.reg-modal{background:#fff;border-radius:12px;width:1050px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}
-.reg-header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:linear-gradient(135deg,#1a5276,#2980b9);color:#fff}
-.reg-header h2{margin:0;font-size:1.15rem;font-weight:700}
-.reg-actions{display:flex;gap:8px}
-.btn-save{background:#27ae60;color:#fff;border:none;padding:8px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.85rem}
-.btn-del2{background:#e74c3c;color:#fff;border:none;padding:8px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.85rem}
-.btn-close{background:#c0392b;color:#fff;border:none;padding:8px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.85rem}
-.reg-body{flex:1;overflow:auto;display:flex;flex-direction:column}
-.reg-fieldset{margin:16px 24px 0;padding:16px 20px;border:1px solid #d6eaf8;border-radius:8px}
-.reg-fieldset legend{color:#1a5276;font-weight:700;font-size:.9rem;padding:0 8px}
-.reg-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px}
-.form-field{display:flex;flex-direction:column;gap:5px}
-.form-field.full-width{grid-column:1/3}
-.form-field label{font-size:.82rem;font-weight:600;color:#64748b}
-.form-field input,.form-field select{padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:.88rem}
-.form-field input:focus,.form-field select:focus{border-color:#2980b9;outline:none;box-shadow:0 0 0 3px rgba(41,128,185,.1)}
-.form-field input[readonly]{background:#f1f5f9;color:#64748b}
 .input-with-btn{display:flex;gap:4px;align-items:center}
-.input-with-btn input{flex:0 0 150px}
-.part-name{font-size:.88rem;color:#636e72;flex:1}
-.btn-search-sm{background:#2980b9;color:#fff;border:none;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:.9rem}
+.btn-search-sm{background:#667eea;color:#fff;border:none;padding:0 10px;border-radius:8px;cursor:pointer;font-size:1rem;height:34px}
+.btn-search{background:#667eea;color:#fff;border:none;padding:7px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.85rem}
+.act-right{display:flex;gap:6px;margin-left:auto}
+.btn-add{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.84rem}
 
-/* 등록 그리드 */
-.reg-grid-header{display:flex;align-items:center;padding:10px 24px;background:#eaf2f8;border-bottom:1px solid #d6eaf8;margin-top:8px}
-.reg-grid-header span{font-size:.88rem;font-weight:700;color:#1a5276}
-.reg-grid-wrap{flex:1;overflow:auto;min-height:130px;max-height:250px}
-.reg-grid{width:100%;border-collapse:collapse;font-size:.83rem}
-.reg-grid thead{position:sticky;top:0;z-index:2}
-.reg-grid th{background:linear-gradient(180deg,#d6eaf8,#aed6f1);color:#1a5276;font-weight:600;padding:9px 6px;text-align:left;border-bottom:2px solid #85c1e9;white-space:nowrap;font-size:.82rem}
-.reg-grid td{padding:4px 6px;border-bottom:1px solid #f0f2f5}
-.reg-grid .chk{text-align:center}
-.reg-grid .empty{text-align:center;color:#b2bec3;padding:40px 16px!important}
-.num{text-align:right}
-.row-selected{background:#eaf2f8}
-.top-row { background: #fffde7; font-weight: bold; }
-.grid-edit-input, .grid-edit-select { width: 100%; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 4px; font-size: 0.8rem; }
-.grid-edit-input:focus, .grid-edit-select:focus { border-color: #2980b9; outline: none; }
-.text-right { text-align: right; }
-.reg-btns{display:flex;gap:8px;padding:8px 24px 16px;justify-content:flex-end}
-.btn-add-item{background:#27ae60;color:#fff;border:none;padding:7px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.84rem}
-.btn-del-item{background:#e74c3c;color:#fff;border:none;padding:7px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.84rem}
-
-/* 품목 선택 */
-.picker-modal{background:#fff;border-radius:12px;width:560px;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden}
-.picker-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:#eaf2f8;border-bottom:1px solid #d6eaf8}
-.picker-header h3{margin:0;font-size:1rem;font-weight:700;color:#1a5276}
-.btn-close-sm{background:none;border:none;font-size:1.1rem;cursor:pointer;color:#636e72}
-.picker-search{display:flex;gap:8px;padding:12px 20px}
-.picker-search input{flex:1;padding:8px 12px;border:1px solid #dfe6e9;border-radius:6px;font-size:.88rem}
-.picker-list{flex:1;overflow:auto;padding:0 20px 16px}
-.picker-tbl{width:100%;border-collapse:collapse;font-size:.85rem}
-.picker-tbl th{background:#f8f9fa;padding:8px 10px;text-align:left;font-weight:600;color:#3a4a6b;border-bottom:1px solid #e9ecef}
-.picker-tbl td{padding:8px 10px;border-bottom:1px solid #f0f2f5}
-.clickable{cursor:pointer;transition:background .12s}.clickable:hover{background:#eaf2f8}
+/* 그리드 레이아웃 */
+.split-grids{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
+.grid-wrap,.detail-wrap{display:flex;flex-direction:column;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.05);overflow:hidden;flex:1}
+.dh{padding:10px 16px;background:#f8f9fa;font-size:.85rem;font-weight:600;color:#3a4a6b;border-bottom:1px solid #e9ecef}.dh span{color:#667eea}
 </style>

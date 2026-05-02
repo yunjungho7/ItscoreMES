@@ -45,14 +45,14 @@
           <label>거래업체</label>
           <div class="search-input">
             <input type="text" v-model="filters.partner" placeholder="거래처 검색" @keyup.enter="fetchData" />
-            <button class="btn-search-small">🔍</button>
+            <button class="btn-search-small" @click="openCompanyPicker">🔍</button>
           </div>
         </div>
         <div class="filter-item">
           <label>품번</label>
           <div class="search-input">
             <input type="text" v-model="filters.partNo" placeholder="품번 검색" @keyup.enter="fetchData" />
-            <button class="btn-search-small">🔍</button>
+            <button class="btn-search-small" @click="openItemPicker">🔍</button>
           </div>
         </div>
       </div>
@@ -76,14 +76,14 @@
           <label>자재품번</label>
           <div class="search-input">
             <input type="text" v-model="filters.partNo" placeholder="품번 검색" @keyup.enter="fetchData" />
-            <button class="btn-search-small">🔍</button>
+            <button class="btn-search-small" @click="openItemPicker">🔍</button>
           </div>
         </div>
         <div class="filter-item">
           <label>업체코드</label>
           <div class="search-input">
             <input type="text" v-model="filters.partnerCode" placeholder="업체코드" @keyup.enter="fetchData" />
-            <button class="btn-search-small">🔍</button>
+            <button class="btn-search-small" @click="openCompanyPicker">🔍</button>
           </div>
         </div>
       </div>
@@ -104,14 +104,14 @@
               <label>고객사</label>
               <div class="search-input">
                 <input type="text" v-model="filters.customer" placeholder="고객사 검색" @keyup.enter="fetchData" />
-                <button class="btn-search-small">🔍</button>
+                <button class="btn-search-small" @click="openCompanyPicker">🔍</button>
               </div>
             </div>
             <div class="filter-item">
               <label>품번</label>
               <div class="search-input">
                 <input type="text" v-model="filters.partNo" placeholder="품번 검색" @keyup.enter="fetchData" />
-                <button class="btn-search-small">🔍</button>
+                <button class="btn-search-small" @click="openItemPicker">🔍</button>
               </div>
             </div>
           </div>
@@ -255,34 +255,30 @@
       </button>
     </footer>
 
-    <!-- Shipment Search Modal -->
-    <div v-if="shipmentModalVisible" class="modal-overlay">
-      <div class="modal-content shipment-modal">
-        <header class="modal-header-custom">
-          <h2>출하지시조회</h2>
-          <div class="modal-header-btns">
-            <button class="btn-modal-action confirm" @click="confirmShipmentSelection">
-              <span class="icon">✅</span> 확인
-            </button>
-            <button class="btn-modal-action close" @click="shipmentModalVisible = false">
-              <span class="icon">❌</span> 닫기
-            </button>
-          </div>
-        </header>
-        <div class="modal-body-grid">
-          <DataGrid 
-            :columns="shipmentModalColumns" 
-            :rows="shipmentModalRows" 
-            :loading="shipmentModalLoading"
-            :selectedIndex="modalSelectedIndex"
-            @row-click="onModalRowClick"
-          />
-        </div>
-        <footer class="modal-footer-custom">
-          <div class="record-info">Record {{ shipmentModalRows.length }} items</div>
-        </footer>
-      </div>
-    </div>
+    <ShipmentSearchModal 
+      :visible="shipmentModalVisible"
+      :initial-start-date="filters.startDate"
+      :initial-end-date="filters.endDate"
+      :initial-search="filters.customer || filters.partNo"
+      @close="shipmentModalVisible = false"
+      @confirm="onShipmentConfirmed"
+    />
+
+    <ItemPicker 
+      :visible="showItemPicker" 
+      :initial-search="filters.partNo"
+      @close="showItemPicker = false"
+      @select="onItemSelect"
+    />
+
+    <CompanyPicker 
+      :visible="showCompanyPicker" 
+      :initial-search="filters.partner || filters.customer"
+      :is-supplier="activeTab === 'receiving'"
+      :is-customer="activeTab === 'shipping'"
+      @close="showCompanyPicker = false"
+      @select="onCompanySelect"
+    />
   </div>
 </template>
 
@@ -290,6 +286,9 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import DataGrid from '../../components/common/DataGrid.vue';
+import ShipmentSearchModal from '../modals/ShipmentSearchModal.vue';
+import ItemPicker from '../pickers/ItemPicker.vue';
+import CompanyPicker from '../pickers/CompanyPicker.vue';
 import api from '../../api';
 import { useNotification } from '../../composables/useNotification';
 
@@ -307,12 +306,30 @@ const detailRows = ref<any[]>([]);
 const selectedMasterIdx = ref(-1);
 const selectedMaster = ref<any>(null);
 
-// Shipment Modal State
+// Modal States
 const shipmentModalVisible = ref(false);
-const shipmentModalRows = ref<any[]>([]);
-const shipmentModalLoading = ref(false);
-const modalSelectedIndex = ref(-1);
-const selectedShipmentInModal = ref<any>(null);
+const showItemPicker = ref(false);
+const showCompanyPicker = ref(false);
+
+function openCompanyPicker() {
+  showCompanyPicker.value = true;
+}
+
+function openItemPicker() {
+  showItemPicker.value = true;
+}
+
+function onCompanySelect(item: any) {
+  if (activeTab.value === 'receiving') {
+    filters.value.partner = item.COMPANYNM;
+  } else if (activeTab.value === 'shipping') {
+    filters.value.customer = item.COMPANYNM;
+  }
+}
+
+function onItemSelect(item: any) {
+  filters.value.partNo = item.PARTNO;
+}
 
 const tabs = [
   { id: 'receiving', label: '입고등록' },
@@ -364,15 +381,6 @@ const formTitle = computed(() => {
 const totalShippingQty = computed(() => {
   return detailRows.value.reduce((sum, row) => sum + (Number(row.SHIPQTY) || 0), 0);
 });
-
-const shipmentModalColumns = [
-  { key: 'index', label: '순번', width: '60px' },
-  { key: 'SHIPMENT_NO', label: '출하지시번호', width: '150px' },
-  { key: 'SHIP_PLAN_DATE', label: '출하계획일', width: '120px', type: 'date' },
-  { key: 'COMPANYNM', label: '고객사', width: '180px' },
-  { key: 'PARTNO', label: '제품품번', width: '150px' },
-  { key: 'PARTNM', label: '품명', width: '180px' },
-];
 
 const masterColumns = computed(() => {
   if (activeTab.value === 'receiving') {
@@ -460,7 +468,7 @@ const detailColumns = computed(() => {
 
 async function fetchData() {
   if (activeTab.value === 'shipping') {
-    openShipmentSearch();
+    shipmentModalVisible.value = true;
     return;
   }
 
@@ -496,48 +504,7 @@ async function fetchData() {
   }
 }
 
-async function openShipmentSearch() {
-  shipmentModalVisible.value = true;
-  shipmentModalLoading.value = true;
-  modalSelectedIndex.value = -1;
-  selectedShipmentInModal.value = null;
-  
-  try {
-    const r = await api.get('/api/shipment/list', {
-      params: {
-        start_date: filters.value.startDate,
-        end_date: filters.value.endDate,
-        search: filters.value.customer || filters.value.partNo
-      }
-    });
-    
-    // Robust data extraction
-    const rawData = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
-    
-    shipmentModalRows.value = Array.isArray(rawData) ? rawData.map((item: any, idx: number) => ({
-      ...item,
-      index: idx + 1
-    })) : [];
-    
-  } catch (e) {
-    notifyError('출하지시 목록 조회 중 오류가 발생했습니다.');
-  } finally {
-    shipmentModalLoading.value = false;
-  }
-}
-
-function onModalRowClick(row: any, idx: number) {
-  modalSelectedIndex.value = idx;
-  selectedShipmentInModal.value = row;
-}
-
-async function confirmShipmentSelection() {
-  if (!selectedShipmentInModal.value) {
-    notifyError('출하지시 건을 선택해주세요.');
-    return;
-  }
-
-  const row = selectedShipmentInModal.value;
+async function onShipmentConfirmed(row: any) {
   filters.value.shipmentNo = row.SHIPMENT_NO;
   filters.value.customerName = row.COMPANYNM;
   filters.value.endDate = row.SHIP_PLAN_DATE || filters.value.endDate;
