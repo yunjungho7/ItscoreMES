@@ -1,23 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mapper namespace="input_material">
 
-  <!-- 작업지시번호에 해당하는 자재투입 이력 조회 -->
+  <!-- 작업지시번호에 해당하는 자재투입 이력 조회 (누계 처리) -->
   <select id="selectInputMaterials">
     SELECT H.REF_NO AS WORKORDNO,
-           ISNULL(H.REMARK, '') AS WORKLOTNO,
-           W.PROCESSCD AS PROCESSCD,
-           S.PARTNO AS MAT_PARTNO,
-           G.PARTNM AS MAT_PARTNM,
+           MAX(ISNULL(H.REMARK, '')) AS WORKLOTNO,
+           MAX(W.PROCESSCD) AS PROCESSCD,
+           MAX(S.PARTNO) AS MAT_PARTNO,
+           MAX(G.PARTNM) AS MAT_PARTNM,
            H.LOTNO AS MAT_LOTNO,
-           ABS(H.QTY) AS INPUT_QTY,
-           G.UNIT AS UNIT
+           SUM(H.QTY) * -1 AS INPUT_QTY,
+           MAX(G.UNIT) AS UNIT
     FROM TBL_PROD_STOCK_HISTORY H
     LEFT JOIN TBL_PROD_LOTSTATE S ON H.LOTNO = S.LOTNO
     LEFT JOIN TBL_COM_GOODS G ON S.PARTNO = G.PARTNO
     LEFT JOIN TBL_PROD_WORKORDER W ON H.REF_NO = W.WORKORDNO
     WHERE H.REF_NO = #{WORKORDNO}
-      AND (H.STOCKCHANGEGUBUN = '투입' OR H.STOCKCHANGEGUBUN = 'USE' OR H.QTY &lt; 0)
-    ORDER BY H.CHANGEDAY DESC, H.STOCKHISTORYNO DESC
+      AND H.STOCKCHANGEGUBUN IN ('투입', '소모', '투입취소', '생산취소_복원')
+    GROUP BY H.REF_NO, H.LOTNO
+    HAVING SUM(H.QTY) &lt; 0
+    ORDER BY MAX(H.CHANGEDAY) DESC, MAX(H.STOCKHISTORYNO) DESC
   </select>
 
   <!-- 자재 투입 등록 (재고 이력 추가) -->
@@ -33,12 +35,17 @@
     )
   </insert>
 
-  <!-- 자재 투입 삭제 (재고 이력 제거) -->
-  <delete id="deleteInputMaterial">
-    DELETE FROM TBL_PROD_STOCK_HISTORY
-    WHERE REF_NO = #{WORKORDNO}
-      AND LOTNO = #{MAT_LOTNO}
-      AND STOCKCHANGEGUBUN = '투입'
-  </delete>
+  <!-- 자재 투입 취소 등록 (누계 이력 추가) -->
+  <insert id="insertInputCancel">
+    INSERT INTO TBL_PROD_STOCK_HISTORY (
+        LOTNO, LOCATIONCODE, STOCKHISTORYNO, QTY, 
+        STOCKCHANGEGUBUN, CHANGEDAY, REMARK, REF_NO, 
+        REGUSERID, REGDTM
+    ) VALUES (
+        #{MAT_LOTNO}, #{LOCATIONCODE}, #{STOCKHISTORYNO}, #{INPUT_QTY},
+        '투입취소', CONVERT(VARCHAR(10), GETDATE(), 23), '투입취소', #{WORKORDNO},
+        1, GETDATE()
+    )
+  </insert>
 
 </mapper>

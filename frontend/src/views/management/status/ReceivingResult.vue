@@ -76,34 +76,35 @@ const loading = ref(false), dl = ref(false), si = ref(-1), sel = ref<any>(null);
 const page = ref(1), totalPages = ref(0), total = ref(0);
 
 const mCols = [
-  { key: 'RECEIVENO', label: '입고번호', width: '120px' },
-  { key: 'RECEIVEDT', label: '입고일자', width: '100px', type: 'date' },
+  { key: 'WAREHOUSENUM', label: '입고번호', width: '120px' },
+  { key: 'INDAY', label: '입고일자', width: '100px', type: 'date' },
   { key: 'PLANTNM', label: '사업장', width: '120px' },
   { key: 'COMPANYNM', label: '거래처', width: '140px' },
-  { key: 'PURCHASEORDERNO', label: '발주번호', width: '100px' },
-  { key: 'RECEIVESTATE', label: '입고상태', width: '80px' },
+  { key: 'ORDERNUM', label: '발주번호', width: '100px' },
+  { key: 'WHSTATE', label: '입고상태', width: '80px' },
+  { key: 'TOTALAMT', label: '총금액', width: '100px', type: 'currency' },
   { key: 'REMARK', label: '비고', minWidth: '120px' },
 ];
 const dCols = [
+  { key: 'LOTNO', label: 'LOT No.', width: '130px' },
   { key: 'PARTNO', label: '품번', width: '120px' },
   { key: 'PARTNM', label: '품명', width: '140px' },
   { key: 'STANDARD', label: '규격', width: '80px' },
   { key: 'UNIT', label: '단위', width: '50px' },
-  { key: 'RECEIVEQTY', label: '입고수량', width: '80px' },
-  { key: 'UNIT_PRICE', label: '단가', width: '80px' },
-  { key: 'INSPECTIONSTATE', label: '검사상태', width: '80px' },
-  { key: 'WAREHOUSECD', label: '창고', width: '80px' },
-  { key: 'REMARK', label: '비고', minWidth: '100px' },
+  { key: 'INLOTQTY', label: '입고수량', width: '80px' },
+  { key: 'UNIT_PRICE', label: '단가', width: '80px', type: 'currency' },
+  { key: 'AMT', label: '금액', width: '90px', type: 'currency' },
+  { key: 'LOCATIONNAME', label: '입고위치', width: '100px' },
 ];
 
 const summary = computed(() => {
   const data = mRows.value;
   return {
     total: total.value,
-    done: data.filter(r => r.RECEIVESTATE === '입고' || r.RECEIVESTATE === '완료').length,
-    waiting: data.filter(r => r.RECEIVESTATE === '검사대기').length,
-    totalQty: data.reduce((s, r) => s + (Number(r.TOTAL_QTY) || 0), 0),
-    totalAmt: data.reduce((s, r) => s + (Number(r.TOTAL_AMT) || 0), 0)
+    done: data.filter(r => r.WHSTATE === 'RECEIVED' || r.WHSTATE === 'COMPLETED').length,
+    waiting: data.filter(r => r.WHSTATE === 'QUALITY').length,
+    totalQty: 0, // Need to calculate if total qty per master is available
+    totalAmt: data.reduce((s, r) => s + (Number(r.TOTALAMT) || 0), 0)
   };
 });
 
@@ -120,7 +121,8 @@ async function fetchData() {
     if (plantCd.value) p.plant_cd = plantCd.value;
     if (searchText.value) p.search = searchText.value;
     const r = await api.get('/api/receive/list', { params: p });
-    mRows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    const result = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    mRows.value = result;
     total.value = (r.data?.data?.total ?? r.data?.total ?? 0);
     totalPages.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
   } finally { loading.value = false; }
@@ -129,8 +131,8 @@ async function fetchData() {
 async function onMaster(row: any, idx: number) {
   si.value = idx; sel.value = row; dl.value = true;
   try {
-    const r = await api.get(`/api/receive/detail/${row.RECEIVENO}/items`);
-    dRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []);
+    const r = await api.get(`/api/receive/detail/${row.WAREHOUSENUM}/items`);
+    dRows.value = Array.isArray(r.data) ? r.data : (Array.isArray(r.data?.data) ? r.data.data : []);
   } finally { dl.value = false; }
 }
 

@@ -23,6 +23,14 @@
           <p>현장 생산실적 등록,<br/>생산이력 및 불량이력 조회</p>
           <div class="card-arrow">→</div>
         </div>
+        <div class="mode-card logistics" @click="goTo('/logistics')">
+          <div class="card-icon-wrap">
+            <span class="card-icon">🚛</span>
+          </div>
+          <h2>물류 모드</h2>
+          <p>입고등록, 수입검사,<br/>출하등록 등 물류 업무</p>
+          <div class="card-arrow">→</div>
+        </div>
       </div>
       <div class="mode-footer">
         <span class="user-greeting">{{ userName }}님 환영합니다</span>
@@ -129,6 +137,10 @@ function handleLogout() {
   background: linear-gradient(145deg, rgba(39,174,96,0.15), rgba(39,174,96,0.05));
 }
 
+.mode-card.logistics {
+  background: linear-gradient(145deg, rgba(230,126,34,0.15), rgba(230,126,34,0.05));
+}
+
 .mode-card:hover {
   transform: translateY(-8px) scale(1.02);
   box-shadow: 0 20px 50px rgba(0,0,0,0.4);
@@ -140,6 +152,10 @@ function handleLogout() {
 
 .mode-card.field:hover {
   background: linear-gradient(145deg, rgba(39,174,96,0.25), rgba(39,174,96,0.1));
+}
+
+.mode-card.logistics:hover {
+  background: linear-gradient(145deg, rgba(230,126,34,0.25), rgba(230,126,34,0.1));
 }
 
 .card-icon-wrap {
@@ -158,6 +174,10 @@ function handleLogout() {
 
 .field .card-icon-wrap {
   background: linear-gradient(135deg, rgba(39,174,96,0.3), rgba(46,204,113,0.2));
+}
+
+.logistics .card-icon-wrap {
+  background: linear-gradient(135deg, rgba(230,126,34,0.3), rgba(211,84,0,0.2));
 }
 
 .card-icon {

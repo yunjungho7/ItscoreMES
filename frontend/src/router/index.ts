@@ -295,6 +295,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('../views/Login.vue'),
   },
 
+  // ── 물류 모드 (추가) ──
+  {
+    path: '/logistics',
+    name: 'LogisticsMain',
+    meta: { title: '재고/물류관리' },
+    component: () => import('../views/logistics/LogisticsMain.vue'),
+  },
+
   // ── 루트 리다이렉트 ──
   {
     path: '/',

@@ -74,8 +74,8 @@ const summary = computed(() => {
   return {
     total: total.value,
     newCnt: data.filter(r => r.ORDERSTATE === 'NEW' || !r.ORDERSTATE).length,
-    confirmed: data.filter(r => r.ORDERSTATE === 'CONFIRMED').length,
-    done: data.filter(r => r.ORDERSTATE === 'DONE').length,
+    confirmed: data.filter(r => r.ORDERSTATE === 'CONFIRMED' || r.ORDERSTATE === '확정').length,
+    done: data.filter(r => r.ORDERSTATE === 'DONE' || r.ORDERSTATE === '완료').length,
     totalAmt: data.reduce((s, r) => s + (Number(r.TOTAL_AMT) || 0), 0)
   };
 });
@@ -91,8 +91,10 @@ async function fetchData() {
     if (endDate.value) p.end_date = endDate.value;
     if (plantCd.value) p.plant_cd = plantCd.value;
     if (searchText.value) p.search = searchText.value;
+    if (state.value) p.state = state.value;
     const r = await api.get('/api/order/list', { params: p });
-    rows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    const result = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    rows.value = result;
     total.value = (r.data?.data?.total ?? r.data?.total ?? 0);
     totalPages.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
   } finally { loading.value = false; }

@@ -15,6 +15,7 @@ from models.logistics.logistics import (
     ReceiveCreate,
     StockUpdateQty,
     ShipmentCreate,
+    ShipmentRegisterRequest,
 )
 from services.logistics.order_service import order_service
 from services.logistics.purchase_service import purchase_service
@@ -191,11 +192,11 @@ def update_stock_qty(body: StockUpdateQty):
 def get_shipments(start_date: Optional[str] = None, end_date: Optional[str] = None,
                   plant_cd: Optional[str] = None, company_cd: Optional[str] = None,
                   order_no: Optional[str] = None, search: Optional[str] = None,
-                  include_done: Optional[str] = None, page: int = 1, size: int = 50):
+                  is_performance: bool = False, page: int = 1, size: int = 50):
     result = shipment_service.get_all(start_date=start_date, end_date=end_date,
                                     plant_cd=plant_cd, company_cd=company_cd,
                                     order_no=order_no, search=search,
-                                    include_done=include_done, page=page, size=size)
+                                    is_performance=is_performance, page=page, size=size)
     return {"data": result}
 
 @router.get("/shipment/summary", summary="출하 현황 요약 통계")
@@ -204,8 +205,8 @@ def get_shipment_summary():
     return {"data": result}
 
 @router.get("/shipment/detail/{shipment_no}/items", summary="출하지시 상세 품목")
-def get_shipment_details(shipment_no: str):
-    return shipment_service.get_details(shipment_no)
+def get_shipment_details(shipment_no: str, is_performance: bool = False):
+    return shipment_service.get_details(shipment_no, is_performance=is_performance)
 
 @router.get("/shipment/order-items", summary="수주 품목 조회 (출하등록용)")
 def get_order_items_for_shipment(company_cd: Optional[str] = None, plant_cd: Optional[str] = None,
@@ -216,6 +217,14 @@ def get_order_items_for_shipment(company_cd: Optional[str] = None, plant_cd: Opt
 @router.post("/shipment/create", summary="출하지시 등록", status_code=201)
 def create_shipment(body: ShipmentCreate):
     return shipment_service.create(body.model_dump())
+
+@router.post("/shipment/register", summary="출하실적 등록")
+def register_shipment(req: ShipmentRegisterRequest):
+    try:
+        shipment_no = shipment_service.create_shipment(req.model_dump())
+        return {"statusCode": 200, "message": "출하 등록이 완료되었습니다.", "shipment_no": shipment_no}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/shipment/complete/{shipment_no}", summary="출하완료")
 def complete_shipment(shipment_no: str):

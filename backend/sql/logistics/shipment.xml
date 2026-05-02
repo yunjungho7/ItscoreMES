@@ -20,9 +20,22 @@
 
   <!-- 출하지시 목록 -->
   <select id="selectAll">
-    SELECT A.SHIPMENTINDICATIONNO, B.PLANTNM, C.COMPANYNM, A.COMPANYCD, A.PLANTCD,
-           A.SHIPMENTPLANDAY, A.SHIPMENTDAY, A.SHIPMENTGUBUN, A.SHIPMENTSTATUS,
-           A.ORDERNO, A.REMARK
+    SELECT A.SHIPMENTINDICATIONNO AS SHIPMENT_NO, 
+           B.PLANTNM, 
+           C.COMPANYNM, 
+           A.COMPANYCD, 
+           A.PLANTCD,
+           A.SHIPMENTPLANDAY AS SHIP_PLAN_DATE, 
+           A.SHIPMENTDAY AS SHIP_DATE, 
+           A.SHIPMENTGUBUN, 
+           A.SHIPMENTSTATUS,
+           A.ORDERNO, 
+           A.REMARK,
+           (SELECT TOP 1 D.PARTNO FROM TBL_INOUT_SHIPMENT_INDICATION_DTL D WHERE D.SHIPMENTINDICATIONNO = A.SHIPMENTINDICATIONNO) as PARTNO,
+           (SELECT TOP 1 G.PARTNM FROM TBL_INOUT_SHIPMENT_INDICATION_DTL D JOIN TBL_COM_GOODS G ON D.PARTNO = G.PARTNO WHERE D.SHIPMENTINDICATIONNO = A.SHIPMENTINDICATIONNO) as PARTNM,
+           (SELECT TOP 1 G.STANDARD FROM TBL_INOUT_SHIPMENT_INDICATION_DTL D JOIN TBL_COM_GOODS G ON D.PARTNO = G.PARTNO WHERE D.SHIPMENTINDICATIONNO = A.SHIPMENTINDICATIONNO) as STANDARD,
+           (SELECT TOP 1 G.UNIT FROM TBL_INOUT_SHIPMENT_INDICATION_DTL D JOIN TBL_COM_GOODS G ON D.PARTNO = G.PARTNO WHERE D.SHIPMENTINDICATIONNO = A.SHIPMENTINDICATIONNO) as UNIT,
+           (SELECT SUM(D.SHIPMENTINDICATIONQTY) FROM TBL_INOUT_SHIPMENT_INDICATION_DTL D WHERE D.SHIPMENTINDICATIONNO = A.SHIPMENTINDICATIONNO) as SHIPQTY
     FROM TBL_INOUT_SHIPMENT_INDICATION A
     LEFT JOIN TBL_COM_PLANT B ON A.PLANTCD = B.PLANTCD
     LEFT JOIN TBL_COM_COMPANY C ON A.COMPANYCD = C.COMPANYCD
@@ -32,11 +45,87 @@
       <if test="end_date != null">AND A.SHIPMENTPLANDAY &lt;= #{end_date}</if>
       <if test="plant_cd != null">AND A.PLANTCD = #{plant_cd}</if>
       <if test="company_cd != null">AND A.COMPANYCD = #{company_cd}</if>
-      <if test="search != null">AND (C.COMPANYNM LIKE #{search})</if>
+      <if test="search != null">AND (C.COMPANYNM LIKE #{search} OR A.SHIPMENTINDICATIONNO LIKE #{search})</if>
       <if test="order_no != null">AND A.ORDERNO = #{order_no}</if>
     </where>
     ORDER BY A.SHIPMENTINDICATIONNO DESC
     OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+  </select>
+
+  <!-- 출하실적 목록 건수 -->
+  <select id="countPerformance">
+    SELECT COUNT(*) FROM TBL_INOUT_SHIPMENT A
+    LEFT JOIN TBL_COM_PLANT B ON A.PLANTCD = B.PLANTCD
+    LEFT JOIN TBL_COM_COMPANY C ON A.COMPANYCD = C.COMPANYCD
+    <where>
+      A.USEYN = 1
+      <if test="start_date != null">AND A.RAISECARDAY &gt;= #{start_date}</if>
+      <if test="end_date != null">AND A.RAISECARDAY &lt;= #{end_date}</if>
+      <if test="plant_cd != null">AND A.PLANTCD = #{plant_cd}</if>
+      <if test="company_cd != null">AND A.COMPANYCD = #{company_cd}</if>
+      <if test="search != null">AND (C.COMPANYNM LIKE #{search} OR A.SHIPMENTNO LIKE #{search})</if>
+    </where>
+  </select>
+
+  <!-- 출하실적 목록 조회 -->
+  <select id="selectPerformance">
+    SELECT A.SHIPMENTNO, A.SHIPMENTINDICATIONNO, B.PLANTNM, C.COMPANYNM, 
+           A.RAISECARDAY as SHIPMENTDAY, A.RAISECARTIME as SHIPMENTTIME,
+           A.SHIPMENTGUBUN, A.SHIPSTATE as SHIPMENTSTATUS, A.UNIT,
+           (SELECT SUM(D.SHIPMENTLOTQTY) FROM TBL_INOUT_SHIPMENT_DTL D WHERE D.SHIPMENTNO = A.SHIPMENTNO) as TOTAL_QTY
+    FROM TBL_INOUT_SHIPMENT A
+    LEFT JOIN TBL_COM_PLANT B ON A.PLANTCD = B.PLANTCD
+    LEFT JOIN TBL_COM_COMPANY C ON A.COMPANYCD = C.COMPANYCD
+    <where>
+      A.USEYN = 1
+      <if test="start_date != null">AND A.RAISECARDAY &gt;= #{start_date}</if>
+      <if test="end_date != null">AND A.RAISECARDAY &lt;= #{end_date}</if>
+      <if test="plant_cd != null">AND A.PLANTCD = #{plant_cd}</if>
+      <if test="company_cd != null">AND A.COMPANYCD = #{company_cd}</if>
+      <if test="search != null">AND (C.COMPANYNM LIKE #{search} OR A.SHIPMENTNO LIKE #{search})</if>
+    </where>
+    ORDER BY A.SHIPMENTNO DESC
+    OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+  </select>
+
+  <!-- 출하실적 상세 조회 -->
+  <select id="selectPerformanceDetails">
+    SELECT D.SHIPMENTNO, D.LOTNO, D.PARTNO, G.PARTNM, G.STANDARD, G.UNIT,
+           D.SHIPMENTLOTQTY as SHIPMENTQTY, D.SHIPMENTSTATE as SHIPMENTSTATUS
+    FROM TBL_INOUT_SHIPMENT_DTL D
+    LEFT JOIN TBL_COM_GOODS G ON D.PARTNO = G.PARTNO
+    WHERE D.SHIPMENTNO = #{SHIPMENTNO}
+  </select>
+
+  <!-- 출하실적 등록 -->
+  <insert id="insertShipment">
+    INSERT INTO TBL_INOUT_SHIPMENT (
+      SHIPMENTNO, SHIPMENTINDICATIONNO, COMPANYCD, UNIT, 
+      RAISECARDAY, RAISECARTIME, PLANTCD, SHIPMENTGUBUN, 
+      USEYN, REGUSERID, REGDTM, SHIPSTATE
+    ) VALUES (
+      #{shipment_no}, #{shipment_indication_no}, #{company_cd}, #{unit},
+      #{raise_car_day}, #{raise_car_time}, #{plant_cd}, #{shipment_gubun},
+      1, #{user_id}, GETDATE(), 'DONE'
+    )
+  </insert>
+
+  <!-- 출하실적 상세 등록 -->
+  <insert id="insertShipmentDetail">
+    INSERT INTO TBL_INOUT_SHIPMENT_DTL (
+      SHIPMENTNO, LOTNO, PARTNO, SHIPMENTLOTQTY, 
+      SHIPMENTSTATE, USEYN
+    ) VALUES (
+      #{shipment_no}, #{lot_no}, #{part_no}, #{shipment_lot_qty},
+      'DONE', 1
+    )
+  </insert>
+
+  <!-- 출하번호 채번 (YYYYMMDD + 4자리 순번) -->
+  <select id="getNextShipmentNo">
+    SELECT ISNULL(MAX(SHIPMENTNO), #{prefix} + '0000') as max_no
+    FROM TBL_INOUT_SHIPMENT
+    WHERE SHIPMENTNO LIKE #{prefix} + '%'
   </select>
 
   <!-- 출하지시 상세 품목 -->

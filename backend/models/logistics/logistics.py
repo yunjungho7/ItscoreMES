@@ -105,3 +105,16 @@ class ShipmentDetailCreate(BaseModel):
     ADOFREQDT: Optional[date] = None
     UNIT_PRICE: Optional[Decimal] = 0
     REMARK: Optional[str] = None
+
+class ShipmentLot(BaseModel):
+    part_no: str
+    lot_no: str
+    qty: Decimal
+
+class ShipmentRegisterRequest(BaseModel):
+    shipment_indication_no: str
+    company_cd: str
+    plant_cd: str
+    unit: str
+    user_id: int
+    lots: List[ShipmentLot]

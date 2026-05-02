@@ -18,7 +18,9 @@
     <select id="selectAll">
         SELECT O.ORDERNO, O.PLANTCD, P.PLANTNM, O.COMPANYCD, C.COMPANYNM,
                O.ORDERDT, O.ADOFREQDT, O.ORDERSTATE, O.REMARK, O.USEYN,
-               (SELECT ISNULL(SUM(D.REQQTY * ISNULL(D.UNIT_PRICE,0)),0) FROM TBL_INOUT_ORDER_DETAIL D WHERE D.ORDERNO = O.ORDERNO) AS TOTALAMT
+               (SELECT COUNT(*) FROM TBL_INOUT_ORDER_DETAIL D WHERE D.ORDERNO = O.ORDERNO) AS ITEM_COUNT,
+               (SELECT ISNULL(SUM(D.REQQTY), 0) FROM TBL_INOUT_ORDER_DETAIL D WHERE D.ORDERNO = O.ORDERNO) AS TOTAL_QTY,
+               (SELECT ISNULL(SUM(D.REQQTY * ISNULL(D.UNIT_PRICE, 0)), 0) FROM TBL_INOUT_ORDER_DETAIL D WHERE D.ORDERNO = O.ORDERNO) AS TOTAL_AMT
         FROM TBL_INOUT_ORDERS O
         LEFT JOIN TBL_COM_PLANT P ON O.PLANTCD = P.PLANTCD
         LEFT JOIN TBL_COM_COMPANY C ON O.COMPANYCD = C.COMPANYCD
@@ -28,7 +30,7 @@
             <if test="end_date != null">AND O.ORDERDT &lt;= #{end_date}</if>
             <if test="plant_cd != null">AND O.PLANTCD = #{plant_cd}</if>
             <if test="company_cd != null">AND O.COMPANYCD = #{company_cd}</if>
-            <if test="search != null">AND (C.COMPANYNM LIKE #{search})</if>
+            <if test="search != null">AND (C.COMPANYNM LIKE #{search} OR CAST(O.ORDERNO AS VARCHAR) LIKE #{search})</if>
         </where>
         ORDER BY O.ORDERNO DESC
         OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY

@@ -76,37 +76,33 @@ const loading = ref(false), dl = ref(false), si = ref(-1), sel = ref<any>(null);
 const page = ref(1), totalPages = ref(0), total = ref(0);
 
 const mCols = [
+  { key: 'SHIPMENTNO', label: '출하실적번호', width: '130px' },
   { key: 'SHIPMENTINDICATIONNO', label: '출하지시번호', width: '130px' },
   { key: 'PLANTNM', label: '사업장', width: '120px' },
   { key: 'COMPANYNM', label: '고객사', width: '140px' },
-  { key: 'SHIPMENTPLANDAY', label: '출하계획일', width: '100px', type: 'date' },
   { key: 'SHIPMENTDAY', label: '출하일자', width: '100px', type: 'date' },
+  { key: 'SHIPMENTTIME', label: '출하시간', width: '80px' },
   { key: 'SHIPMENTGUBUN', label: '출하구분', width: '80px' },
   { key: 'SHIPMENTSTATUS', label: '상태', width: '80px' },
-  { key: 'ORDERNO', label: '수주번호', width: '90px' },
-  { key: 'REMARK', label: '비고', minWidth: '120px' },
+  { key: 'TOTAL_QTY', label: '총수량', width: '90px' },
 ];
 const dCols = [
-  { key: 'ORDERNO', label: '수주번호', width: '80px' },
+  { key: 'LOTNO', label: 'LOT No.', width: '130px' },
   { key: 'PARTNO', label: '품번', width: '120px' },
   { key: 'PARTNM', label: '품명', width: '140px' },
   { key: 'STANDARD', label: '규격', width: '80px' },
   { key: 'UNIT', label: '단위', width: '50px' },
-  { key: 'UNIT_PRICE', label: '단가', width: '80px' },
-  { key: 'ADOFREQDT', label: '납기요청일', width: '100px', type: 'date' },
-  { key: 'SHIPMENTINDICATIONQTY', label: '지시수량', width: '80px' },
   { key: 'SHIPMENTQTY', label: '출하수량', width: '80px' },
   { key: 'SHIPMENTSTATUS', label: '상태', width: '80px' },
-  { key: 'REMARK', label: '비고', minWidth: '100px' },
 ];
 
 const summary = computed(() => {
   const data = mRows.value;
   return {
     total: total.value,
-    waiting: data.filter(r => !r.SHIPMENTSTATUS || r.SHIPMENTSTATUS === '대기' || r.SHIPMENTSTATUS === 'NEW').length,
-    done: data.filter(r => r.SHIPMENTSTATUS === '출하' || r.SHIPMENTSTATUS === '완료' || r.SHIPMENTSTATUS === 'DONE').length,
-    totalQty: 0,
+    waiting: 0,
+    done: data.length,
+    totalQty: data.reduce((s, r) => s + (r.TOTAL_QTY || 0), 0),
     totalAmt: 0
   };
 });
@@ -118,7 +114,7 @@ async function fetchPlants() {
 async function fetchData() {
   loading.value = true; si.value = -1; sel.value = null; dRows.value = [];
   try {
-    const p: any = { page: page.value, size: 50, include_done: '1' };
+    const p: any = { page: page.value, size: 50, is_performance: true };
     if (startDate.value) p.start_date = startDate.value;
     if (endDate.value) p.end_date = endDate.value;
     if (plantCd.value) p.plant_cd = plantCd.value;
@@ -133,7 +129,7 @@ async function fetchData() {
 async function onMaster(row: any, idx: number) {
   si.value = idx; sel.value = row; dl.value = true;
   try {
-    const r = await api.get(`/api/shipment/detail/${row.SHIPMENTINDICATIONNO}/items`);
+    const r = await api.get(`/api/shipment/detail/${row.SHIPMENTNO}/items`, { params: { is_performance: true } });
     dRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []);
   } finally { dl.value = false; }
 }

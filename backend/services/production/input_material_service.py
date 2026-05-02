@@ -27,7 +27,7 @@ class InputMaterialService:
         """자재 투입 실적 저장"""
         import datetime
         now = datetime.datetime.now()
-        hist_no = f"H{now.strftime('%Y%m%d%H%M%S%f')[:17]}"
+        hist_no = f"H{now.strftime('%Y%m%d%H%M%S%f')[:19]}"
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -74,7 +74,7 @@ class InputMaterialService:
             conn.close()
 
     def delete_input(self, data):
-        """자재 투입 실적 삭제 및 재고 복원"""
+        """자재 투입 실적 삭제(취소) 및 재고 복원 - 누계 관리 방식"""
         params = {
             'WORKORDNO': data['WORKORDNO'],
             'MAT_LOTNO': data['MAT_LOTNO']
@@ -82,15 +82,34 @@ class InputMaterialService:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 삭제 전 투입되었던 수량 및 위치 확인 (복원을 위해)
-        cursor.execute("SELECT ABS(QTY), LOCATIONCODE FROM TBL_PROD_STOCK_HISTORY WHERE REF_NO = %s AND LOTNO = %s AND STOCKCHANGEGUBUN = '투입'", (data['WORKORDNO'], data['MAT_LOTNO']))
+        # 삭제 전 투입되었던 잔량 및 위치 확인 (누계 기준)
+        cursor.execute("""
+            SELECT SUM(QTY), MAX(LOCATIONCODE) 
+            FROM TBL_PROD_STOCK_HISTORY 
+            WHERE REF_NO = %s AND LOTNO = %s AND STOCKCHANGEGUBUN IN ('투입', '소모', '투입취소', '생산취소_복원')
+        """, (data['WORKORDNO'], data['MAT_LOTNO']))
         row = cursor.fetchone()
-        if row:
-            input_qty, loc_cd = row
-            # 1. 히스토리 삭제
-            q = self.mapper.get_query('deleteInputMaterial', params)
-            cursor.execute(q['query'], tuple(params.get(n) for n in q['params']))
-            # 2. 재고 복원
+        
+        if row and row[0] is not None and row[0] < 0:
+            remaining_qty = row[0]
+            input_qty = abs(remaining_qty)
+            loc_cd = row[1]
+            
+            # 1. 히스토리 삭제 대신 '투입취소' 추가 (누적)
+            import datetime
+            now = datetime.datetime.now()
+            hist_no = f"H{now.strftime('%Y%m%d%H%M%S%f')[:19]}"
+            
+            # 히스토리 추가 (양수 QTY로 잔량 0화)
+            cursor.execute("""
+                INSERT INTO TBL_PROD_STOCK_HISTORY (
+                    LOTNO, LOCATIONCODE, STOCKHISTORYNO, QTY, 
+                    STOCKCHANGEGUBUN, CHANGEDAY, REMARK, REF_NO, 
+                    REGUSERID, REGDTM
+                ) VALUES (%s, %s, %s, %s, '투입취소', %s, '투입취소', %s, 1, GETDATE())
+            """, (data['MAT_LOTNO'], loc_cd, hist_no, input_qty, now.strftime('%Y-%m-%d'), data['WORKORDNO']))
+
+            # 2. 실제 재고 복원
             cursor.execute("UPDATE TBL_PROD_LOTSTATE SET LOTQTY = LOTQTY + %s WHERE LOTNO = %s", (input_qty, data['MAT_LOTNO']))
             cursor.execute("UPDATE TBL_PROD_STOCK SET STOCKQTY = STOCKQTY + %s WHERE LOTNO = %s AND LOCATIONCODE = %s", (input_qty, data['MAT_LOTNO'], loc_cd))
 
