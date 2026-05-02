@@ -84,10 +84,10 @@ function formatDate(val: any) {
 .data-grid-wrapper { background: #fff; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); overflow: hidden; display: flex; flex-direction: column; }
 .grid-header { padding: 14px 18px; border-bottom: 1px solid #eee; }
 .grid-table-wrap { flex: 1; overflow: auto; }
-.grid-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.grid-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; table-layout: auto; }
 .grid-table thead { position: sticky; top: 0; z-index: 2; }
 .grid-table th { background: linear-gradient(180deg, #f0f4ff 0%, #e8ecf5 100%); color: #3a4a6b; font-weight: 600; padding: 10px 12px; text-align: left; border-bottom: 2px solid #d0d7e8; white-space: nowrap; font-size: 0.83rem; }
-.grid-table td { padding: 9px 12px; border-bottom: 1px solid #f0f2f5; color: #2d3436; }
+.grid-table td { padding: 9px 12px; border-bottom: 1px solid #f0f2f5; color: #2d3436; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .grid-table tbody tr { cursor: pointer; transition: background 0.12s; }
 .grid-table tbody tr:hover { background: #f4f6ff; }
 .grid-table tbody tr.selected { background: #e8edff; }
