@@ -166,7 +166,7 @@ class FieldService:
         # 1-1. 생산 실적 재고 이력 추가 (입고 처리)
         import datetime
         now = datetime.datetime.now()
-        hist_no = f"H{now.strftime('%Y%m%d%H%M%S%f')[:17]}"
+        hist_no = f"H{now.strftime('%Y%m%d%H%M%S%f')[:19]}"
         cursor.execute("""
             INSERT INTO TBL_PROD_STOCK_HISTORY (
                 LOTNO, LOCATIONCODE, STOCKHISTORYNO, QTY, 
@@ -184,13 +184,15 @@ class FieldService:
             q_fail = self.mapper.get_query('insertFailQty', fail_params)
             cursor.execute(q_fail['query'], tuple(fail_params.get(n) for n in q_fail['params']))
 
-        # 3. 투입된 자재 내역 차감 (생산실적수량 만큼)
-        # 투입된 고유 품번들 조회
+        # 3. 투입된 자재 내역 차감 (생산실적수량 만큼) - 누계 관리 방식
+        # 투입된 고유 품번들 조회 (누계 기준 잔량이 있는 것들)
         cursor.execute("""
             SELECT DISTINCT S.PARTNO 
             FROM TBL_PROD_STOCK_HISTORY H
             JOIN TBL_PROD_LOTSTATE S ON H.LOTNO = S.LOTNO
-            WHERE H.REF_NO = %s AND H.STOCKCHANGEGUBUN = '투입'
+            WHERE H.REF_NO = %s AND H.STOCKCHANGEGUBUN IN ('투입', '소모', '투입취소', '생산취소_복원')
+            GROUP BY H.LOTNO, S.PARTNO
+            HAVING SUM(H.QTY) < 0
         """, (workordno,))
         input_parts = [r[0] for r in cursor.fetchall()]
 
@@ -207,34 +209,47 @@ class FieldService:
             if req_qty <= 0:
                 continue
             
+            # 이번 실적 수량에 대한 총 소요량
             needed = prod_qty * req_qty
             
-            # 해당 품번의 투입 내역 조회 (FIFO)
+            # 해당 품번의 투입 내역 잔량 조회 (FIFO 기준, 누계 합계가 음수인 LOT들)
             cursor.execute("""
-                SELECT H.STOCKHISTORYNO, H.QTY, H.LOTNO, H.LOCATIONCODE
+                SELECT H.LOTNO, MAX(H.LOCATIONCODE) AS LOCATIONCODE, SUM(H.QTY) AS REMAINING_QTY
                 FROM TBL_PROD_STOCK_HISTORY H
                 JOIN TBL_PROD_LOTSTATE S ON H.LOTNO = S.LOTNO
-                WHERE H.REF_NO = %s AND S.PARTNO = %s AND H.STOCKCHANGEGUBUN = '투입'
-                ORDER BY H.REGDTM ASC
+                WHERE H.REF_NO = %s AND S.PARTNO = %s AND H.STOCKCHANGEGUBUN IN ('투입', '소모', '투입취소', '생산취소_복원')
+                GROUP BY H.LOTNO
+                HAVING SUM(H.QTY) < 0
+                ORDER BY MAX(H.REGDTM) ASC
             """, (workordno, child_part))
             inputs = cursor.fetchall()
             
-            for h_no, h_qty, m_lot, m_loc in inputs:
+            for m_lot, m_loc, rem_qty in inputs:
                 if needed <= 0: break
-                abs_qty = abs(h_qty)
+                
+                # rem_qty는 음수 (예: -100)
+                abs_rem_qty = abs(rem_qty)
                 consume_qty = 0
                 
-                if abs_qty <= needed:
-                    cursor.execute("DELETE FROM TBL_PROD_STOCK_HISTORY WHERE STOCKHISTORYNO = %s", (h_no,))
-                    consume_qty = abs_qty
-                    needed -= abs_qty
+                if abs_rem_qty <= needed:
+                    consume_qty = abs_rem_qty
+                    needed -= abs_rem_qty
                 else:
-                    new_qty = (abs_qty - needed) * -1
-                    cursor.execute("UPDATE TBL_PROD_STOCK_HISTORY SET QTY = %s WHERE STOCKHISTORYNO = %s", (new_qty, h_no))
                     consume_qty = needed
                     needed = 0
                 
-                # 실제 자재 재고 차감 로직 제거 (자재투입 시 이미 차감되므로 HISTORY만 관리)
+                # 누적 저장을 위해 '소모' 내역 추가 (양수 QTY)
+                import datetime
+                now_consume = datetime.datetime.now()
+                c_hist_no = f"H{now_consume.strftime('%Y%m%d%H%M%S%f')[:19]}"
+                
+                cursor.execute("""
+                    INSERT INTO TBL_PROD_STOCK_HISTORY (
+                        LOTNO, LOCATIONCODE, STOCKHISTORYNO, QTY, 
+                        STOCKCHANGEGUBUN, CHANGEDAY, REMARK, REF_NO, 
+                        REGUSERID, REGDTM
+                    ) VALUES (%s, %s, %s, %s, '소모', %s, '생산소모', %s, 1, GETDATE())
+                """, (m_lot, m_loc, c_hist_no, consume_qty, now_consume.strftime('%Y-%m-%d'), workordno))
 
         conn.commit()
         conn.close()
