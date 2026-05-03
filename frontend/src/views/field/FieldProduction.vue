@@ -1,87 +1,118 @@
 <template>
-  <div class="field-page">
+  <div class="field-page logistics-style">
     <!-- ═══ 헤더 바 ═══ -->
     <header class="field-header">
       <div class="header-left">
-        <span class="header-title">생산관리</span>
-        <label class="hdr-label">작업자</label>
-        <input type="text" v-model="worker" class="hdr-input" style="width:100px" />
-        <button class="hdr-btn-search" @click="fetchData">🔍</button>
+        <h1 class="page-title">현장 생산관리</h1>
       </div>
       <div class="header-right">
-        <label class="hdr-label">프린터</label>
-        <select v-model="printer" class="hdr-select">
-          <option value="">(선택하세요)</option>
-        </select>
-        <button class="hdr-btn action" @click="fetchData">조회</button>
-        <button class="hdr-btn">분류</button>
-        <button class="hdr-btn finish" @click="$router.push('/select-mode')">종료</button>
-        <button class="hdr-btn">옵션</button>
+        <div class="worker-info">
+          <label>👤 작업자</label>
+          <div class="search-input">
+            <input type="text" v-model="worker" placeholder="작업자" />
+            <button class="btn-search-small" @click="fetchData">🔍</button>
+          </div>
+        </div>
+        <div class="printer-select">
+          <label>📠 프린터</label>
+          <select v-model="printer">
+            <option value="">(선택하세요)</option>
+            <option v-for="p in printerList" :key="p" :value="p">{{ p }}</option>
+          </select>
+        </div>
+        <div class="header-buttons">
+          <button class="btn-icon" @click="fetchData">
+            <span class="icon">🔍</span> 조회
+          </button>
+          <button class="btn-icon" @click="$router.push('/logistics')">
+            <span class="icon">📦</span> 물류
+          </button>
+          <button class="btn-icon btn-close" @click="$router.push('/select-mode')">
+            <span class="icon">❌</span> 종료
+          </button>
+          <button class="btn-icon" @click="showPrinterSetting = true">
+            <span class="icon">⚙️</span> 옵션
+          </button>
+        </div>
       </div>
     </header>
 
     <!-- ═══ 검색 영역 ═══ -->
     <section class="search-section">
-      <div class="search-row">
-        <label>작업일</label>
-        <input type="date" v-model="startDate" class="s-input" />
-        <span>~</span>
-        <input type="date" v-model="endDate" class="s-input" />
-        <label>상태</label>
-        <select v-model="ordState" class="s-select">
-          <option value="">(선택...)</option>
-          <option value="NEW">신규</option>
-          <option value="SETTING">시세팅</option>
-          <option value="STARTED">작업중</option>
-          <option value="DONE">완료</option>
-        </select>
-        <label class="chk-wrap"><input type="checkbox" v-model="includeDone" /> 완료포함</label>
-        <label>주/야</label>
-        <select v-model="shift" class="s-select">
-          <option value="">(선택...)</option>
-          <option value="주간">주간</option>
-          <option value="야간">야간</option>
-        </select>
-        <label>구분</label>
-        <select v-model="gubun" class="s-select" style="width:80px">
-          <option value="정상">정상</option>
-        </select>
-      </div>
-      <div class="search-row">
-        <label>작지번호</label>
-        <div class="input-search-wrap">
-          <input type="text" v-model="searchWorkordNo" class="s-input" @keyup.enter="fetchData" />
-          <button class="btn-s" @click="fetchData">🔍</button>
+      <div class="filter-grid">
+        <div class="filter-item">
+          <label>작업일</label>
+          <div class="date-range">
+            <input type="date" v-model="startDate" />
+            <span>~</span>
+            <input type="date" v-model="endDate" />
+          </div>
         </div>
-        <label>품번</label>
-        <div class="input-search-wrap">
-          <input type="text" v-model="searchPartNo" class="s-input" @keyup.enter="fetchData" />
-          <button class="btn-s" @click="showItemPicker = true">🔍</button>
-        </div>
-        <label>라인</label>
-        <div class="input-search-wrap">
-          <select v-model="lineCd" class="s-select" style="border-radius: 3px 0 0 3px;">
-            <option value="">(선택하세요)</option>
-            <option v-for="l in lines" :key="l.LINECD" :value="l.LINECD">{{ l.LINENM }}</option>
+        <div class="filter-item">
+          <label>상태</label>
+          <select v-model="ordState" class="s-select">
+            <option value="">(선택...)</option>
+            <option value="NEW">신규</option>
+            <option value="SETTING">시세팅</option>
+            <option value="STARTED">작업중</option>
+            <option value="DONE">완료</option>
           </select>
-          <button class="btn-s" @click="showLinePicker = true">🔍</button>
         </div>
-        <label>공정</label>
-        <div class="input-search-wrap">
-          <select v-model="processCd" class="s-select" style="border-radius: 3px 0 0 3px;">
-            <option value="">(선택하세요)</option>
-            <option v-for="p in processes" :key="p.PROCESSCD" :value="p.PROCESSCD">{{ p.PROCESSNM }}</option>
+        <div class="filter-item checkbox-item">
+          <input type="checkbox" id="include-done" v-model="includeDone" />
+          <label for="include-done">완료포함</label>
+        </div>
+        <div class="filter-item">
+          <label>주/야</label>
+          <select v-model="shift" class="s-select">
+            <option value="">(선택...)</option>
+            <option value="주간">주간</option>
+            <option value="야간">야간</option>
           </select>
-          <button class="btn-s" @click="showProcessPicker = true">🔍</button>
+        </div>
+        <div class="filter-item">
+          <label>작지번호</label>
+          <div class="search-input">
+            <input type="text" v-model="searchWorkordNo" placeholder="작지번호" @keyup.enter="fetchData" />
+            <button class="btn-search-small" @click="fetchData">🔍</button>
+          </div>
+        </div>
+        <div class="filter-item">
+          <label>품번</label>
+          <div class="search-input">
+            <input type="text" v-model="searchPartNo" placeholder="품번 검색" @keyup.enter="fetchData" />
+            <button class="btn-search-small" @click="showItemPicker = true">🔍</button>
+          </div>
+        </div>
+        <div class="filter-item">
+          <label>라인</label>
+          <div class="search-input">
+            <select v-model="lineCd">
+              <option value="">(선택하세요)</option>
+              <option v-for="l in lines" :key="l.LINECD" :value="l.LINECD">{{ l.LINENM }}</option>
+            </select>
+            <button class="btn-search-small" @click="showLinePicker = true">🔍</button>
+          </div>
+        </div>
+        <div class="filter-item">
+          <label>공정</label>
+          <div class="search-input">
+            <select v-model="processCd">
+              <option value="">(선택하세요)</option>
+              <option v-for="p in processes" :key="p.PROCESSCD" :value="p.PROCESSCD">{{ p.PROCESSNM }}</option>
+            </select>
+            <button class="btn-search-small" @click="showProcessPicker = true">🔍</button>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- ═══ 마스터 그리드 ═══ -->
-    <div class="master-grid-wrap">
-      <table class="master-grid">
-        <thead>
-          <tr>
+    <div class="main-content">
+      <div class="table-wrap master-table-wrap">
+        <table class="master-grid">
+          <thead>
+            <tr>
             <th style="width:55px">주/야</th>
             <th style="width:130px">하위작지번호</th>
             <th style="width:65px">라인</th>
@@ -125,6 +156,7 @@
         </tbody>
       </table>
     </div>
+  </div>
 
     <!-- ═══ 하단 탭 영역 ═══ -->
     <div class="tab-section">
@@ -138,9 +170,15 @@
       <!-- 탭 1: 생산실적 -->
       <div v-if="activeTab === 'result'" class="tab-content">
         <div class="result-top">
-          <div class="result-info">
-            <span>총생산실적 <b>{{ summary.TOT_PROD_QTY || 0 }}</b></span>
-            <span>잔량 <b>{{ (summary.ORD_QTY || 0) - (summary.TOT_PROD_QTY || 0) }}</b></span>
+          <div class="result-info-cards">
+            <div class="info-card">
+              <span class="card-label">총생산실적</span>
+              <span class="card-value">{{ summary.TOT_PROD_QTY || 0 }}</span>
+            </div>
+            <div class="info-card highlight">
+              <span class="card-label">잔량</span>
+              <span class="card-value">{{ (summary.ORD_QTY || 0) - (summary.TOT_PROD_QTY || 0) }}</span>
+            </div>
           </div>
           <div class="result-actions">
             <button class="btn-status mat-input" @click="toggleInputMode">📦 자재투입</button>
@@ -151,51 +189,64 @@
           </div>
         </div>
 
-        <table class="summary-table">
-          <thead>
-            <tr>
-              <th>작업지시수량</th><th>총생산실적수량</th><th>총양품수량</th><th>총불량수량</th>
-              <th class="italic-head">생산실적수량</th><th class="italic-head">양품수량</th><th class="italic-head">불량수량</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{{ summary.ORD_QTY || 0 }}</td>
-              <td>{{ summary.TOT_PROD_QTY || 0 }}</td>
-              <td>{{ summary.TOT_GOOD_QTY || 0 }}</td>
-              <td>{{ summary.TOT_FAIL_QTY || 0 }}</td>
-              <td class="italic-val"><input type="number" v-model.number="summary.PROD_QTY" class="edit-input" /></td>
-              <td class="italic-val">{{ summary.GOOD_QTY }}</td>
-              <td class="italic-val"><input type="number" v-model.number="summary.FAIL_QTY" class="edit-input" /></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="metric-container">
+          <div class="metric-card">
+            <label>작업지시수량</label>
+            <div class="metric-val">{{ summary.ORD_QTY || 0 }}</div>
+          </div>
+          <div class="metric-card">
+            <label>총생산실적수량</label>
+            <div class="metric-val">{{ summary.TOT_PROD_QTY || 0 }}</div>
+          </div>
+          <div class="metric-card">
+            <label>총양품수량</label>
+            <div class="metric-val success">{{ summary.TOT_GOOD_QTY || 0 }}</div>
+          </div>
+          <div class="metric-card">
+            <label>총불량수량</label>
+            <div class="metric-val danger">{{ summary.TOT_FAIL_QTY || 0 }}</div>
+          </div>
+          <div class="metric-card action">
+            <label>금회 생산실적</label>
+            <input type="number" v-model.number="summary.PROD_QTY" class="metric-input" />
+          </div>
+          <div class="metric-card action">
+            <label>금회 양품수량</label>
+            <div class="metric-val success">{{ summary.GOOD_QTY }}</div>
+          </div>
+          <div class="metric-card action">
+            <label>금회 불량수량</label>
+            <input type="number" v-model.number="summary.FAIL_QTY" class="metric-input danger" />
+          </div>
+        </div>
 
         <!-- 메인 화면 생산실적 상세 그리드 (투입된 자재 목록) -->
-        <div class="detail-grid-wrap" style="margin-top: 10px; border-top: 1px solid #cbd5e0;">
-          <div class="sub-title" style="padding: 8px 12px; font-weight: bold; font-size: 0.82rem; color: #4a5568; background: #f8f9fa;">
-            투입된 자재 목록 (작업 진행중)
+        <div class="detail-grid-wrap mat-list-section">
+          <div class="sub-title">
+            <span class="icon">📋</span> 투입된 자재 목록 (작업 진행중)
           </div>
-          <table class="detail-grid">
-            <thead>
-              <tr>
-                <th>품번</th><th>품명</th><th>규격</th><th>단위</th><th>투입수량</th><th>투입LOT</th><th>관리</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="resultRows.filter(r => r.RECORD_GUBUN === 'INPUT').length === 0">
-                <td colspan="7" class="empty">투입된 자재가 없습니다. [자재투입] 버튼을 눌러 등록하세요.</td>
-              </tr>
-              <tr v-for="(r, i) in resultRows.filter(r => r.RECORD_GUBUN === 'INPUT')" :key="i">
-                <td>{{ r.PARTNO }}</td><td>{{ r.PARTNM }}</td><td>{{ r.STANDARD }}</td>
-                <td class="center">{{ r.UNIT }}</td><td class="right" style="color: #2ecc71; font-weight: bold;">{{ r.INPUT_QTY }}</td>
-                <td>{{ r.LOTNO }}</td>
-                <td class="center">
-                  <button class="btn-grid-del" @click="deleteInput(r)">삭제</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="table-wrap mini">
+            <table class="detail-grid">
+              <thead>
+                <tr>
+                  <th>품번</th><th>품명</th><th>규격</th><th>단위</th><th>투입수량</th><th>투입LOT</th><th>관리</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="resultRows.filter(r => r.RECORD_GUBUN === 'INPUT').length === 0">
+                  <td colspan="7" class="empty">투입된 자재가 없습니다. [자재투입] 버튼을 눌러 등록하세요.</td>
+                </tr>
+                <tr v-for="(r, i) in resultRows.filter(r => r.RECORD_GUBUN === 'INPUT')" :key="i">
+                  <td>{{ r.PARTNO }}</td><td>{{ r.PARTNM }}</td><td>{{ r.STANDARD }}</td>
+                  <td class="center">{{ r.UNIT }}</td><td class="right" style="color: #2ecc71; font-weight: bold;">{{ r.INPUT_QTY }}</td>
+                  <td>{{ r.LOTNO }}</td>
+                  <td class="center">
+                    <button class="btn-grid-del" @click="deleteInput(r)">삭제</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -210,63 +261,79 @@
 
       <!-- 탭 2: 생산이력 -->
       <div v-if="activeTab === 'history'" class="tab-content">
-        <div class="tab-toolbar">
-          <span class="toolbar-title">생산이력</span>
-          <div class="toolbar-actions">
-            <button class="btn-toolbar">비가동 등록</button>
-            <button class="btn-toolbar">라벨출력</button>
+        <div class="result-top">
+          <div class="toolbar-left">
+            <span class="icon">📜</span>
+            <span class="toolbar-title">생산이력 현황</span>
+          </div>
+          <div class="result-actions">
+            <button class="btn-status done">
+              <span class="icon">⚠️</span> 비가동 등록
+            </button>
+            <button class="btn-status mid">
+              <span class="icon">🖨️</span> 라벨출력
+            </button>
           </div>
         </div>
         <div class="detail-grid-wrap">
-          <table class="detail-grid">
-            <thead>
-              <tr>
-                <th>품번</th><th>품명</th><th>규격</th><th>라인</th><th>공정</th><th>근무조</th>
-                <th>LOT번호</th><th>양품수량</th><th>불량LOT수량</th><th>단위</th><th>시작일자</th><th>완료일자</th><th>관리</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="historyRows.length === 0"><td colspan="13" class="empty">데이터 없음</td></tr>
-              <tr v-for="(r, i) in historyRows" :key="i">
-                <td>{{ r.PARTNO }}</td><td>{{ r.PARTNM }}</td><td>{{ r.STANDARD }}</td>
-                <td class="center">{{ r.LINECD }}</td><td class="center">{{ p.PROCESSCD }}</td><td class="center">{{ r.SHIFT }}</td>
-                <td>{{ r.LOTNO }}</td><td class="right">{{ r.GOOD_QTY }}</td><td class="right">{{ r.FAIL_QTY }}</td>
-                <td class="center">{{ r.UNIT }}</td><td class="center">{{ r.START_DATE }}</td><td class="center">{{ r.END_DATE }}</td>
-                <td class="center">
-                  <button class="btn-grid-del" @click="deleteHistoryRow(r)">삭제</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="table-wrap">
+            <table class="detail-grid">
+              <thead>
+                <tr>
+                  <th>품번</th><th>품명</th><th>규격</th><th>라인</th><th>공정</th><th>근무조</th>
+                  <th>LOT번호</th><th>양품수량</th><th>불량LOT수량</th><th>단위</th><th>시작일자</th><th>완료일자</th><th>관리</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="historyRows.length === 0"><td colspan="13" class="empty">데이터 없음</td></tr>
+                <tr v-for="(r, i) in historyRows" :key="i">
+                  <td>{{ r.PARTNO }}</td><td>{{ r.PARTNM }}</td><td>{{ r.STANDARD }}</td>
+                  <td class="center">{{ r.LINECD }}</td><td class="center">{{ r.PROCESSCD }}</td><td class="center">{{ r.SHIFT }}</td>
+                  <td>{{ r.LOTNO }}</td><td class="right">{{ r.GOOD_QTY }}</td><td class="right">{{ r.FAIL_QTY }}</td>
+                  <td class="center">{{ r.UNIT }}</td><td class="center">{{ r.START_DATE }}</td><td class="center">{{ r.END_DATE }}</td>
+                  <td class="center">
+                    <button class="btn-grid-del" @click="deleteHistoryRow(r)">삭제</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       <!-- 탭 3: 불량이력 -->
       <div v-if="activeTab === 'defect'" class="tab-content">
-        <div class="tab-toolbar">
-          <span class="toolbar-title">불량비역조회</span>
+        <div class="tab-toolbar-modern danger">
+          <div class="toolbar-left">
+            <span class="icon">🚫</span>
+            <span class="toolbar-title">불량이력 현황</span>
+          </div>
           <div class="toolbar-actions">
-            <button class="btn-toolbar">라벨출력</button>
+            <button class="btn-action-small blue">
+              <span class="icon">🖨️</span> 라벨출력
+            </button>
           </div>
         </div>
         <div class="detail-grid-wrap">
-          <table class="detail-grid">
-            <thead>
-              <tr>
-                <th>품번</th><th>품명</th><th>규격</th><th>라인</th><th>공정</th><th>근무조</th>
-                <th>LOT번호</th><th>불량LOT수량</th><th>단위</th><th>불량유실</th><th>불량위인</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="defectRows.length === 0"><td colspan="11" class="empty">데이터 없음</td></tr>
-              <tr v-for="(r, i) in defectRows" :key="i">
-                <td>{{ r.PARTNO }}</td><td>{{ r.PARTNM }}</td><td>{{ r.STANDARD }}</td>
-                <td class="center">{{ r.LINECD }}</td><td class="center">{{ r.PROCESSCD }}</td><td class="center">{{ r.SHIFT }}</td>
-                <td>{{ r.LOTNO }}</td><td class="right">{{ r.FAIL_LOT_QTY }}</td>
-                <td class="center">{{ r.UNIT }}</td><td>{{ r.FAIL_REASON }}</td><td>{{ r.FAIL_CAUSE }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="table-wrap">
+            <table class="detail-grid">
+              <thead>
+                <tr>
+                  <th>품번</th><th>품명</th><th>규격</th><th>라인</th><th>공정</th><th>근무조</th>
+                  <th>LOT번호</th><th>불량LOT수량</th><th>단위</th><th>불량유실</th><th>불량위인</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="defectRows.length === 0"><td colspan="11" class="empty">데이터 없음</td></tr>
+                <tr v-for="(r, i) in defectRows" :key="i">
+                  <td>{{ r.PARTNO }}</td><td>{{ r.PARTNM }}</td><td>{{ r.STANDARD }}</td>
+                  <td class="center">{{ r.LINECD }}</td><td class="center">{{ r.PROCESSCD }}</td><td class="center">{{ r.SHIFT }}</td>
+                  <td>{{ r.LOTNO }}</td><td class="right">{{ r.FAIL_LOT_QTY }}</td>
+                  <td class="center">{{ r.UNIT }}</td><td>{{ r.FAIL_REASON }}</td><td>{{ r.FAIL_CAUSE }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -296,6 +363,12 @@
       @close="showProcessPicker = false"
       @select="onProcessSelect"
     />
+
+    <PrinterSettingModal 
+      :visible="showPrinterSetting"
+      @close="showPrinterSetting = false"
+      @saved="onPrinterSaved"
+    />
   </div>
 </template>
 
@@ -303,6 +376,7 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import api from '../../api';
 import MaterialInputModal from '../modals/MaterialInputModal.vue';
+import PrinterSettingModal from '../modals/PrinterSettingModal.vue';
 import ItemPicker from '../pickers/ItemPicker.vue';
 import LinePicker from '../pickers/LinePicker.vue';
 import ProcessPicker from '../pickers/ProcessPicker.vue';
@@ -316,7 +390,22 @@ const includeDone = ref(false);
 const searchWorkordNo = ref(''), searchPartNo = ref('');
 const lineCd = ref(''), processCd = ref('');
 const worker = ref(''), printer = ref('');
+const printerList = ref<string[]>([]);
 const lines = ref<any[]>([]), processes = ref<any[]>([]);
+
+// Printer/Option States
+const showPrinterSetting = ref(false);
+
+function loadPrinterSettings() {
+  const savedList = localStorage.getItem('local_printer_list');
+  if (savedList) printerList.value = JSON.parse(savedList);
+  printer.value = localStorage.getItem('selected_printer') || '';
+}
+
+function onPrinterSaved(newPrinter: string) {
+  printer.value = newPrinter;
+  loadPrinterSettings(); // 목록 갱신
+}
 
 // Picker States
 const showItemPicker = ref(false);
@@ -727,112 +816,591 @@ watch(
   }
 );
 
-onMounted(() => { fetchMasterData(); fetchData(); });
+onMounted(() => { 
+  fetchMasterData(); 
+  fetchData(); 
+  loadPrinterSettings(); 
+});
 </script>
 
 <style scoped>
-.field-page { display:flex; flex-direction:column; height:100vh; font-family:'Segoe UI',sans-serif; font-size:.85rem; background:#f0f2f5; }
+.field-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f4f6f9;
+  font-family: 'Malgun Gothic', sans-serif;
+  color: #333;
+}
 
-/* 헤더 */
-.field-header { display:flex; justify-content:space-between; align-items:center; padding:6px 12px; background:linear-gradient(180deg,#e8edf2,#d0d8e0); border-bottom:1px solid #b0b8c0; flex-shrink:0; }
-.header-left,.header-right { display:flex; align-items:center; gap:6px; }
-.header-title { font-size:1rem; font-weight:800; color:#1a3a5c; margin-right:12px; }
-.hdr-label { font-size:.82rem; color:#4a5568; font-weight:600; }
-.hdr-input { padding:3px 6px; border:1px solid #b0b8c0; border-radius:3px; font-size:.82rem; }
-.hdr-btn-search { background:#fff; border:1px solid #b0b8c0; border-radius:3px; cursor:pointer; padding:2px 6px; }
-.hdr-select { padding:3px 6px; border:1px solid #b0b8c0; border-radius:3px; font-size:.82rem; min-width:100px; }
-.hdr-btn { background:linear-gradient(180deg,#f8f9fa,#e2e6ea); border:1px solid #b0b8c0; padding:4px 14px; border-radius:3px; font-size:.82rem; font-weight:600; cursor:pointer; color:#2d3748; }
-.hdr-btn.action { background:linear-gradient(180deg,#d6eaf8,#aed6f1); color:#1a5276; }
-.hdr-btn.finish { background:linear-gradient(180deg,#fde8e8,#f5b7b1); color:#922b21; }
+/* Header */
+.field-header {
+  background-color: #4b8a3e; /* Logistics Green */
+  color: white;
+  padding: 8px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  z-index: 10;
+  flex-shrink: 0;
+}
 
-/* 검색 */
-.search-section { padding:6px 12px; background:#fff; border-bottom:1px solid #dde1e6; flex-shrink:0; }
-.search-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap; }
-.search-row:last-child { margin-bottom:0; }
-.search-row label { font-size:.82rem; font-weight:600; color:#4a5568; white-space:nowrap; }
-.s-input { padding:3px 6px; border:1px solid #cbd5e0; border-radius:3px; font-size:.82rem; width:120px; }
-.s-select { padding:3px 6px; border:1px solid #cbd5e0; border-radius:3px; font-size:.82rem; min-width:90px; }
-.chk-wrap { display:flex; align-items:center; gap:3px; font-weight:500!important; cursor:pointer; }
-.input-search-wrap { display:flex; align-items:stretch; }
-.input-search-wrap input { border-radius:3px 0 0 3px; border-right:none; }
-.btn-s { background:#eaf2f8; border:1px solid #cbd5e0; border-left:none; border-radius:0 3px 3px 0; padding:0 6px; cursor:pointer; }
+.page-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
 
-/* 마스터 그리드 */
-.master-grid-wrap { flex:1; overflow:auto; border-bottom:2px solid #85c1e9; background:#fff; min-height:0; }
-.master-grid { width:max-content; min-width:100%; border-collapse:collapse; }
-.master-grid thead { position:sticky; top:0; z-index:2; }
-.master-grid th { background:linear-gradient(180deg,#d6eaf8,#aed6f1); color:#1a5276; font-weight:600; padding:6px 8px; text-align:left; border-bottom:2px solid #85c1e9; white-space:nowrap; font-size:.8rem; }
-.master-grid td { padding:4px 8px; border-bottom:1px solid #edf0f3; white-space:nowrap; font-size:.8rem; }
-.master-grid .center { text-align:center; }
-.master-grid .right { text-align:right; }
-.master-grid .empty { text-align:center; color:#a0aec0; padding:30px!important; }
-.master-grid tr:hover { background:#f7fafc; }
-.master-grid .row-selected { background:#d6eaf8!important; }
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
 
-/* 탭 영역 */
-.tab-section { flex:1; display:flex; flex-direction:column; min-height:0; background:#fff; }
-.tab-bar { display:flex; border-bottom:2px solid #d6eaf8; background:#eaf2f8; flex-shrink:0; padding-left:8px; }
-.tab-btn { padding:8px 18px; border:none; background:transparent; font-size:.84rem; font-weight:600; color:#5d6d7e; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px; transition:all .15s; }
-.tab-btn.active { color:#1a5276; border-bottom-color:#2980b9; background:#fff; }
-.tab-btn:hover:not(.active) { color:#2c3e50; background:rgba(255,255,255,.5); }
+.worker-info, .printer-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.15);
+  padding: 5px 15px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
 
-/* 탭 컨텐트 */
-.tab-content { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.search-input {
+  display: flex;
+  align-items: center;
+}
 
-/* 생산실적 상단 */
-.result-top { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border-bottom:1px solid #edf0f3; flex-shrink:0; }
-.result-info { display:flex; gap:16px; font-size:.85rem; color:#4a5568; }
-.result-info b { color:#1a5276; font-weight:700; }
-.result-actions { display:flex; gap:6px; }
-.btn-status { padding:5px 14px; border:1px solid #b0b8c0; border-radius:4px; font-size:.82rem; font-weight:600; cursor:pointer; }
-.btn-status.mat-input { background:linear-gradient(180deg,#ebf5fb,#d6eaf8); color:#1a5276; border-color:#aed6f1; }
-.btn-status.setting { background:linear-gradient(180deg,#fef9e7,#f9e79f); color:#7d6608; }
+.search-input input, .search-input select {
+  padding: 4px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px 0 0 4px;
+  width: 120px;
+  font-size: 0.9rem;
+}
 
-/* 자재투입 박스 */
-.material-input-box { background:#f7fafc; padding:10px 15px; border-bottom:1px solid #e2e8f0; animation:slideDown 0.2s ease-out; }
-.mi-row { display:flex; align-items:center; gap:10px; }
-.mi-row label { font-size:.82rem; font-weight:700; color:#4a5568; }
-.mi-input { padding:5px 8px; border:1px solid #cbd5e0; border-radius:4px; font-size:.82rem; }
-.btn-mi-save { background:#3182ce; color:#fff; border:none; padding:5px 15px; border-radius:4px; font-weight:600; cursor:pointer; }
-.btn-mi-close { background:none; border:none; font-size:1.1rem; color:#a0aec0; cursor:pointer; margin-left:auto; }
-@keyframes slideDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
+.printer-select select {
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: none;
+  font-size: 0.9rem;
+}
 
-.btn-status.start { background:linear-gradient(180deg,#d5f5e3,#82e0aa); color:#1e8449; }
-.btn-status.mid { background:linear-gradient(180deg,#e8f8f5,#a3e4d7); color:#117a65; }
-.btn-status.cancel { background:linear-gradient(180deg,#f2f4f4,#ccd1d1); color:#424949; }
-.btn-status.done { background:linear-gradient(180deg,#fde8e8,#f5b7b1); color:#922b21; }
-.btn-status:disabled { background:#bdc3c7 !important; border-color:#bdc3c7 !important; color:#fff !important; cursor:not-allowed; opacity:0.6; }
+.btn-search-small {
+  padding: 4px 10px;
+  border: 1px solid #ced4da;
+  border-left: none;
+  background: #e9ecef;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+}
 
-/* 집계 테이블 */
-.summary-table { width:100%; border-collapse:collapse; flex-shrink:0; }
-.summary-table th { background:linear-gradient(180deg,#2980b9,#1a6fa0); color:#fff; font-weight:600; padding:8px 6px; text-align:center; font-size:.82rem; border:1px solid #1a5276; }
-.summary-table td { padding:8px 6px; text-align:center; font-size:.9rem; font-weight:700; color:#2c3e50; border:1px solid #dde1e6; background:#fff; }
-.italic-head { font-style:italic; background:linear-gradient(180deg,#5dade2,#3498db)!important; }
-.italic-val { font-style:italic; color:#2980b9; }
-.edit-input { width: 60px; text-align: center; border: 1px solid #b0b8c0; border-radius: 3px; padding: 2px 4px; font-size: .9rem; font-weight: 700; color: #2980b9; }
-.edit-input:focus { outline: none; border-color: #3498db; box-shadow: 0 0 3px rgba(52, 152, 219, 0.5); }
+.header-buttons {
+  display: flex;
+  gap: 10px;
+}
 
-/* 상세 그리드 */
-.detail-grid-wrap { flex:1; overflow:auto; }
-.detail-grid { width:100%; border-collapse:collapse; }
-.detail-grid thead { position:sticky; top:0; z-index:1; }
-.detail-grid th { background:#eaf2f8; color:#1a5276; font-weight:600; padding:6px 8px; text-align:left; border-bottom:1px solid #d6eaf8; font-size:.8rem; white-space:nowrap; }
-.detail-grid td { padding:4px 8px; border-bottom:1px solid #f0f2f5; font-size:.8rem; white-space:nowrap; }
-.detail-grid .center { text-align:center; }
-.detail-grid .right { text-align:right; }
-.detail-grid .empty { text-align:center; color:#a0aec0; padding:30px!important; }
+.btn-icon {
+  background: white;
+  color: #2c3e50;
+  border: 1px solid #ddd;
+  padding: 6px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
 
-/* 탭 툴바 */
-.tab-toolbar { display:flex; justify-content:space-between; align-items:center; padding:6px 12px; border-bottom:1px solid #edf0f3; flex-shrink:0; }
-.toolbar-title { font-weight:700; color:#1a5276; font-size:.88rem; }
-.toolbar-actions { display:flex; gap:6px; }
-.btn-toolbar { background:#fff; border:1px solid #b0b8c0; padding:4px 12px; border-radius:3px; font-size:.82rem; font-weight:600; cursor:pointer; color:#2d3748; }
-.btn-toolbar:hover { background:#eaf2f8; }
+.btn-icon:hover {
+  background: #f8f9fa;
+  transform: translateY(-1px);
+}
 
-/* 그리드 내 삭제 버튼 */
-.btn-grid-del { background:#fff; border:1px solid #e74c3c; color:#e74c3c; padding:2px 8px; border-radius:3px; font-size:.75rem; font-weight:600; cursor:pointer; }
-.btn-grid-del:hover { background:#e74c3c; color:#fff; }
+.btn-icon.btn-close {
+  background: #dc3545;
+  color: white;
+  border-color: #c82333;
+}
 
-/* 상태바 */
-.status-bar { padding:4px 12px; background:#e8edf2; border-top:1px solid #cbd5e0; font-size:.78rem; color:#718096; flex-shrink:0; }
+/* Search Section */
+.search-section {
+  background: #f8f9fa;
+  padding: 12px 20px;
+  border-bottom: 1px solid #dee2e6;
+  flex-shrink: 0;
+}
+
+.filter-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px 25px;
+  align-items: center;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-item label {
+  font-weight: 700;
+  color: #495057;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.date-range input {
+  padding: 5px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  width: 130px;
+}
+
+.s-select {
+  padding: 5px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  min-width: 100px;
+}
+
+.checkbox-item {
+  gap: 5px;
+}
+
+.checkbox-item input {
+  width: 18px;
+  height: 18px;
+}
+
+/* Main Content (Top Master Grid) */
+.main-content {
+  flex: 2; /* 상단 그리드 영역을 2/5 비율로 설정 */
+  padding: 10px 15px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-wrap {
+  flex: 1;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.master-grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.master-grid th {
+  background: #f1f3f5;
+  color: #495057;
+  font-weight: 700;
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 2px solid #dee2e6;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.master-grid td {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.master-grid tr:hover {
+  background-color: #f8f9fa;
+}
+
+.master-grid .row-selected {
+  background-color: #e7f5ff !important;
+}
+
+.center { text-align: center; }
+.right { text-align: right; }
+.empty { text-align: center; color: #adb5bd; padding: 40px !important; }
+
+/* Tab Section (Bottom Area) */
+.tab-section {
+  flex: 3; /* 하단 영역을 3/5 비율로 설정하여 더 넓게 배분 */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0 15px 15px 15px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tab-bar {
+  display: flex;
+  background: #e9ecef;
+  padding: 5px 5px 0 5px;
+  gap: 2px;
+}
+
+.tab-btn {
+  padding: 8px 20px;
+  border: none;
+  background: #dee2e6;
+  font-weight: 700;
+  color: #495057;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  background: white;
+  color: #2c3e50;
+  position: relative;
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #4b8a3e;
+  border-radius: 3px 3px 0 0;
+}
+
+.tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px;
+}
+
+/* Result Styles */
+.result-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  background: #fff;
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.result-info-cards {
+  display: flex;
+  gap: 10px;
+}
+
+.info-card {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #adb5bd;
+}
+
+.info-card.highlight {
+  border-left-color: #4b8a3e;
+  background: #e7f5ff;
+}
+
+.card-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #6c757d;
+  text-transform: uppercase;
+}
+
+.card-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #2c3e50;
+}
+
+.result-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-status {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.btn-status.mat-input { background: #fd7e14; color: white; border-color: #e8590c; }
+.btn-status.start { background: #40c057; color: white; border-color: #2f9e44; }
+.btn-status.mid { background: #339af0; color: white; border-color: #1c7ed6; }
+.btn-status.done { background: #868e96; color: white; border-color: #495057; }
+.btn-status.cancel { background: #fa5252; color: white; border-color: #e03131; }
+
+/* Metric Grid */
+.metric-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.metric-card {
+  background: white;
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 50px;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.metric-card.action {
+  border: 2px solid #fd7e14;
+  background: linear-gradient(135deg, #fffaf0 0%, #fff 100%);
+  box-shadow: 0 4px 6px -1px rgba(253, 126, 20, 0.2);
+}
+
+.metric-card label {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #868e96;
+  margin-bottom: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.metric-val {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #212529;
+  text-align: right;
+}
+
+.metric-val.success { color: #2f9e44; }
+.metric-val.danger { color: #e03131; }
+
+.metric-input {
+  width: 90px;
+  padding: 4px 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  text-align: right;
+  color: #fd7e14;
+  background: white;
+  transition: border-color 0.2s;
+}
+
+.metric-input:focus {
+  outline: none;
+  border-color: #fd7e14;
+  box-shadow: 0 0 0 3px rgba(253, 126, 20, 0.1);
+}
+
+.metric-input.danger {
+  color: #e03131;
+  border-color: #ffa8a8;
+}
+
+.metric-input.danger:focus {
+  border-color: #e03131;
+  box-shadow: 0 0 0 3px rgba(224, 49, 49, 0.1);
+}
+
+/* Tab Toolbars */
+.tab-toolbar-modern {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 15px;
+  background: #f1f3f5;
+  border-bottom: 1px solid #dee2e6;
+  margin: -15px -15px 12px -15px;
+}
+
+.tab-toolbar-modern.danger {
+  background: #fff5f5;
+  border-bottom-color: #ffc9c9;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #343a40;
+}
+
+.btn-action-small {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.btn-action-small:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn-action-small:active {
+  transform: translateY(0);
+}
+
+.btn-action-small.grey {
+  background: #f8f9fa;
+  color: #495057;
+  border-color: #dee2e6;
+}
+
+.btn-action-small.grey:hover {
+  background: #e9ecef;
+  border-color: #ced4da;
+}
+
+.btn-action-small.blue {
+  background: #339af0;
+  color: white;
+  border-color: #228be6;
+  box-shadow: 0 2px 4px rgba(51, 154, 240, 0.2);
+}
+
+.btn-action-small.blue:hover {
+  background: #228be6;
+  box-shadow: 0 4px 8px rgba(51, 154, 240, 0.3);
+}
+
+/* Sub sections */
+.sub-title {
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #495057;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mat-list-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.table-wrap.mini {
+  flex: 1;
+  max-height: none;
+}
+
+.detail-grid-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.detail-grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.detail-grid th {
+  background: #f1f3f5;
+  padding: 10px 8px;
+  border-bottom: 2px solid #dee2e6;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.detail-grid td {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+  font-size: 0.85rem;
+}
+
+.btn-grid-del {
+  background: #fff;
+  border: 1px solid #ffc9c9;
+  color: #fa5252;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-grid-del:hover {
+  background: #fa5252;
+  color: #fff;
+  border-color: #fa5252;
+  box-shadow: 0 2px 4px rgba(250, 82, 82, 0.2);
+}
+
+/* Status Bar */
+.status-bar {
+  padding: 6px 20px;
+  background: #e9ecef;
+  border-top: 1px solid #dee2e6;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #495057;
+  flex-shrink: 0;
+}
 </style>

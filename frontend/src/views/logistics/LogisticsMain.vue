@@ -7,10 +7,10 @@
       </div>
       <div class="header-right">
         <div class="printer-select">
-          <label>📠 프린터</label>
+          <label> 프린터</label>
           <select v-model="selectedPrinter">
             <option value="">(선택하세요)</option>
-            <option v-for="p in printers" :key="p" :value="p">{{ p }}</option>
+            <option v-for="p in printerList" :key="p" :value="p">{{ p }}</option>
           </select>
         </div>
         <div class="header-buttons">
@@ -279,6 +279,12 @@
       @close="showCompanyPicker = false"
       @select="onCompanySelect"
     />
+
+    <PrinterSettingModal 
+      :visible="showPrinterSetting"
+      @close="showPrinterSetting = false"
+      @saved="onPrinterSaved"
+    />
   </div>
 </template>
 
@@ -287,6 +293,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import DataGrid from '../../components/common/DataGrid.vue';
 import ShipmentSearchModal from '../modals/ShipmentSearchModal.vue';
+import PrinterSettingModal from '../modals/PrinterSettingModal.vue';
 import ItemPicker from '../pickers/ItemPicker.vue';
 import CompanyPicker from '../pickers/CompanyPicker.vue';
 import api from '../../api';
@@ -296,7 +303,24 @@ const router = useRouter();
 const { notifySuccess, notifyError } = useNotification();
 
 const selectedPrinter = ref('');
-const printers = ref(['Label Printer 1', 'Office Laser 1', 'TSC-244 Pro']);
+const printerList = ref<string[]>([]);
+const showPrinterSetting = ref(false);
+
+function loadPrinterSettings() {
+  const savedList = localStorage.getItem('local_printer_list');
+  if (savedList) printerList.value = JSON.parse(savedList);
+  selectedPrinter.value = localStorage.getItem('selected_printer') || '';
+}
+
+function onPrinterSaved(newPrinter: string) {
+  selectedPrinter.value = newPrinter;
+  loadPrinterSettings();
+}
+
+function toggleOptions() {
+  showPrinterSetting.value = true;
+}
+
 const activeTab = ref('receiving');
 
 const loading = ref(false);
@@ -670,10 +694,6 @@ function goToProduction() {
   router.push('/field');
 }
 
-function toggleOptions() {
-  // Option logic
-}
-
 watch(activeTab, (newTab) => {
   if (newTab !== 'shipping') {
     fetchData();
@@ -684,6 +704,7 @@ watch(activeTab, (newTab) => {
 });
 
 onMounted(() => {
+  loadPrinterSettings();
   if (activeTab.value !== 'shipping') {
     fetchData();
   }
