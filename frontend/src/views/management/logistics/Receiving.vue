@@ -46,13 +46,14 @@ const d=new Date(),m=new Date(d);m.setMonth(m.getMonth()-1);const f=(v:Date)=>v.
 const startDate=ref(f(m)),endDate=ref(f(d)),plantCd=ref(''),searchText=ref(''),orderNum=ref(''),plants=ref<any[]>([]);
 const mCols=[{key:'WAREHOUSENUM',label:'입고번호',width:'120px'},{key:'PLANTNM',label:'사업장',width:'120px'},{key:'COMPANYNM',label:'공급사',width:'140px'},{key:'ORDERNUM',label:'발주번호',width:'100px'},{key:'INDAY',label:'입고일자',width:'110px',type:'date'},{key:'TOTALAMT',label:'총금액',width:'120px'},{key:'INGUBUN',label:'구분',width:'80px'}];
 const dCols=[{key:'PARTNO',label:'자재품번',width:'130px'},{key:'PARTNM',label:'품명',width:'140px'},{key:'STANDARD',label:'규격',width:'90px'},{key:'UNIT',label:'단위',width:'60px'},{key:'UNIT_PRICE',label:'단가',width:'80px'},{key:'INLOTQTY',label:'입고수량',width:'90px'},{key:'FAILQTY',label:'불량수량',width:'80px'},{key:'LOTNO',label:'LOTNO',width:'110px'},{key:'WHSTATE',label:'입고상태',width:'80px'},{key:'LOCATIONNAME',label:'입고위치',width:'100px'}];
-const mRows=ref<any[]>([]),dRows=ref<any[]>([]),ld=ref(false),dl=ref(false),si=ref(-1),sel=ref<any>(null),pg=ref(1),tp=ref(0),tot=ref(0);
+const mRows=ref<any[]>([]), dRows=ref<any[]>([]), ld=ref(false), dl=ref(false), si=ref(-1), sel=ref<any>(null), pg=ref(1), tp=ref(0), tot=ref(0);
 
 async function fetchPlants(){
   try {
     const { data } = await getPlantsApiMasterPlantGet({ query: { size: 100 } });
     if (data) {
-      plants.value = (data as any).data || [];
+      const res = (data as any).data;
+      plants.value = res?.data || [];
     }
   } catch {}
 }
@@ -72,9 +73,10 @@ async function fetchData(){
       }
     });
     if (data) {
-      mRows.value = (data as any).data || [];
-      tot.value = (data as any).total || 0;
-      tp.value = (data as any).totalPages || 0;
+      const res = (data as any).data;
+      mRows.value = res?.data || [];
+      tot.value = res?.total || 0;
+      tp.value = res?.totalPages || 0;
     }
   } finally {
     ld.value=false;
