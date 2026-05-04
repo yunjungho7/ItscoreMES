@@ -47,9 +47,10 @@ async function fetchData(){
       }
     });
     if (data) {
-      items.value = (data as any).data || [];
-      total.value = (data as any).total || 0;
-      totalPages.value = (data as any).totalPages || 1;
+      const res = (data as any).data;
+      items.value = res.data || [];
+      total.value = res.total || 0;
+      totalPages.value = res.totalPages || 1;
     }
     selectedIdx.value=-1; 
   } finally { 
