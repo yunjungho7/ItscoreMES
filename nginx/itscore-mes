@@ -1,0 +1,43 @@
+server {
+    listen 80;
+    server_name _;
+
+    # 프론트엔드 정적 파일 서빙
+    root /home/itscore/ItscoreMES/frontend/dist;
+    index index.html;
+
+    # API 요청은 백엔드로 프록시 (정적 파일보다 우선순위 높임)
+    location /api {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # SPA 지원 - 모든 경로를 index.html로 (API 제외)
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 기타 백엔드 요청
+    location /docs {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+    }
+
+    location /redoc {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+    }
+
+    location /openapi.json {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+    }
+
+    location /health {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+    }
+}
