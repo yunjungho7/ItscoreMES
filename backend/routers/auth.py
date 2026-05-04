@@ -16,7 +16,7 @@ class UserInfo(BaseModel):
     empid: str
     name: str
     deptcd: Optional[str] = None
-    plant: str
+    plant: Optional[str] = None
     jikgub: Optional[str] = None
 
 class LoginResponse(BaseModel):
@@ -47,7 +47,7 @@ def login(request: LoginRequest):
                 message="아이디 또는 비밀번호가 일치하지 않습니다."
             )
             
-        # Decode fields (especially NAME and other Korean strings)
+        # Decode fields
         empid = decode_cp949(row[0])
         name = decode_cp949(row[1])
         deptcd = decode_cp949(row[2])
@@ -55,7 +55,7 @@ def login(request: LoginRequest):
         jikgub = decode_cp949(row[4])
         showyn = row[5]
         
-        if not showyn:
+        if showyn is not True:
             return LoginResponse(
                 success=False,
                 message="사용이 중지된 계정입니다. 관리자에게 문의하세요."
