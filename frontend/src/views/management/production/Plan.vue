@@ -73,7 +73,7 @@
                   (selectedCell?.ri === ri && selectedCell?.dt === dt) ? 'selected-cell' : ''
                 ]"
                 class="num"
-                @click.stop="onCellClick(row, ri, dt)">
+                @click.stop="onCellClick(row, ri as number, dt)">
               {{ row[dt] || 0 }}
             </td>
           </tr>
@@ -105,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import api from '../../../api';
 import ItemPicker from '../../pickers/ItemPicker.vue';
 import WorkOrderRegModal from '../../modals/WorkOrderRegModal.vue';

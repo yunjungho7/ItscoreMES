@@ -50,7 +50,7 @@ import {
   createFactoryApiMasterFactoryPost,
   updateFactoryApiMasterFactoryFactoryCdPut,
   deleteFactoryApiMasterFactoryFactoryCdDelete,
-  getNextCodeApiMasterFactoryNextCodePlantCdGet
+  getNextFactoryCodeApiMasterFactoryNextCodePlantCdGet
 } from '../../../api/generated/sdk.gen';
 import DataGrid from '../../../components/common/DataGrid.vue'; 
 import FormModal from '../../../components/common/FormModal.vue';
@@ -121,7 +121,7 @@ async function onPlantChange() {
     return;
   }
   try {
-    const { data } = await getNextCodeApiMasterFactoryNextCodePlantCdGet({
+    const { data } = await getNextFactoryCodeApiMasterFactoryNextCodePlantCdGet({
       path: { plant_cd: form.PLANTCD }
     });
     if (data) {

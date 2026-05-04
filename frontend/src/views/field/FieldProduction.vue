@@ -385,7 +385,7 @@ import ProcessPicker from '../pickers/ProcessPicker.vue';
 const d = new Date();
 const fmt = (v: Date) => v.toISOString().slice(0, 10);
 const startDate = ref(fmt(d)), endDate = ref(fmt(d));
-const ordState = ref(''), shift = ref(''), gubun = ref('정상');
+const ordState = ref(''), shift = ref('');
 const includeDone = ref(false);
 const searchWorkordNo = ref(''), searchPartNo = ref('');
 const lineCd = ref(''), processCd = ref('');
@@ -469,25 +469,7 @@ const isInputMode = ref(false);
 const matInput = ref({ MAT_LOTNO: '', INPUT_QTY: 0 });
 const isLoading = ref(false);
 
-const isAllMatChecked = computed(() => {
-  const stockRows = resultRows.value.filter(r => r.RECORD_GUBUN === 'STOCK');
-  return stockRows.length > 0 && stockRows.every(r => r._checked);
-});
-
-function toggleAllMat(e: any) {
-  const chk = e.target.checked;
-  resultRows.value.forEach(r => {
-    if (r.RECORD_GUBUN === 'STOCK') r._checked = chk;
-  });
-}
-
-function onRowClick(row: any) {
-  // 가용재고 항목을 클릭한 경우 해당 LOT 정보와 수량을 폼에 자동 입력
-  if (row.RECORD_GUBUN === 'STOCK') {
-    matInput.value.MAT_LOTNO = row.LOTNO;
-    matInput.value.INPUT_QTY = row.STOCK_QTY; // 기본적으로 전체 가용 수량 제안
-  }
-}
+// UNUSED REMOVED
 
 function toggleInputMode() {
   if (!selectedRow.value) { alert('작업지시를 선택하세요.'); return; }

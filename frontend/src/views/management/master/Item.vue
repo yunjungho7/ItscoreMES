@@ -92,7 +92,7 @@
 import { ref, reactive, onMounted, computed } from 'vue';
 import { 
   getCodesApiMasterCodeGet,
-  getGoodsApiMasterGoodsGet,
+  getGoodsListApiMasterGoodsGet,
   createGoodsApiMasterGoodsPost,
   updateGoodsApiMasterGoodsPartNoPut,
   deleteGoodsApiMasterGoodsPartNoDelete
@@ -145,7 +145,7 @@ async function fetchCodes(){
 async function fetchData(){
   loading.value=true;
   try {
-    const { data } = await getGoodsApiMasterGoodsGet({
+    const { data } = await getGoodsListApiMasterGoodsGet({
       query: {
         page: page.value,
         size: 50,
