@@ -3,5 +3,6 @@ from services.base_service import BaseCrudService
 
 code_service = BaseCrudService(
     mapper_path='sql/master/code.xml',
-    pk_columns=['CODECD']
+    pk_columns=['CODECD'],
+    table_name='TBL_COM_CODE'
 )

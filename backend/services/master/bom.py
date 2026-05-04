@@ -62,5 +62,6 @@ class BomService(BaseCrudService):
 
 bom_service = BomService(
     mapper_path='sql/master/bom.xml',
-    pk_columns=['PAR_PARTNO', 'CHILD_PARTNO']
+    pk_columns=['PAR_PARTNO', 'CHILD_PARTNO'],
+    table_name='TBL_COM_BOM'
 )

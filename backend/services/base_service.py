@@ -29,17 +29,30 @@ class BaseService:
 
 
 class BaseCrudService:
-    def __init__(self, mapper_path: str, pk_columns: list):
+    def __init__(self, mapper_path: str, pk_columns: list, table_name: str = None):
         """
         mapper_path: XML 파일 경로 (backend/ 기준 상대경로, 예: 'sql/master/plant.xml')
         pk_columns: PK 컬럼 목록 (예: ['PLANTCD'])
+        table_name: 감사 로그용 테이블명 (예: 'TBL_COM_PLANT')
         """
         xml_full_path = os.path.join(BASE_DIR, mapper_path)
         self.mapper = XMLMapper(xml_full_path)
         self.pk_columns = pk_columns
+        self.table_name = table_name
 
     def _get_conn(self):
         return get_db_connection()
+
+    def _record_audit(self, cursor, action: str, pk_val: str, user_id: str):
+        """감사 로그 기록 (공통)"""
+        if not self.table_name:
+            return
+        
+        sql = """
+            INSERT INTO TBL_SYS_AUDIT_LOG (TABLE_NAME, ACTION_TYPE, TARGET_PK, USER_ID, LOG_DTM)
+            VALUES (%s, %s, %s, %s, GETDATE())
+        """
+        cursor.execute(sql, (self.table_name, action, str(pk_val), str(user_id)))
 
     def get_query(self, query_id, params=None):
         return self.mapper.get_query(query_id, params)
@@ -148,18 +161,60 @@ class BaseCrudService:
         return self.get_one(**pks)
 
     def create(self, data: dict):
-        """등록"""
-        return self._execute_update('insert', data)
+        """등록 (감사 로그 포함)"""
+        def callback(cursor):
+            query_info = self.mapper.get_query('insert', data)
+            values = tuple(data.get(name) for name in query_info['params'])
+            cursor.execute(query_info['query'], values)
+            
+            # PK 값 추출 (복합 PK 지원)
+            pk_val = "-".join([str(data.get(c, '')) for c in self.pk_columns])
+            user_id = data.get('REGUSERID', data.get('USER_ID', '1'))
+            self._record_audit(cursor, 'INSERT', pk_val, user_id)
+            return cursor.rowcount
+        
+        try:
+            return self._execute_transaction(callback)
+        except pymssql.IntegrityError as e:
+            error_msg = str(e)
+            if "547" in error_msg:
+                raise HTTPException(status_code=400, detail="참조 무결성 오류: 관련 데이터가 존재하지 않거나 참조 중입니다.")
+            raise HTTPException(status_code=400, detail=f"데이터 무결성 오류: {e}")
 
     def update(self, pks: dict, data: dict):
-        """수정"""
-        # PK와 데이터를 합쳐서 전달
+        """수정 (감사 로그 포함)"""
         params = {**pks, **data}
-        return self._execute_update('update', params)
+        def callback(cursor):
+            query_info = self.mapper.get_query('update', params)
+            values = tuple(params.get(name) for name in query_info['params'])
+            cursor.execute(query_info['query'], values)
+            
+            pk_val = "-".join([str(pks.get(c, '')) for c in self.pk_columns])
+            user_id = params.get('EDITUSERID', params.get('USER_ID', '1'))
+            self._record_audit(cursor, 'UPDATE', pk_val, user_id)
+            return cursor.rowcount
+        
+        try:
+            return self._execute_transaction(callback)
+        except pymssql.IntegrityError as e:
+            error_msg = str(e)
+            if "547" in error_msg:
+                raise HTTPException(status_code=400, detail="참조 무결성 오류: 관련 데이터가 존재하지 않거나 참조 중입니다.")
+            raise HTTPException(status_code=400, detail=f"데이터 무결성 오류: {e}")
 
     def delete(self, pks: dict):
-        """삭제 (Soft Delete)"""
-        return self._execute_update('softDelete', pks)
+        """삭제 (감사 로그 포함)"""
+        def callback(cursor):
+            query_info = self.mapper.get_query('softDelete', pks)
+            values = tuple(pks.get(name) for name in query_info['params'])
+            cursor.execute(query_info['query'], values)
+            
+            pk_val = "-".join([str(pks.get(c, '')) for c in self.pk_columns])
+            user_id = pks.get('EDITUSERID', pks.get('USER_ID', '1'))
+            self._record_audit(cursor, 'DELETE', pk_val, user_id)
+            return cursor.rowcount
+        
+        return self._execute_transaction(callback)
 
     def _execute_transaction(self, callback):
         """트랜잭션 실행 (callback 에 cursor 전달)"""

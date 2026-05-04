@@ -3,5 +3,6 @@ from services.base_service import BaseCrudService
 
 line_service = BaseCrudService(
     mapper_path='sql/master/line.xml',
-    pk_columns=['LINECD']
+    pk_columns=['LINECD'],
+    table_name='TBL_COM_LINE'
 )

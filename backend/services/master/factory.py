@@ -22,5 +22,6 @@ class FactoryService(BaseCrudService):
 
 factory_service = FactoryService(
     mapper_path='sql/master/factory.xml',
-    pk_columns=['FACTORYCD']
+    pk_columns=['FACTORYCD'],
+    table_name='TBL_COM_FACTORY'
 )

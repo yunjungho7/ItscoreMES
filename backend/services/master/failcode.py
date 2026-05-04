@@ -3,5 +3,7 @@ from services.base_service import BaseCrudService
 
 failcode_service = BaseCrudService(
     mapper_path='sql/master/failcode.xml',
-    pk_columns=['FAILCD']
+    pk_columns=['FAIL_CD'],
+    table_name='TBL_COM_FAILCODE'
 )
+

@@ -3,5 +3,6 @@ from services.base_service import BaseCrudService
 
 warehouse_service = BaseCrudService(
     mapper_path='sql/master/warehouse.xml',
-    pk_columns=['WAREHOUSECODE']
+    pk_columns=['WAREHOUSECODE'],
+    table_name='TBL_COM_WAREHOUSE'
 )
