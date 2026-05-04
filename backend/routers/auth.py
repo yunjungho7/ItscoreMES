@@ -31,11 +31,11 @@ def login(request: LoginRequest):
         cursor = conn.cursor()
         
         # Check user credentials and status
-        # Use RTRIM for PASS to handle CHAR columns with trailing spaces
+        # Use RTRIM for EMPID and PASS to handle CHAR columns with trailing spaces
         query = """
             SELECT EMPID, NAME, DEPTCD, PLANT, JIKGUB, SHOWYN 
             FROM TBL_COM_MEMBERS 
-            WHERE EMPID = %s AND RTRIM(PASS) = %s
+            WHERE RTRIM(EMPID) = %s AND RTRIM(PASS) = %s
         """
         cursor.execute(query, (request.empid, request.password))
         row = cursor.fetchone()
