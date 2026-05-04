@@ -135,7 +135,7 @@ async function fetchCodes(){
   try {
     const { data } = await getCodesApiMasterCodeGet({ query: { size: 9999 } });
     if (data) {
-      allCodes.value = (data as any).data || [];
+      allCodes.value = (data as any).data?.data || [];
     }
   } catch(e) {
     console.error(e);
@@ -154,10 +154,11 @@ async function fetchData(){
       }
     });
     if (data) {
-      const rawData = (data as any).data || [];
+      const res = (data as any).data;
+      const rawData = res.data || [];
       items.value = rawData.map((item: any) => ({...item, PARTTYPE_NM: getPartTypeName(item.PARTTYPE)}));
-      total.value = (data as any).total || 0;
-      totalPages.value = (data as any).totalPages || 1;
+      total.value = res.total || 0;
+      totalPages.value = res.totalPages || 1;
     }
     selectedIdx.value=-1;
   } finally {
