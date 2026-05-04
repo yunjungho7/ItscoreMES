@@ -23,6 +23,14 @@ def setup_logging():
         level="INFO"
     )
 
+    # Add plain text sink to stderr for easier debugging
+    logger.add(
+        sys.stderr,
+        filter=filter_record,
+        level="INFO",
+        format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level> {extra}"
+    )
+
     # Add rotating file sink
     logger.add(
         settings.LOG_PATH,

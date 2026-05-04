@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from db.connection import get_db_connection, decode_cp949
 from typing import Optional
+from loguru import logger
 
 router = APIRouter(
     prefix="/auth",
@@ -26,6 +27,7 @@ class LoginResponse(BaseModel):
 
 @router.post("/login", response_model=LoginResponse)
 def login(request: LoginRequest):
+    logger.info(f"Login attempt for user: {request.empid}")
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
@@ -41,7 +43,7 @@ def login(request: LoginRequest):
         row = cursor.fetchone()
         
         if not row:
-            # Check if user exists but wrong password to give better error msg (optional)
+            logger.warning(f"Login failed: user not found or password mismatch for {request.empid}")
             return LoginResponse(
                 success=False,
                 message="아이디 또는 비밀번호가 일치하지 않습니다."
@@ -55,7 +57,10 @@ def login(request: LoginRequest):
         jikgub = decode_cp949(row[4])
         showyn = row[5]
         
-        if showyn is not True:
+        logger.info(f"User found: {empid}, SHOWYN: {showyn}")
+        
+        if not showyn:
+            logger.warning(f"Login failed: account suspended for {empid}")
             return LoginResponse(
                 success=False,
                 message="사용이 중지된 계정입니다. 관리자에게 문의하세요."
@@ -66,10 +71,9 @@ def login(request: LoginRequest):
         cursor.execute(update_query, (empid,))
         conn.commit()
         
-    finally:
-        conn.close()
+        logger.info(f"Login successful for user: {empid}")
         
-    return LoginResponse(
+        return LoginResponse(
             success=True,
             message="로그인 성공",
             user=UserInfo(
@@ -80,6 +84,18 @@ def login(request: LoginRequest):
                 jikgub=jikgub
             )
         )
+        
+    except Exception as e:
+        logger.error(f"Login exception for user {request.empid}: {str(e)}")
+        if conn:
+            conn.rollback()
+        return LoginResponse(
+            success=False,
+            message=f"로그인 처리 중 오류 발생: {str(e)}"
+        )
+    finally:
+        if conn:
+            conn.close()
 
 @router.post("/logout")
 def logout(empid: str):
