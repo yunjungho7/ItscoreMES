@@ -31,7 +31,12 @@
 <script setup lang="ts">
 const window = globalThis.window;
 import { ref, onMounted } from 'vue'; 
-import api from '../../../api'; 
+import { 
+  getPlantsApiMasterPlantGet,
+  getReceivesApiReceiveListGet,
+  getReceiveDetailsApiReceiveDetailWarehouseNumItemsGet,
+  deleteReceiveApiReceiveDeleteWarehouseNumDelete
+} from '../../../api/generated/sdk.gen';
 import DataGrid from '../../../components/common/DataGrid.vue';
 import { useNotification } from '../../../composables/useNotification';
 
@@ -42,9 +47,54 @@ const startDate=ref(f(m)),endDate=ref(f(d)),plantCd=ref(''),searchText=ref(''),o
 const mCols=[{key:'WAREHOUSENUM',label:'입고번호',width:'120px'},{key:'PLANTNM',label:'사업장',width:'120px'},{key:'COMPANYNM',label:'공급사',width:'140px'},{key:'ORDERNUM',label:'발주번호',width:'100px'},{key:'INDAY',label:'입고일자',width:'110px',type:'date'},{key:'TOTALAMT',label:'총금액',width:'120px'},{key:'INGUBUN',label:'구분',width:'80px'}];
 const dCols=[{key:'PARTNO',label:'자재품번',width:'130px'},{key:'PARTNM',label:'품명',width:'140px'},{key:'STANDARD',label:'규격',width:'90px'},{key:'UNIT',label:'단위',width:'60px'},{key:'UNIT_PRICE',label:'단가',width:'80px'},{key:'INLOTQTY',label:'입고수량',width:'90px'},{key:'FAILQTY',label:'불량수량',width:'80px'},{key:'LOTNO',label:'LOTNO',width:'110px'},{key:'WHSTATE',label:'입고상태',width:'80px'},{key:'LOCATIONNAME',label:'입고위치',width:'100px'}];
 const mRows=ref<any[]>([]),dRows=ref<any[]>([]),ld=ref(false),dl=ref(false),si=ref(-1),sel=ref<any>(null),pg=ref(1),tp=ref(0),tot=ref(0);
-async function fetchPlants(){try{const r=await api.get('/api/master/plant',{params:{size:100}});plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));}catch{}}
-async function fetchData(){ld.value=true;si.value=-1;sel.value=null;dRows.value=[];try{const p:any={page:pg.value,size:50};if(startDate.value)p.start_date=startDate.value;if(endDate.value)p.end_date=endDate.value;if(plantCd.value)p.plant_cd=plantCd.value;if(searchText.value)p.search=searchText.value;if(orderNum.value)p.order_num=orderNum.value;const r=await api.get('/api/receive/list',{params:p});mRows.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));tot.value=(r.data?.data?.total ?? r.data?.total ?? 0);tp.value=(r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);}finally{ld.value=false;}}
-async function onMaster(row:any,idx:number){si.value=idx;sel.value=row;dl.value=true;try{const r=await api.get(`/api/receive/detail/${row.WAREHOUSENUM}/items`);dRows.value = Array.isArray(r.data) ? r.data : (r.data?.data || []);}finally{dl.value=false;}}
+
+async function fetchPlants(){
+  try {
+    const { data } = await getPlantsApiMasterPlantGet({ query: { size: 100 } });
+    if (data) {
+      plants.value = (data as any).data || [];
+    }
+  } catch {}
+}
+
+async function fetchData(){
+  ld.value=true;si.value=-1;sel.value=null;dRows.value=[];
+  try {
+    const { data } = await getReceivesApiReceiveListGet({
+      query: {
+        page: pg.value,
+        size: 50,
+        start_date: startDate.value || undefined,
+        end_date: endDate.value || undefined,
+        plant_cd: plantCd.value || undefined,
+        search: searchText.value || undefined,
+        order_num: orderNum.value || undefined
+      }
+    });
+    if (data) {
+      mRows.value = (data as any).data || [];
+      tot.value = (data as any).total || 0;
+      tp.value = (data as any).totalPages || 0;
+    }
+  } finally {
+    ld.value=false;
+  }
+}
+
+async function onMaster(row:any,idx:number){
+  si.value=idx;sel.value=row;dl.value=true;
+  try {
+    const { data } = await getReceiveDetailsApiReceiveDetailWarehouseNumItemsGet({
+      path: { warehouse_num: row.WAREHOUSENUM }
+    });
+    if (data) {
+      dRows.value = Array.isArray(data) ? data : ((data as any).data || []);
+    }
+  } finally {
+    dl.value=false;
+  }
+}
+
 function onPg(p:number){pg.value=p;fetchData();}
 
 async function cancelReceive() {
@@ -58,7 +108,9 @@ async function cancelReceive() {
     return;
   }
   try {
-    await api.delete(`/api/receive/delete/${whNum}`);
+    await deleteReceiveApiReceiveDeleteWarehouseNumDelete({
+      path: { warehouse_num: whNum }
+    });
     notifySuccess(`입고 취소가 완료되었습니다. (${whNum})`);
     sel.value = null;
     si.value = -1;

@@ -860,6 +860,38 @@
             }
           },
           {
+            "name": "is_supplier",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Supplier"
+            }
+          },
+          {
+            "name": "plant_cd",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Plant Cd"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -2382,6 +2414,47 @@
             "schema": {
               "type": "string",
               "title": "Par Partno"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/master/bom/reverse/{child_partno}": {
+      "get": {
+        "tags": [
+          "기준정보",
+          "BOM관리"
+        ],
+        "summary": "BOM 부모 목록 조회 (역전개)",
+        "operationId": "get_bom_reverse_api_master_bom_reverse__child_partno__get",
+        "parameters": [
+          {
+            "name": "child_partno",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Child Partno"
             }
           }
         ],
@@ -4872,19 +4945,13 @@
             }
           },
           {
-            "name": "include_done",
+            "name": "is_performance",
             "in": "query",
             "required": false,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Include Done"
+              "type": "boolean",
+              "default": false,
+              "title": "Is Performance"
             }
           },
           {
@@ -4964,6 +5031,16 @@
             "schema": {
               "type": "string",
               "title": "Shipment No"
+            }
+          },
+          {
+            "name": "is_performance",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Is Performance"
             }
           }
         ],
@@ -5103,6 +5180,45 @@
         },
         "responses": {
           "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shipment/register": {
+      "post": {
+        "tags": [
+          "물류"
+        ],
+        "summary": "출하실적 등록",
+        "operationId": "register_shipment_api_shipment_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShipmentRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -5467,6 +5583,22 @@
             }
           },
           {
+            "name": "parent_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parent Only"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -5566,6 +5698,45 @@
         ],
         "responses": {
           "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/production/workorder/batch": {
+      "post": {
+        "tags": [
+          "생산"
+        ],
+        "summary": "작업지시 일괄 등록 (상하위)",
+        "operationId": "create_workorder_batch_api_production_workorder_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkOrderBatchCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -5802,15 +5973,62 @@
         "summary": "현장 자재 투입 저장",
         "operationId": "save_input_material_api_production_field_input_material_post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/InputMaterialRequest"
               }
             }
-          },
-          "required": true
+          }
         },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "생산"
+        ],
+        "summary": "현장 자재 투입 삭제",
+        "operationId": "delete_field_input_material_api_production_field_input_material_delete",
+        "parameters": [
+          {
+            "name": "workordno",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Workordno"
+            }
+          },
+          {
+            "name": "mat_lotno",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Mat Lotno"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -5965,6 +6183,46 @@
         },
         "responses": {
           "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/production/lot/available/{part_no}": {
+      "get": {
+        "tags": [
+          "생산"
+        ],
+        "summary": "가용 재고 LOT 조회",
+        "operationId": "get_available_lots_api_production_lot_available__part_no__get",
+        "parameters": [
+          {
+            "name": "part_no",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Part No"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -7976,11 +8234,8 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "type": "array",
+                  "additionalProperties": true,
+                  "type": "object",
                   "title": "Response Get Menus Api System Menus Get"
                 }
               }
@@ -8259,16 +8514,19 @@
         "properties": {
           "PAR_PARTNO": {
             "type": "string",
+            "minLength": 1,
             "title": "Par Partno"
           },
           "CHILD_PARTNO": {
             "type": "string",
+            "minLength": 1,
             "title": "Child Partno"
           },
           "REQQTY": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "string",
@@ -8280,7 +8538,8 @@
           "ORD": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -8361,16 +8620,19 @@
         "properties": {
           "PAR_PARTNO": {
             "type": "string",
+            "minLength": 1,
             "title": "Par Partno"
           },
           "CHILD_PARTNO": {
             "type": "string",
+            "minLength": 1,
             "title": "Child Partno"
           },
           "REQQTY": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "string",
@@ -8382,7 +8644,8 @@
           "ORD": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -9691,30 +9954,36 @@
         "properties": {
           "PARTNO": {
             "type": "string",
-            "title": "Partno"
+            "minLength": 1,
+            "title": "Partno",
+            "description": "품번"
           },
           "PLANTCD": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               },
               {
                 "type": "null"
               }
             ],
             "title": "Plantcd",
+            "description": "사업장코드",
             "default": ""
           },
           "PARTNM": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               },
               {
                 "type": "null"
               }
             ],
             "title": "Partnm",
+            "description": "품명",
             "default": ""
           },
           "CARTYPE": {
@@ -9731,19 +10000,22 @@
           "PARTTYPE": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               },
               {
                 "type": "null"
               }
             ],
             "title": "Parttype",
+            "description": "품목구분",
             "default": ""
           },
           "LOTSTDQTY": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -9767,7 +10039,8 @@
           "SAFETYSTOCK": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -9779,7 +10052,8 @@
           "OPTIMUMSTOCK": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -9802,7 +10076,8 @@
           "WEIGHT": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -9828,7 +10103,8 @@
           "WIDTH": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -9843,7 +10119,8 @@
           "LENGTH": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -9858,7 +10135,8 @@
           "THICK": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -9873,7 +10151,8 @@
           "DIAMETER": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -9900,7 +10179,8 @@
           "UNITWEIGHT": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -9915,7 +10195,8 @@
           "LEADTIME": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -9996,7 +10277,8 @@
           "UNIT_PRICE": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10034,7 +10316,8 @@
           "QTYPERBOX": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10085,7 +10368,8 @@
           "INWEIGHT": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10100,7 +10384,8 @@
           "QTYPERBONG": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -10111,7 +10396,8 @@
           "WASTELENGTH": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10137,7 +10423,8 @@
           "SENSEBASE": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10170,30 +10457,36 @@
         "properties": {
           "PARTNO": {
             "type": "string",
-            "title": "Partno"
+            "minLength": 1,
+            "title": "Partno",
+            "description": "품번"
           },
           "PLANTCD": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               },
               {
                 "type": "null"
               }
             ],
             "title": "Plantcd",
+            "description": "사업장코드",
             "default": ""
           },
           "PARTNM": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               },
               {
                 "type": "null"
               }
             ],
             "title": "Partnm",
+            "description": "품명",
             "default": ""
           },
           "CARTYPE": {
@@ -10210,19 +10503,22 @@
           "PARTTYPE": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               },
               {
                 "type": "null"
               }
             ],
             "title": "Parttype",
+            "description": "품목구분",
             "default": ""
           },
           "LOTSTDQTY": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -10246,7 +10542,8 @@
           "SAFETYSTOCK": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -10258,7 +10555,8 @@
           "OPTIMUMSTOCK": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -10281,7 +10579,8 @@
           "WEIGHT": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10307,7 +10606,8 @@
           "WIDTH": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10322,7 +10622,8 @@
           "LENGTH": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10337,7 +10638,8 @@
           "THICK": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10352,7 +10654,8 @@
           "DIAMETER": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10379,7 +10682,8 @@
           "UNITWEIGHT": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10394,7 +10698,8 @@
           "LEADTIME": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -10475,7 +10780,8 @@
           "UNIT_PRICE": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10513,7 +10819,8 @@
           "QTYPERBOX": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10564,7 +10871,8 @@
           "INWEIGHT": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10579,7 +10887,8 @@
           "QTYPERBONG": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0.0
               },
               {
                 "type": "null"
@@ -10590,7 +10899,8 @@
           "WASTELENGTH": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -10616,7 +10926,8 @@
           "SENSEBASE": {
             "anyOf": [
               {
-                "type": "number"
+                "type": "number",
+                "minimum": 0.0
               },
               {
                 "type": "string",
@@ -12714,6 +13025,18 @@
             "title": "Unit Price",
             "default": 0
           },
+          "ADOFREQDT": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adofreqdt"
+          },
           "REMARK": {
             "anyOf": [
               {
@@ -12737,6 +13060,17 @@
           "PLANTCD": {
             "type": "string",
             "title": "Plantcd"
+          },
+          "COMPANYCD": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Companycd"
           },
           "ADOFREQDT": {
             "type": "string",
@@ -13096,6 +13430,78 @@
           "PARTNO"
         ],
         "title": "ShipmentDetailCreate"
+      },
+      "ShipmentLot": {
+        "properties": {
+          "part_no": {
+            "type": "string",
+            "title": "Part No"
+          },
+          "lot_no": {
+            "type": "string",
+            "title": "Lot No"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Qty"
+          }
+        },
+        "type": "object",
+        "required": [
+          "part_no",
+          "lot_no",
+          "qty"
+        ],
+        "title": "ShipmentLot"
+      },
+      "ShipmentRegisterRequest": {
+        "properties": {
+          "shipment_indication_no": {
+            "type": "string",
+            "title": "Shipment Indication No"
+          },
+          "company_cd": {
+            "type": "string",
+            "title": "Company Cd"
+          },
+          "plant_cd": {
+            "type": "string",
+            "title": "Plant Cd"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "lots": {
+            "items": {
+              "$ref": "#/components/schemas/ShipmentLot"
+            },
+            "type": "array",
+            "title": "Lots"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shipment_indication_no",
+          "company_cd",
+          "plant_cd",
+          "unit",
+          "user_id",
+          "lots"
+        ],
+        "title": "ShipmentRegisterRequest"
       },
       "StatusChangeRequest": {
         "properties": {
@@ -13886,6 +14292,26 @@
           "WAREHOUSECODE"
         ],
         "title": "WarehouseUpdate"
+      },
+      "WorkOrderBatchCreate": {
+        "properties": {
+          "header": {
+            "$ref": "#/components/schemas/WorkOrderCreate"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkOrderCreate"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "header",
+          "items"
+        ],
+        "title": "WorkOrderBatchCreate"
       },
       "WorkOrderCreate": {
         "properties": {

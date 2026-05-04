@@ -44,7 +44,14 @@
 </template>
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import api from '../../../api'; 
+import { 
+  getPlantsApiMasterPlantGet, 
+  getFactoriesApiMasterFactoryGet,
+  createFactoryApiMasterFactoryPost,
+  updateFactoryApiMasterFactoryFactoryCdPut,
+  deleteFactoryApiMasterFactoryFactoryCdDelete,
+  getNextCodeApiMasterFactoryNextCodePlantCdGet
+} from '../../../api/generated/sdk.gen';
 import DataGrid from '../../../components/common/DataGrid.vue'; 
 import FormModal from '../../../components/common/FormModal.vue';
 
@@ -74,8 +81,10 @@ const form = reactive({ ...emptyForm });
 
 async function fetchPlants() {
   try {
-    const r = await api.get('/api/master/plant', { params: { size: 100 } });
-    plants.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
+    const { data } = await getPlantsApiMasterPlantGet({ query: { size: 100 } });
+    if (data) {
+      plants.value = (data as any).data || [];
+    }
   } catch (e) {
     console.error('사업장 조회 중 오류:', e);
   }
@@ -84,13 +93,19 @@ async function fetchPlants() {
 async function fetchData() {
   loading.value = true;
   try {
-    const p: any = { page: page.value, size: 50 };
-    if (searchNm.value) p.search = searchNm.value;
-    if (searchPlantCd.value) p.plant_cd = searchPlantCd.value;
-    const r = await api.get('/api/master/factory', { params: p });
-    items.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
-    total.value = (r.data?.data?.total ?? r.data?.total ?? 0);
-    totalPages.value = (r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);
+    const { data } = await getFactoriesApiMasterFactoryGet({
+      query: {
+        page: page.value,
+        size: 50,
+        search: searchNm.value || undefined,
+        plant_cd: searchPlantCd.value || undefined
+      }
+    });
+    if (data) {
+      items.value = (data as any).data || [];
+      total.value = (data as any).total || 0;
+      totalPages.value = (data as any).totalPages || 1;
+    }
     selectedIdx.value = -1;
   } catch (e) {
     console.error('공장 조회 중 오류:', e);
@@ -106,8 +121,12 @@ async function onPlantChange() {
     return;
   }
   try {
-    const r = await api.get(`/api/master/factory/next-code/${form.PLANTCD}`);
-    form.FACTORYCD = r.data.nextCode;
+    const { data } = await getNextCodeApiMasterFactoryNextCodePlantCdGet({
+      path: { plant_cd: form.PLANTCD }
+    });
+    if (data) {
+      form.FACTORYCD = (data as any).nextCode;
+    }
   } catch (e) {
     console.error('공장코드 채번 중 오류:', e);
   }
@@ -138,10 +157,15 @@ async function handleSave() {
 
   try {
     if (editMode.value) {
-      await api.put(`/api/master/factory/${form.FACTORYCD}`, form);
+      await updateFactoryApiMasterFactoryFactoryCdPut({
+        path: { factory_cd: form.FACTORYCD },
+        body: form as any
+      });
       alert('수정되었습니다.');
     } else {
-      await api.post('/api/master/factory', form);
+      await createFactoryApiMasterFactoryPost({
+        body: form as any
+      });
       alert('등록되었습니다.');
     }
     showModal.value = false;
@@ -154,7 +178,9 @@ async function handleSave() {
 async function handleDelete() {
   if (!confirm(`'${form.FACTORYNM}' 삭제하시겠습니까?`)) return;
   try {
-    await api.delete(`/api/master/factory/${form.FACTORYCD}`);
+    await deleteFactoryApiMasterFactoryFactoryCdDelete({
+      path: { factory_cd: form.FACTORYCD }
+    });
     alert('삭제되었습니다.');
     showModal.value = false;
     fetchData();

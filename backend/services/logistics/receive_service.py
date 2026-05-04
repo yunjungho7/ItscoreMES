@@ -57,119 +57,100 @@ class ReceiveService:
         return row[0] if row else 'WH00000000-001'
 
     def create(self, data: dict):
-        details = data.pop('details', [])
-        wh_num = self.get_next_num()
-        data['WAREHOUSENUM'] = wh_num
-        data['WHSTATE'] = 'RECEIVED'
-        data['INTIME'] = ''
-        # 필수 필드 기본값 보장
-        if not data.get('INGUBUN'):
-            data['INGUBUN'] = 'PURCHASE'
-        if not data.get('REGUSERID'):
-            data['REGUSERID'] = '1'
-
-        order_num = data.get('ORDERNUM') or data.get('order_num') or ''
-
-        q = self.mapper.get_query('insert', data)
-        values = tuple(data.get(name) for name in q['params'])
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute(q['query'], values)
+            # 1. WAREHOUSENUM 채번 (Transaction 내에서 UPDLOCK 사용)
+            q_num = self.mapper.get_query('selectNextNum', {})
+            cursor.execute(q_num['query'])
+            row_num = cursor.fetchone()
+            wh_num = row_num[0] if row_num else 'WH' + datetime.datetime.now().strftime('%Y%m%d') + '-001'
+            
+            details = data.pop('details', [])
+            data['WAREHOUSENUM'] = wh_num
+            data['WHSTATE'] = 'RECEIVED'
+            data['INTIME'] = ''
+            
+            # 필수 필드 기본값 보장
+            if not data.get('INGUBUN'):
+                data['INGUBUN'] = 'PURCHASE'
+            if not data.get('REGUSERID'):
+                data['REGUSERID'] = '1'
 
-            # LOT 번호 기본 시퀀스 조회 (L + YYMMDD + 3자리 순번, 예: L260501001)
+            order_num = data.get('ORDERNUM') or data.get('order_num') or ''
+
+            # 2. 헤더 저장
+            q_ins = self.mapper.get_query('insert', data)
+            cursor.execute(q_ins['query'], tuple(data.get(name) for name in q_ins['params']))
+
+            # 3. LOT 번호 채번 (UPDLOCK)
             import datetime
             lot_q = self.mapper.get_query('selectNextLotNo', {})
             cursor.execute(lot_q['query'])
             lot_row = cursor.fetchone()
             base_lot_no = lot_row[0] if lot_row else f"L{datetime.datetime.now().strftime('%y%m%d')}001"
             
-            # 뒤 3자리 순번 추출 및 접두사(L+YYMMDD) 분리
             if len(base_lot_no) >= 10:
                 lot_seq = int(base_lot_no[-3:])
                 lot_prefix = base_lot_no[:-3]
             else:
-                # 예외 케이스 처리 (기존 데이터 등)
                 lot_seq = 1
                 lot_prefix = f"L{datetime.datetime.now().strftime('%y%m%d')}"
 
+            # 4. 상세 저장 및 재고 반영
             for i, d in enumerate(details):
                 d['WAREHOUSENUM'] = wh_num
                 d['WHDETAILNO'] = i + 1
                 d['INDAY'] = data.get('INDAY')
                 if not d.get('LOTNO'):
-                    # 간소화된 LOT번호: L260501001 형식
                     current_seq = lot_seq + i
                     d['LOTNO'] = f"{lot_prefix}{current_seq:03d}"
-                if not d.get('LOCATIONCODE'):
-                    d['LOCATIONCODE'] = 'LOC001'
-                if not d.get('WAREHOUSECODE'):
-                    d['WAREHOUSECODE'] = 'WH001'
+                
+                if not d.get('LOCATIONCODE'): d['LOCATIONCODE'] = 'LOC001'
+                if not d.get('WAREHOUSECODE'): d['WAREHOUSECODE'] = 'WH001'
 
-                # 입고수량 보장 (0이면 ORDERQTY 사용)
                 inlotqty = d.get('INLOTQTY') or d.get('ORDERQTY') or 0
                 d['INLOTQTY'] = inlotqty
 
                 dq = self.mapper.get_query('insertDetail', d)
-                dv = tuple(d.get(name) for name in dq['params'])
-                cursor.execute(dq['query'], dv)
+                cursor.execute(dq['query'], tuple(d.get(name) for name in dq['params']))
 
-                # Insert Lot State & Stock
+                # Lot State & Stock
                 lot_data = {
-                    'LOTNO': d['LOTNO'],
-                    'PARTNO': d['PARTNO'],
-                    'LOTQTY': inlotqty,
-                    'WAREHOUSECODE': d['WAREHOUSECODE'],
-                    'LOCATIONCODE': d['LOCATIONCODE'],
-                    'LOTCREATIONDAY': d['INDAY'],
-                    'LOTTYPE': 'PURCHASE',
-                    'REMARK': '입고완료(발주)'
+                    'LOTNO': d['LOTNO'], 'PARTNO': d['PARTNO'], 'LOTQTY': inlotqty,
+                    'WAREHOUSECODE': d['WAREHOUSECODE'], 'LOCATIONCODE': d['LOCATIONCODE'],
+                    'LOTCREATIONDAY': d['INDAY'], 'LOTTYPE': 'PURCHASE', 'REMARK': '입고완료(발주)'
                 }
+                
                 lq = self.mapper.get_query('insertLotState', lot_data)
-                if lq:
-                    cursor.execute(lq['query'], tuple(lot_data.get(name) for name in lq['params']))
+                if lq: cursor.execute(lq['query'], tuple(lot_data.get(name) for name in lq['params']))
 
                 sq = self.mapper.get_query('insertStock', lot_data)
-                if sq:
-                    cursor.execute(sq['query'], tuple(lot_data.get(name) for name in sq['params']))
+                if sq: cursor.execute(sq['query'], tuple(lot_data.get(name) for name in sq['params']))
 
-                # Update PO detail INQTY if applicable
+                # Update PO detail
                 if order_num:
-                    up_params = {
-                        'ORDERNUM': order_num,
-                        'PARTNO': d['PARTNO'],
-                        'INLOTQTY': inlotqty
-                    }
+                    up_params = {'ORDERNUM': order_num, 'PARTNO': d['PARTNO'], 'INLOTQTY': inlotqty}
                     up_q = self.mapper.get_query('updatePurchaseOrderDetailInQty', up_params)
-                    if up_q:
-                        cursor.execute(up_q['query'], tuple(up_params.get(n) for n in up_q['params']))
+                    if up_q: cursor.execute(up_q['query'], tuple(up_params.get(n) for n in up_q['params']))
 
-            # 발주기반 입고인 경우 전체 입고 여부에 따라 상태 변경
+            # 5. PO 상태 업데이트
             if order_num:
-                # 미입고 잔여 건수 확인
                 remain_q = self.mapper.get_query('selectPurchaseOrderRemainCount', {'ORDERNUM': order_num})
-                if remain_q:
-                    cursor.execute(remain_q['query'], tuple({'ORDERNUM': order_num}.get(n) for n in remain_q['params']))
-                    remain_row = cursor.fetchone()
-                    remain_cnt = remain_row[0] if remain_row else 0
-                    
-                    if remain_cnt == 0:
-                        new_state = 'COMPLETED'
-                    else:
-                        new_state = 'PARTIAL'
-                    
-                    uq = self.mapper.get_query('updatePurchaseOrderState', {'ORDERNUM': order_num, 'ORDERSTATE': new_state})
-                    if uq:
-                        uv = tuple({'ORDERNUM': order_num, 'ORDERSTATE': new_state}.get(name) for name in uq['params'])
-                        cursor.execute(uq['query'], uv)
+                cursor.execute(remain_q['query'], (order_num,))
+                remain_row = cursor.fetchone()
+                new_state = 'COMPLETED' if (remain_row[0] if remain_row else 0) == 0 else 'PARTIAL'
+                
+                uq = self.mapper.get_query('updatePurchaseOrderState', {'ORDERNUM': order_num, 'ORDERSTATE': new_state})
+                cursor.execute(uq['query'], (new_state, order_num))
 
             conn.commit()
+            return {"WAREHOUSENUM": wh_num}
         except Exception as e:
             conn.rollback()
             raise e
         finally:
             conn.close()
-        return {"WAREHOUSENUM": wh_num}
 
     def delete(self, warehouse_num):
         """입고 취소: LOT/재고 삭제, 발주 입고수량 복원, 발주 상태 재계산"""

@@ -124,7 +124,7 @@
   <!-- 출하번호 채번 (YYYYMMDD + 4자리 순번) -->
   <select id="getNextShipmentNo">
     SELECT ISNULL(MAX(SHIPMENTNO), #{prefix} + '0000') as max_no
-    FROM TBL_INOUT_SHIPMENT
+    FROM TBL_INOUT_SHIPMENT WITH (UPDLOCK)
     WHERE SHIPMENTNO LIKE #{prefix} + '%'
   </select>
 
@@ -144,9 +144,23 @@
   <select id="selectNextNum">
     SELECT 'SH' + CONVERT(VARCHAR(8), GETDATE(), 112) + '-' +
            RIGHT('000' + CAST(ISNULL(MAX(CAST(RIGHT(SHIPMENTINDICATIONNO,3) AS INT)),0) + 1 AS VARCHAR), 3)
-    FROM TBL_INOUT_SHIPMENT_INDICATION
+    FROM TBL_INOUT_SHIPMENT_INDICATION WITH (UPDLOCK)
     WHERE SHIPMENTINDICATIONNO LIKE 'SH' + CONVERT(VARCHAR(8), GETDATE(), 112) + '%'
   </select>
+
+  <!-- 재고 확인 (Check then Act) -->
+  <select id="checkLotStock">
+    SELECT STOCKQTY 
+    FROM TBL_PROD_STOCK WITH (UPDLOCK, ROWLOCK)
+    WHERE LOTNO = #{lot_no}
+  </select>
+
+  <!-- 재고 차감 -->
+  <update id="deductStock">
+    UPDATE TBL_PROD_STOCK 
+    SET STOCKQTY = STOCKQTY - #{qty}
+    WHERE LOTNO = #{lot_no}
+  </update>
 
   <!-- 수주 품목 조회 (출하등록 시 수주기반 조회) -->
   <select id="selectOrderItems">

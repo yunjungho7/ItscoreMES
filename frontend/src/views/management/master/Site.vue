@@ -18,9 +18,15 @@
 </template>
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import api from '../../../api';
+import { 
+  getPlantsApiMasterPlantGet, 
+  createPlantApiMasterPlantPost,
+  updatePlantApiMasterPlantPlantCdPut,
+  deletePlantApiMasterPlantPlantCdDelete
+} from '../../../api/generated/sdk.gen';
 import DataGrid from '../../../components/common/DataGrid.vue';
 import FormModal from '../../../components/common/FormModal.vue';
+
 const columns = [
   { key: 'PLANTCD', label: '사업장코드', width: '120px' },{ key: 'PLANTNM', label: '사업장명', width: '150px' },{ key: 'PLANTTYPE', label: '사업장구분', width: '100px' },{ key: 'BUSINESSNO', label: '사업자번호', width: '130px' },{ key: 'TEL', label: '대표전화', width: '130px' },{ key: 'ADDR1', label: '주소', minWidth: '200px' },{ key: 'PERSON_CHARGE', label: '담당자', width: '100px' },{ key: 'USEYN', label: '사용여부', width: '80px', type: 'boolean' },
 ];
@@ -29,12 +35,63 @@ const page = ref(1); const totalPages = ref(0); const total = ref(0);
 const selectedIdx = ref(-1); const editMode = ref(false); const showModal = ref(false);
 const emptyForm = { PLANTCD:'',PLANTNM:'',PLANTTYPE:'',BUSINESSNO:'',TEL:'',FAX:'',ADDR1:'',ADDR2:'',BOSSNM:'',PERSON_CHARGE:'',USEYN:true as boolean };
 const form = reactive({...emptyForm});
-async function fetchData(){ loading.value=true; try{ const p:any={page:page.value,size:50}; if(searchNm.value) p.search=searchNm.value; const r=await api.get('/api/master/plant',{params:p}); items.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || [])); total.value=(r.data?.data?.total ?? r.data?.total ?? 0); totalPages.value=(r.data?.data?.totalPages ?? r.data?.totalPages ?? 0); selectedIdx.value=-1; }finally{ loading.value=false; } }
+
+async function fetchData(){ 
+  loading.value=true; 
+  try { 
+    const { data } = await getPlantsApiMasterPlantGet({
+      query: {
+        page: page.value,
+        size: 50,
+        search: searchNm.value || undefined
+      }
+    });
+    if (data) {
+      items.value = (data as any).data || [];
+      total.value = (data as any).total || 0;
+      totalPages.value = (data as any).totalPages || 1;
+    }
+    selectedIdx.value=-1; 
+  } finally { 
+    loading.value=false; 
+  } 
+}
+
 function onRowClick(row:any,idx:number){ selectedIdx.value=idx; editMode.value=true; Object.assign(form,row); showModal.value=true; }
 function onPageChange(p:number){ page.value=p; fetchData(); }
 function openAdd(){ editMode.value=false; Object.assign(form,{...emptyForm}); showModal.value=true; }
-async function handleSave(){ if(!form.PLANTCD){alert('사업장코드를 입력하세요.');return;} try{ if(editMode.value){await api.put(`/api/master/plant/${form.PLANTCD}`,form);alert('수정되었습니다.');}else{await api.post('/api/master/plant',form);alert('등록되었습니다.');} showModal.value=false; fetchData(); }catch(e){} }
-async function handleDelete(){ if(!confirm(`'${form.PLANTNM}' 삭제하시겠습니까?`))return; try{await api.delete(`/api/master/plant/${form.PLANTCD}`);alert('삭제되었습니다.');showModal.value=false;fetchData();}catch(e){} }
+
+async function handleSave(){ 
+  if(!form.PLANTCD){alert('사업장코드를 입력하세요.');return;} 
+  try { 
+    if (editMode.value) {
+      await updatePlantApiMasterPlantPlantCdPut({
+        path: { plant_cd: form.PLANTCD },
+        body: form as any
+      });
+      alert('수정되었습니다.');
+    } else {
+      await createPlantApiMasterPlantPost({
+        body: form as any
+      });
+      alert('등록되었습니다.');
+    } 
+    showModal.value=false; 
+    fetchData(); 
+  } catch(e) {} 
+}
+
+async function handleDelete(){ 
+  if(!confirm(`'${form.PLANTNM}' 삭제하시겠습니까?`))return; 
+  try {
+    await deletePlantApiMasterPlantPlantCdDelete({
+      path: { plant_cd: form.PLANTCD }
+    });
+    alert('삭제되었습니다.');
+    showModal.value=false;
+    fetchData();
+  } catch(e) {} 
+}
 onMounted(fetchData);
 </script>
 <style scoped>

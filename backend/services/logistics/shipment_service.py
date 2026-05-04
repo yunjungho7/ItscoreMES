@@ -76,32 +76,43 @@ class ShipmentService:
         return row[0] if row else 'SH00000000-001'
 
     def create(self, data: dict):
-        details = data.pop('details', [])
-        sh_no = self.get_next_num()
-        data['SHIPMENTINDICATIONNO'] = sh_no
-        data.setdefault('SHIPMENTSTATUS', 'NEW')
-        data.setdefault('REGUSERID', 1)
-        data.setdefault('REMARK', '')
-
-        q = self.mapper.get_query('insert', data)
-        values = tuple(data.get(name) for name in q['params'])
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(q['query'], values)
+        try:
+            # 1. SHIPMENTINDICATIONNO 채번 (Transaction 내에서 UPDLOCK 사용)
+            import datetime
+            q_num = self.mapper.get_query('selectNextNum', {})
+            cursor.execute(q_num['query'])
+            row_num = cursor.fetchone()
+            sh_no = row_num[0] if row_num else 'SH' + datetime.datetime.now().strftime('%Y%m%d') + '-001'
+            
+            details = data.pop('details', [])
+            data['SHIPMENTINDICATIONNO'] = sh_no
+            data.setdefault('SHIPMENTSTATUS', 'NEW')
+            data.setdefault('REGUSERID', 1)
+            data.setdefault('REMARK', '')
 
-        for i, d in enumerate(details):
-            d['SHIPMENTINDICATIONNO'] = sh_no
-            d['SEQ'] = i + 1
-            d.setdefault('SHIPMENTSTATUS', 'NEW')
-            d.setdefault('SHIPMENTPLANDAY', data.get('SHIPMENTPLANDAY'))
-            d.setdefault('REMARK', '')
-            dq = self.mapper.get_query('insertDetail', d)
-            dv = tuple(d.get(name) for name in dq['params'])
-            cursor.execute(dq['query'], dv)
+            # 2. 헤더 저장
+            q_ins = self.mapper.get_query('insert', data)
+            cursor.execute(q_ins['query'], tuple(data.get(name) for name in q_ins['params']))
 
-        conn.commit()
-        conn.close()
-        return {"SHIPMENTINDICATIONNO": sh_no}
+            # 3. 상세 저장
+            for i, d in enumerate(details):
+                d['SHIPMENTINDICATIONNO'] = sh_no
+                d['SEQ'] = i + 1
+                d.setdefault('SHIPMENTSTATUS', 'NEW')
+                d.setdefault('SHIPMENTPLANDAY', data.get('SHIPMENTPLANDAY'))
+                d.setdefault('REMARK', '')
+                dq = self.mapper.get_query('insertDetail', d)
+                cursor.execute(dq['query'], tuple(d.get(name) for name in dq['params']))
+
+            conn.commit()
+            return {"SHIPMENTINDICATIONNO": sh_no}
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
 
     def complete(self, shipment_no):
         params = {'SHIPMENTINDICATIONNO': shipment_no, 'EDITUSERID': 1}
@@ -109,11 +120,15 @@ class ShipmentService:
         values = tuple(params.get(name) for name in q['params'])
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(q['query'], values)
-        affected = cursor.rowcount
-        conn.commit()
-        conn.close()
-        return affected > 0
+        try:
+            cursor.execute(q['query'], values)
+            conn.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
 
     def delete(self, shipment_no):
         params = {'SHIPMENTINDICATIONNO': shipment_no, 'EDITUSERID': 1}
@@ -121,11 +136,15 @@ class ShipmentService:
         values = tuple(params.get(name) for name in q['params'])
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute(q['query'], values)
-        affected = cursor.rowcount
-        conn.commit()
-        conn.close()
-        return affected > 0
+        try:
+            cursor.execute(q['query'], values)
+            conn.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
 
     def get_summary(self):
         q = self.mapper.get_query('selectSummary', {})
@@ -140,19 +159,19 @@ class ShipmentService:
 
     def create_shipment(self, data: dict):
         """
-        출하실적 등록
+        출하실적 등록 (Check then Act 적용)
         """
         import datetime
+        from fastapi import HTTPException
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            # 1. SHIPMENTNO 생성
+            # 1. SHIPMENTNO 채번 (UPDLOCK)
             today = datetime.datetime.now().strftime('%Y%m%d')
             prefix = today
             no_params = {"prefix": prefix}
             q_no = self.mapper.get_query('getNextShipmentNo', no_params)
-            no_vals = tuple(no_params.get(name) for name in q_no['params'])
-            cursor.execute(q_no['query'], no_vals)
+            cursor.execute(q_no['query'], tuple(no_params.get(name) for name in q_no['params']))
             row = cursor.fetchone()
             max_no = row[0] if row and row[0] else f"{prefix}0000"
             next_seq = int(max_no[-4:]) + 1
@@ -171,23 +190,44 @@ class ShipmentService:
                 "user_id": data.get('user_id') or 1
             }
             q_ins = self.mapper.get_query('insertShipment', header_params)
-            ins_vals = tuple(header_params.get(name) for name in q_ins['params'])
-            cursor.execute(q_ins['query'], ins_vals)
+            cursor.execute(q_ins['query'], tuple(header_params.get(name) for name in q_ins['params']))
 
-            # 3. 상세 등록
+            # 3. 상세 등록 및 재고 확인/차감
             for lot in data.get('lots', []):
+                lot_no = lot.get('lot_no')
+                ship_qty = lot.get('qty')
+                
+                # Check then Act: 재고 확인 (UPDLOCK)
+                q_chk = self.mapper.get_query('checkLotStock', {'lot_no': lot_no})
+                cursor.execute(q_chk['query'], (lot_no,))
+                stock_row = cursor.fetchone()
+                
+                if not stock_row:
+                    raise HTTPException(status_code=400, detail=f"재고 정보를 찾을 수 없습니다 (LOT: {lot_no})")
+                
+                current_stock = stock_row[0]
+                if current_stock < ship_qty:
+                    raise HTTPException(status_code=400, detail=f"재고가 부족합니다 (LOT: {lot_no}, 현재: {current_stock}, 요청: {ship_qty})")
+                
+                # 상세 등록
                 dtl_params = {
                     "shipment_no": shipment_no,
-                    "lot_no": lot.get('lot_no'),
+                    "lot_no": lot_no,
                     "part_no": lot.get('part_no'),
-                    "shipment_lot_qty": lot.get('qty')
+                    "shipment_lot_qty": ship_qty
                 }
                 q_dtl = self.mapper.get_query('insertShipmentDetail', dtl_params)
-                dtl_vals = tuple(dtl_params.get(name) for name in q_dtl['params'])
-                cursor.execute(q_dtl['query'], dtl_vals)
+                cursor.execute(q_dtl['query'], tuple(dtl_params.get(name) for name in q_dtl['params']))
+
+                # 재고 차감
+                q_deduct = self.mapper.get_query('deductStock', {'lot_no': lot_no, 'qty': ship_qty})
+                cursor.execute(q_deduct['query'], (ship_qty, lot_no))
 
             conn.commit()
             return shipment_no
+        except HTTPException:
+            conn.rollback()
+            raise
         except Exception as e:
             conn.rollback()
             raise e

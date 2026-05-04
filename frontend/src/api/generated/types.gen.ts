@@ -654,14 +654,20 @@ export type FailcodeUpdate = {
 export type GoodsCreate = {
     /**
      * Partno
+     *
+     * 품번
      */
     PARTNO: string;
     /**
      * Plantcd
+     *
+     * 사업장코드
      */
     PLANTCD?: string | null;
     /**
      * Partnm
+     *
+     * 품명
      */
     PARTNM?: string | null;
     /**
@@ -670,6 +676,8 @@ export type GoodsCreate = {
     CARTYPE?: string | null;
     /**
      * Parttype
+     *
+     * 품목구분
      */
     PARTTYPE?: string | null;
     /**
@@ -816,14 +824,20 @@ export type GoodsCreate = {
 export type GoodsUpdate = {
     /**
      * Partno
+     *
+     * 품번
      */
     PARTNO: string;
     /**
      * Plantcd
+     *
+     * 사업장코드
      */
     PLANTCD?: string | null;
     /**
      * Partnm
+     *
+     * 품명
      */
     PARTNM?: string | null;
     /**
@@ -832,6 +846,8 @@ export type GoodsUpdate = {
     CARTYPE?: string | null;
     /**
      * Parttype
+     *
+     * 품목구분
      */
     PARTTYPE?: string | null;
     /**
@@ -1918,6 +1934,10 @@ export type PurchaseItemCreate = {
      */
     UNIT_PRICE?: number | string | null;
     /**
+     * Adofreqdt
+     */
+    ADOFREQDT?: string | null;
+    /**
      * Remark
      */
     REMARK?: string | null;
@@ -1931,6 +1951,10 @@ export type PurchaseOrderCreate = {
      * Plantcd
      */
     PLANTCD: string;
+    /**
+     * Companycd
+     */
+    COMPANYCD?: string | null;
     /**
      * Adofreqdt
      */
@@ -2085,6 +2109,54 @@ export type ShipmentDetailCreate = {
      * Remark
      */
     REMARK?: string | null;
+};
+
+/**
+ * ShipmentLot
+ */
+export type ShipmentLot = {
+    /**
+     * Part No
+     */
+    part_no: string;
+    /**
+     * Lot No
+     */
+    lot_no: string;
+    /**
+     * Qty
+     */
+    qty: number | string;
+};
+
+/**
+ * ShipmentRegisterRequest
+ */
+export type ShipmentRegisterRequest = {
+    /**
+     * Shipment Indication No
+     */
+    shipment_indication_no: string;
+    /**
+     * Company Cd
+     */
+    company_cd: string;
+    /**
+     * Plant Cd
+     */
+    plant_cd: string;
+    /**
+     * Unit
+     */
+    unit: string;
+    /**
+     * User Id
+     */
+    user_id: number;
+    /**
+     * Lots
+     */
+    lots: Array<ShipmentLot>;
 };
 
 /**
@@ -2443,6 +2515,17 @@ export type WarehouseUpdate = {
      * Edituserid
      */
     EDITUSERID?: number;
+};
+
+/**
+ * WorkOrderBatchCreate
+ */
+export type WorkOrderBatchCreate = {
+    header: WorkOrderCreate;
+    /**
+     * Items
+     */
+    items: Array<WorkOrderCreate>;
 };
 
 /**
@@ -3018,6 +3101,14 @@ export type GetCompaniesApiMasterCompanyGetData = {
          * Is Customer
          */
         is_customer?: number | null;
+        /**
+         * Is Supplier
+         */
+        is_supplier?: number | null;
+        /**
+         * Plant Cd
+         */
+        plant_cd?: string | null;
         /**
          * Page
          */
@@ -3953,6 +4044,34 @@ export type GetBomDetailsApiMasterBomDetailParPartnoGetErrors = {
 export type GetBomDetailsApiMasterBomDetailParPartnoGetError = GetBomDetailsApiMasterBomDetailParPartnoGetErrors[keyof GetBomDetailsApiMasterBomDetailParPartnoGetErrors];
 
 export type GetBomDetailsApiMasterBomDetailParPartnoGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type GetBomReverseApiMasterBomReverseChildPartnoGetData = {
+    body?: never;
+    path: {
+        /**
+         * Child Partno
+         */
+        child_partno: string;
+    };
+    query?: never;
+    url: '/api/master/bom/reverse/{child_partno}';
+};
+
+export type GetBomReverseApiMasterBomReverseChildPartnoGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetBomReverseApiMasterBomReverseChildPartnoGetError = GetBomReverseApiMasterBomReverseChildPartnoGetErrors[keyof GetBomReverseApiMasterBomReverseChildPartnoGetErrors];
+
+export type GetBomReverseApiMasterBomReverseChildPartnoGetResponses = {
     /**
      * Successful Response
      */
@@ -5290,9 +5409,9 @@ export type GetShipmentsApiShipmentListGetData = {
          */
         search?: string | null;
         /**
-         * Include Done
+         * Is Performance
          */
-        include_done?: string | null;
+        is_performance?: boolean;
         /**
          * Page
          */
@@ -5343,7 +5462,12 @@ export type GetShipmentDetailsApiShipmentDetailShipmentNoItemsGetData = {
          */
         shipment_no: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Is Performance
+         */
+        is_performance?: boolean;
+    };
     url: '/api/shipment/detail/{shipment_no}/items';
 };
 
@@ -5424,6 +5548,29 @@ export type CreateShipmentApiShipmentCreatePostResponses = {
      * Successful Response
      */
     201: unknown;
+};
+
+export type RegisterShipmentApiShipmentRegisterPostData = {
+    body: ShipmentRegisterRequest;
+    path?: never;
+    query?: never;
+    url: '/api/shipment/register';
+};
+
+export type RegisterShipmentApiShipmentRegisterPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RegisterShipmentApiShipmentRegisterPostError = RegisterShipmentApiShipmentRegisterPostErrors[keyof RegisterShipmentApiShipmentRegisterPostErrors];
+
+export type RegisterShipmentApiShipmentRegisterPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type CompleteShipmentApiShipmentCompleteShipmentNoPutData = {
@@ -5596,6 +5743,10 @@ export type GetWorkordersApiProductionWorkorderGetData = {
          */
         search?: string | null;
         /**
+         * Parent Only
+         */
+        parent_only?: boolean | null;
+        /**
          * Page
          */
         page?: number;
@@ -5672,6 +5823,29 @@ export type GetWorkorderChildrenApiProductionWorkorderWorkordnoChildrenGetRespon
      * Successful Response
      */
     200: unknown;
+};
+
+export type CreateWorkorderBatchApiProductionWorkorderBatchPostData = {
+    body: WorkOrderBatchCreate;
+    path?: never;
+    query?: never;
+    url: '/api/production/workorder/batch';
+};
+
+export type CreateWorkorderBatchApiProductionWorkorderBatchPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateWorkorderBatchApiProductionWorkorderBatchPostError = CreateWorkorderBatchApiProductionWorkorderBatchPostErrors[keyof CreateWorkorderBatchApiProductionWorkorderBatchPostErrors];
+
+export type CreateWorkorderBatchApiProductionWorkorderBatchPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: unknown;
 };
 
 export type DeleteWorkorderApiProductionWorkorderWorkordnoDeleteData = {
@@ -5814,6 +5988,38 @@ export type GetInputMaterialsApiProductionInputMaterialWorkordnoGetResponses = {
     200: unknown;
 };
 
+export type DeleteFieldInputMaterialApiProductionFieldInputMaterialDeleteData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Workordno
+         */
+        workordno: string;
+        /**
+         * Mat Lotno
+         */
+        mat_lotno: string;
+    };
+    url: '/api/production/field/input-material';
+};
+
+export type DeleteFieldInputMaterialApiProductionFieldInputMaterialDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteFieldInputMaterialApiProductionFieldInputMaterialDeleteError = DeleteFieldInputMaterialApiProductionFieldInputMaterialDeleteErrors[keyof DeleteFieldInputMaterialApiProductionFieldInputMaterialDeleteErrors];
+
+export type DeleteFieldInputMaterialApiProductionFieldInputMaterialDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
 export type SaveInputMaterialApiProductionFieldInputMaterialPostData = {
     body: InputMaterialRequest;
     path?: never;
@@ -5906,6 +6112,34 @@ export type CreateLotApiProductionLotPostResponses = {
      * Successful Response
      */
     201: unknown;
+};
+
+export type GetAvailableLotsApiProductionLotAvailablePartNoGetData = {
+    body?: never;
+    path: {
+        /**
+         * Part No
+         */
+        part_no: string;
+    };
+    query?: never;
+    url: '/api/production/lot/available/{part_no}';
+};
+
+export type GetAvailableLotsApiProductionLotAvailablePartNoGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetAvailableLotsApiProductionLotAvailablePartNoGetError = GetAvailableLotsApiProductionLotAvailablePartNoGetErrors[keyof GetAvailableLotsApiProductionLotAvailablePartNoGetErrors];
+
+export type GetAvailableLotsApiProductionLotAvailablePartNoGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type TrackLotApiProductionLotTrackingLotnoGetData = {
@@ -6910,9 +7144,9 @@ export type GetMenusApiSystemMenusGetResponses = {
      *
      * Successful Response
      */
-    200: Array<{
+    200: {
         [key: string]: unknown;
-    }>;
+    };
 };
 
 export type GetMenusApiSystemMenusGetResponse = GetMenusApiSystemMenusGetResponses[keyof GetMenusApiSystemMenusGetResponses];

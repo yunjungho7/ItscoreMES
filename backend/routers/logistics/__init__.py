@@ -220,11 +220,8 @@ def create_shipment(body: ShipmentCreate):
 
 @router.post("/shipment/register", summary="출하실적 등록")
 def register_shipment(req: ShipmentRegisterRequest):
-    try:
-        shipment_no = shipment_service.create_shipment(req.model_dump())
-        return {"statusCode": 200, "message": "출하 등록이 완료되었습니다.", "shipment_no": shipment_no}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    shipment_no = shipment_service.create_shipment(req.model_dump())
+    return {"statusCode": 200, "message": "출하 등록이 완료되었습니다.", "shipment_no": shipment_no}
 
 @router.put("/shipment/complete/{shipment_no}", summary="출하완료")
 def complete_shipment(shipment_no: str):

@@ -90,7 +90,13 @@
 </template>
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue';
-import api from '../../../api'; 
+import { 
+  getCodesApiMasterCodeGet,
+  getGoodsApiMasterGoodsGet,
+  createGoodsApiMasterGoodsPost,
+  updateGoodsApiMasterGoodsPartNoPut,
+  deleteGoodsApiMasterGoodsPartNoDelete
+} from '../../../api/generated/sdk.gen';
 import DataGrid from '../../../components/common/DataGrid.vue'; 
 import FormModal from '../../../components/common/FormModal.vue';
 import PopupPicker from '../../../components/common/PopupPicker.vue';
@@ -126,18 +132,75 @@ function getPartTypeName(cd: string) {
 const emptyForm={PARTNO:'',PARTNM:'',STANDARD:'',PARTTYPE:'',UNIT:'',LOTSTDQTY:0,QTYPERBOX:0,SAFETYSTOCK:0,UNIT_PRICE:0,PROCESSCD:'',PROCESSNM:'',LOCATIONCD:'',LOCATIONNAME:'',LOCATIONCD_PROD:'',LOCATIONNAME_PROD:'',COMPANYCD:'',COMPANYNM:'',CARTYPE:'',TEXTURE:'',USEYN:true as boolean};const form=reactive({...emptyForm});
 
 async function fetchCodes(){
-  try{
-    const r=await api.get('/api/master/code',{params:{size:9999}});
-    allCodes.value = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));
-  }catch(e){console.error(e);}
+  try {
+    const { data } = await getCodesApiMasterCodeGet({ query: { size: 9999 } });
+    if (data) {
+      allCodes.value = (data as any).data || [];
+    }
+  } catch(e) {
+    console.error(e);
+  }
 }
 
-async function fetchData(){loading.value=true;try{const p:any={page:page.value,size:50};if(searchNm.value)p.search=searchNm.value;if(searchType.value)p.parttype=searchType.value;const r=await api.get('/api/master/goods',{params:p});const rawData = Array.isArray(r.data?.data) ? r.data.data : (Array.isArray(r.data?.data?.data) ? r.data.data.data : (r.data?.data || []));items.value=rawData.map((item: any) => ({...item, PARTTYPE_NM: getPartTypeName(item.PARTTYPE)}));total.value=(r.data?.data?.total ?? r.data?.total ?? 0);totalPages.value=(r.data?.data?.totalPages ?? r.data?.totalPages ?? 0);selectedIdx.value=-1;}finally{loading.value=false;}}
+async function fetchData(){
+  loading.value=true;
+  try {
+    const { data } = await getGoodsApiMasterGoodsGet({
+      query: {
+        page: page.value,
+        size: 50,
+        search: searchNm.value || undefined,
+        parttype: searchType.value || undefined
+      }
+    });
+    if (data) {
+      const rawData = (data as any).data || [];
+      items.value = rawData.map((item: any) => ({...item, PARTTYPE_NM: getPartTypeName(item.PARTTYPE)}));
+      total.value = (data as any).total || 0;
+      totalPages.value = (data as any).totalPages || 1;
+    }
+    selectedIdx.value=-1;
+  } finally {
+    loading.value=false;
+  }
+}
+
 function onRowClick(row:any,idx:number){selectedIdx.value=idx;editMode.value=true;Object.assign(form,row);showModal.value=true;}
 function onPageChange(p:number){page.value=p;fetchData();}
 function openAdd(){editMode.value=false;Object.assign(form,{...emptyForm});showModal.value=true;}
-async function handleSave(){if(!form.PARTNO){alert('품번을 입력하세요.');return;}try{if(editMode.value){await api.put(`/api/master/goods/${form.PARTNO}`,form);alert('수정되었습니다.');}else{await api.post('/api/master/goods',form);alert('등록되었습니다.');}showModal.value=false;fetchData();}catch(e){}}
-async function handleDelete(){if(!confirm(`'${form.PARTNM}' 삭제하시겠습니까?`))return;try{await api.delete(`/api/master/goods/${form.PARTNO}`);alert('삭제되었습니다.');showModal.value=false;fetchData();}catch(e){}}
+
+async function handleSave(){
+  if(!form.PARTNO){alert('품번을 입력하세요.');return;}
+  try {
+    if (editMode.value) {
+      await updateGoodsApiMasterGoodsPartNoPut({
+        path: { part_no: form.PARTNO },
+        body: form as any
+      });
+      alert('수정되었습니다.');
+    } else {
+      await createGoodsApiMasterGoodsPost({
+        body: form as any
+      });
+      alert('등록되었습니다.');
+    }
+    showModal.value=false;
+    fetchData();
+  } catch(e) {}
+}
+
+async function handleDelete(){
+  if(!confirm(`'${form.PARTNM}' 삭제하시겠습니까?`))return;
+  try {
+    await deleteGoodsApiMasterGoodsPartNoDelete({
+      path: { part_no: form.PARTNO }
+    });
+    alert('삭제되었습니다.');
+    showModal.value=false;
+    fetchData();
+  } catch(e) {}
+}
+
 onMounted(()=>{
   fetchCodes().then(fetchData);
 });
