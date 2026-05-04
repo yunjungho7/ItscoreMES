@@ -8,6 +8,7 @@ import os
 from db.connection import get_db_connection, execute_query, decode_cp949
 from db.xml_mapper import XMLMapper
 from typing import Optional
+from fastapi import HTTPException
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -103,7 +104,11 @@ class BaseCrudService:
             return cursor.rowcount
         except pymssql.IntegrityError as e:
             conn.rollback()
-            raise Exception(f"데이터 무결성 오류: {e}")
+            # SQL Server Foreign Key violation error code is usually 547
+            error_msg = str(e)
+            if "547" in error_msg:
+                raise HTTPException(status_code=400, detail="참조 무결성 오류: 관련 데이터가 존재하지 않거나 참조 중입니다.")
+            raise HTTPException(status_code=400, detail=f"데이터 무결성 오류: {e}")
         finally:
             conn.close()
 

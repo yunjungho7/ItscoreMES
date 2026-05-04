@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from db.connection import get_db_connection
+from db.connection import get_db_connection, decode_cp949
 from typing import Optional
 
 router = APIRouter(
@@ -31,10 +31,11 @@ def login(request: LoginRequest):
         cursor = conn.cursor()
         
         # Check user credentials and status
+        # Use RTRIM for PASS to handle CHAR columns with trailing spaces
         query = """
             SELECT EMPID, NAME, DEPTCD, PLANT, JIKGUB, SHOWYN 
             FROM TBL_COM_MEMBERS 
-            WHERE EMPID = %s AND PASS = %s
+            WHERE EMPID = %s AND RTRIM(PASS) = %s
         """
         cursor.execute(query, (request.empid, request.password))
         row = cursor.fetchone()
@@ -46,7 +47,13 @@ def login(request: LoginRequest):
                 message="아이디 또는 비밀번호가 일치하지 않습니다."
             )
             
-        empid, name, deptcd, plant, jikgub, showyn = row
+        # Decode fields (especially NAME and other Korean strings)
+        empid = decode_cp949(row[0])
+        name = decode_cp949(row[1])
+        deptcd = decode_cp949(row[2])
+        plant = decode_cp949(row[3])
+        jikgub = decode_cp949(row[4])
+        showyn = row[5]
         
         if not showyn:
             return LoginResponse(
