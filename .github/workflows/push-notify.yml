@@ -17,12 +17,13 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"chat_id\": \"${CHAT_ID}\", \"text\": \"🚀 워크플로우 실행 시작!\\n\\n📦 Repo: ${{ github.repository }}\\n👤 Actor: ${{ github.actor }}\\n🌿 Branch: ${{ github.ref_name }}\\n📝 Commit: ${{ github.sha }}\\n⏰ Time: $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S KST')\\n\\n⏳ 작업을 처리 중입니다...\"}"
 
-      - name: Git Pull
+      - name: Git Sync (Safe)
         working-directory: /home/itscore/ItscoreMES
         run: |
           cd /home/itscore/ItscoreMES
-          git pull origin master
-          echo "✅ git pull 완료"
+          git fetch origin
+          git reset --hard origin/master
+          echo "✅ git sync 완료"
 
       - name: Restart Backend (Gunicorn)
         working-directory: /home/itscore/ItscoreMES/backend
