@@ -42,6 +42,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
+import api from '../api';
 
 const router = useRouter();
 const userStr = localStorage.getItem('user');
@@ -52,9 +53,19 @@ function goTo(path: string) {
   router.push(path);
 }
 
-function handleLogout() {
-  localStorage.removeItem('user');
-  router.push('/login');
+async function handleLogout() {
+  if (!confirm('로그아웃 하시겠습니까?')) return;
+  try {
+    if (userObj && userObj.empid) {
+      await api.post(`/api/auth/logout?empid=${userObj.empid}`);
+    }
+  } catch (e) {
+    console.error('Logout error:', e);
+  } finally {
+    localStorage.removeItem('user');
+    localStorage.removeItem('access_token');
+    router.push('/login');
+  }
 }
 </script>
 

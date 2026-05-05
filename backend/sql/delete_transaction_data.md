@@ -72,86 +72,86 @@ BEGIN TRANSACTION;
 
 BEGIN TRY
 
-    -- ──────────────────────────────────────────────
-    -- 1. 검사 (Inspection)
-    -- ──────────────────────────────────────────────
-    PRINT '▶ 검사성적 삭제...'
-    DELETE FROM TBL_PQC_TESTSCORE;
+-- ──────────────────────────────────────────────
+-- 1. 검사 (Inspection)
+-- ──────────────────────────────────────────────
+PRINT '▶ 검사성적 삭제...'
+DELETE FROM TBL_PQC_TESTSCORE;
 
-    -- ──────────────────────────────────────────────
-    -- 2. 생산 - 불량 (Production - Defect)
-    -- ──────────────────────────────────────────────
-    PRINT '▶ 불량 이력 삭제...'
-    DELETE FROM TBL_PROD_FAILQTY_HISTORY;
+-- ──────────────────────────────────────────────
+-- 2. 생산 - 불량 (Production - Defect)
+-- ──────────────────────────────────────────────
+PRINT '▶ 불량 이력 삭제...'
+DELETE FROM TBL_PROD_FAILQTY_HISTORY;
 
-    PRINT '▶ 불량수량 삭제...'
-    DELETE FROM TBL_PROD_FAILQTY;
+PRINT '▶ 불량수량 삭제...'
+DELETE FROM TBL_PROD_FAILQTY;
 
-    -- ──────────────────────────────────────────────
-    -- 3. 생산 - 재고 (Production - Stock)
-    -- ──────────────────────────────────────────────
-    PRINT '▶ 재고 이력 삭제...'
-    DELETE FROM TBL_PROD_STOCK_HISTORY;
+-- ──────────────────────────────────────────────
+-- 3. 생산 - 재고 (Production - Stock)
+-- ──────────────────────────────────────────────
+PRINT '▶ 재고 이력 삭제...'
+DELETE FROM TBL_PROD_STOCK_HISTORY;
 
-    PRINT '▶ 재고 삭제...'
-    DELETE FROM TBL_PROD_STOCK;
+PRINT '▶ 재고 삭제...'
+DELETE FROM TBL_PROD_STOCK;
 
-    -- ──────────────────────────────────────────────
-    -- 4. 생산 - LOT (Production - LOT)
-    -- ──────────────────────────────────────────────
-    PRINT '▶ LOT 이력 삭제...'
-    DELETE FROM TBL_PROD_LOTHISTORY;
+-- ──────────────────────────────────────────────
+-- 4. 생산 - LOT (Production - LOT)
+-- ──────────────────────────────────────────────
+PRINT '▶ LOT 이력 삭제...'
+DELETE FROM TBL_PROD_LOTHISTORY;
 
-    PRINT '▶ LOT 상태 삭제...'
-    DELETE FROM TBL_PROD_LOTSTATE;
+PRINT '▶ LOT 상태 삭제...'
+DELETE FROM TBL_PROD_LOTSTATE;
 
-    -- ──────────────────────────────────────────────
-    -- 5. 생산 - 실적/계획/작업지시
-    -- ──────────────────────────────────────────────
-    PRINT '▶ 생산실적 삭제...'
-    DELETE FROM TBL_PROD_PRODINFO;
+-- ──────────────────────────────────────────────
+-- 5. 생산 - 실적/계획/작업지시
+-- ──────────────────────────────────────────────
+PRINT '▶ 생산실적 삭제...'
+DELETE FROM TBL_PROD_PRODINFO;
 
-    PRINT '▶ 생산계획 삭제...'
-    DELETE FROM TBL_PROD_PRODUCEPLAN;
+PRINT '▶ 생산계획 삭제...'
+DELETE FROM TBL_PROD_PRODUCEPLAN;
 
-    PRINT '▶ 작업지시 삭제...'
-    DELETE FROM TBL_PROD_WORKORDER;
+PRINT '▶ 작업지시 삭제...'
+DELETE FROM TBL_PROD_WORKORDER;
 
-    -- ──────────────────────────────────────────────
-    -- 6. 물류 - 출하 (Logistics - Shipment)
-    -- ──────────────────────────────────────────────
-    PRINT '▶ 출하지시 상세 삭제...'
-    DELETE FROM TBL_INOUT_SHIPMENT_INDICATION_DTL;
+-- ──────────────────────────────────────────────
+-- 6. 물류 - 출하 (Logistics - Shipment)
+-- ──────────────────────────────────────────────
+PRINT '▶ 출하지시 상세 삭제...'
+DELETE FROM TBL_INOUT_SHIPMENT_INDICATION_DTL;
 
-    PRINT '▶ 출하지시 삭제...'
-    DELETE FROM TBL_INOUT_SHIPMENT_INDICATION;
+PRINT '▶ 출하지시 삭제...'
+DELETE FROM TBL_INOUT_SHIPMENT_INDICATION;
 
-    -- ──────────────────────────────────────────────
-    -- 7. 물류 - 입고 (Logistics - Receive)
-    -- ──────────────────────────────────────────────
-    PRINT '▶ 입고 상세 삭제...'
-    DELETE FROM TBL_INOUT_WAREHOUSE_DETAIL;
+-- ──────────────────────────────────────────────
+-- 7. 물류 - 입고 (Logistics - Receive)
+-- ──────────────────────────────────────────────
+PRINT '▶ 입고 상세 삭제...'
+DELETE FROM TBL_INOUT_WAREHOUSE_DETAIL;
 
-    PRINT '▶ 입고 삭제...'
-    DELETE FROM TBL_INOUT_WAREHOUSE;
+PRINT '▶ 입고 삭제...'
+DELETE FROM TBL_INOUT_WAREHOUSE;
 
-    -- ──────────────────────────────────────────────
-    -- 8. 물류 - 발주 (Logistics - Purchase Order)
-    -- ──────────────────────────────────────────────
-    PRINT '▶ 발주 상세 삭제...'
-    DELETE FROM TBL_INOUT_PURCHASE_ORDER_DETAIL;
+-- ──────────────────────────────────────────────
+-- 8. 물류 - 발주 (Logistics - Purchase Order)
+-- ──────────────────────────────────────────────
+PRINT '▶ 발주 상세 삭제...'
+DELETE FROM TBL_INOUT_PURCHASE_ORDER_DETAIL;
 
-    PRINT '▶ 발주 삭제...'
-    DELETE FROM TBL_INOUT_PURCHASE_ORDER;
+PRINT '▶ 발주 삭제...'
+DELETE FROM TBL_INOUT_PURCHASE_ORDER;
 
-    -- ──────────────────────────────────────────────
-    -- 9. 물류 - 수주 (Logistics - Sales Order)
-    -- ──────────────────────────────────────────────
-    PRINT '▶ 수주 상세 삭제...'
-    DELETE FROM TBL_INOUT_ORDER_DETAIL;
+-- ──────────────────────────────────────────────
+-- 9. 물류 - 수주 (Logistics - Sales Order)
+-- ──────────────────────────────────────────────
+PRINT '▶ 수주 상세 삭제...'
+DELETE FROM TBL_INOUT_ORDER_DETAIL;
 
-    PRINT '▶ 수주 삭제...'
-    DELETE FROM TBL_INOUT_ORDERS;
+PRINT '▶ 수주 삭제...'
+DELETE FROM TBL_INOUT_ORDERS;
 
     -- ──────────────────────────────────────────────
 

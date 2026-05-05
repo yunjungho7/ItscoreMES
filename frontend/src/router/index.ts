@@ -317,14 +317,14 @@ const router = createRouter({
 
 // Navigation Guard
 router.beforeEach((to, _from, next) => {
-  const user = localStorage.getItem('user');
+  const token = localStorage.getItem('access_token');
   
   // If trying to access a protected route without being logged in
-  if (to.path !== '/login' && !user) {
+  if (to.path !== '/login' && !token) {
     next('/login');
   } 
   // If trying to access login page while already logged in
-  else if (to.path === '/login' && user) {
+  else if (to.path === '/login' && token) {
     next('/select-mode');
   } 
   else {

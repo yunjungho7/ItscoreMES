@@ -90,6 +90,7 @@ async function handleLogout() {
     console.error('로그아웃 처리 중 오류:', e);
   } finally {
     localStorage.removeItem('user');
+    localStorage.removeItem('access_token');
     router.push('/login');
   }
 }

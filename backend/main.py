@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from asgi_correlation_id import CorrelationIdMiddleware
@@ -10,6 +10,7 @@ from routers.status import router as status_router
 from routers.inspection import router as inspection_router
 from routers.system import router as system_router
 from routers.auth import router as auth_router
+from core.auth_dependency import get_current_user
 
 # Setup logging before FastAPI initialization
 setup_logging()
@@ -51,13 +52,18 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 # ── API 라우터 등록 (모두 /api prefix 사용) ──
-app.include_router(master_router, prefix="/api")
-app.include_router(logistics_router, prefix="/api")
-app.include_router(production_router, prefix="/api")
-app.include_router(status_router, prefix="/api")
-app.include_router(inspection_router, prefix="/api")
-app.include_router(system_router, prefix="/api")
+# 인증 없이 접근 가능한 라우터
 app.include_router(auth_router, prefix="/api")
+
+# 인증이 필요한 라우터들 (dependencies 추가)
+protected_dependency = [Depends(get_current_user)]
+
+app.include_router(master_router, prefix="/api", dependencies=protected_dependency)
+app.include_router(logistics_router, prefix="/api", dependencies=protected_dependency)
+app.include_router(production_router, prefix="/api", dependencies=protected_dependency)
+app.include_router(status_router, prefix="/api", dependencies=protected_dependency)
+app.include_router(inspection_router, prefix="/api", dependencies=protected_dependency)
+app.include_router(system_router, prefix="/api", dependencies=protected_dependency)
 
 @app.get("/", tags=["Health"])
 def health_check():
