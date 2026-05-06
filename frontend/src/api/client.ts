@@ -12,11 +12,8 @@ client.setConfig({
 // Request interceptor for Auth token
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    };
+  if (token && config.headers) {
+    (config.headers as any).Authorization = `Bearer ${token}`;
   }
   return config;
 });
