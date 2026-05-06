@@ -23,7 +23,7 @@ cd "$PROJECT_DIR"
 
 # 1. 소스 업데이트
 echo -e "${YELLOW}Step 1: 소스 최신화...${NC}"
-git pull origin master
+# git pull origin master
 
 # 2. 백엔드 배포
 echo -e "${YELLOW}Step 2: 백엔드(FastAPI) 설정 및 재시작...${NC}"
@@ -40,10 +40,14 @@ echo "$SUDO_PASS" | sudo -S systemctl restart $SERVICE_NAME
 
 # 백엔드 헬스 체크
 sleep 3
-if curl -s http://localhost:$BACKEND_PORT/api/health > /dev/null || curl -s http://localhost:$BACKEND_PORT/ > /dev/null; then
+if curl -s http://localhost:$BACKEND_PORT/ > /dev/null; then
     echo -e "${GREEN}✔ 백엔드가 포트 $BACKEND_PORT에서 정상 작동 중입니다.${NC}"
 else
-    echo -e "${RED}✘ 백엔드 시작 확인 실패. 로그 확인: journalctl -u $SERVICE_NAME${NC}"
+    echo -e "${RED}✘ 백엔드 시작 확인 실패.${NC}"
+    echo -e "${YELLOW}최근 백엔드 로그(backend/logs/backend_prod.log):${NC}"
+    tail -n 20 backend/logs/backend_prod.log || true
+    echo -e "${YELLOW}시스템 서비스 로그(journalctl -u $SERVICE_NAME):${NC}"
+    sudo journalctl -u $SERVICE_NAME -n 20 --no-pager
     exit 1
 fi
 
@@ -61,7 +65,7 @@ mv dist $DIST_DIR
 
 # 4. Nginx 설정 적용
 echo -e "${YELLOW}Step 4: Nginx 설정 업데이트...${NC}"
-echo "$SUDO_PASS" | sudo -S systemctl reload nginx
+sudo systemctl restart nginx || sudo systemctl start nginx
 
 echo -e "${GREEN}==========================================${NC}"
 echo -e "${GREEN}   운영 환경 배포 완료!${NC}"

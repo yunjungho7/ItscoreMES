@@ -6,7 +6,7 @@ After=network.target
 User=itscore
 Group=itscore
 WorkingDirectory=/home/itscore/ItscoreMES/backend
-Environment="ENV_FILE=.env.production"
+Environment="ENV_FILE=/home/itscore/ItscoreMES/backend/.env.production"
 ExecStart=/home/itscore/ItscoreMES/backend/venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000
 Restart=always
 
