@@ -24,8 +24,8 @@ echo -e "${GREEN}==========================================${NC}"
 cd "$PROJECT_DIR"
 
 # 1. 소스 업데이트
-echo -e "${YELLOW}Step 1: 소스 최신화 (Branch: PFMES_V3)...${NC}"
-git pull origin PFMES_V3
+echo -e "${YELLOW}Step 1: 소스 최신화 (Branch: master)...${NC}"
+git pull origin master
 
 # 2. 백엔드 배포
 echo -e "${YELLOW}Step 2: 백엔드(FastAPI) 설정 및 재시작...${NC}"
