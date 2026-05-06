@@ -29,7 +29,7 @@ jobs:
         working-directory: /home/itscore/ItscoreMES
         run: |
           cd /home/itscore/ItscoreMES
-          bash deploy-prod.sh
+          ./deploy.sh prod
           echo "✅ deploy-prod.sh 실행 완료"
 
       - name: Send Workflow Completed Notification
