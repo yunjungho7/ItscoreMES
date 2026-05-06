@@ -5,7 +5,8 @@ const { notifyError } = useNotification();
 
 // Set base URL if needed
 client.setConfig({
-  baseUrl: (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:8000',
+  // Nginx 프록시(/api)를 통해 백엔드와 통신하므로 상대 경로 사용
+  baseUrl: (import.meta.env.VITE_API_BASE_URL as string) || '/api',
 });
 
 // Error interceptor
