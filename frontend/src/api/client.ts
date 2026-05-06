@@ -9,6 +9,18 @@ client.setConfig({
   baseUrl: (import.meta.env.VITE_API_BASE_URL as string) || '/api',
 });
 
+// Request interceptor for Auth token
+client.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers = {
+      ...config.headers,
+      Authorization: `Bearer ${token}`,
+    };
+  }
+  return config;
+});
+
 // Error interceptor
 client.interceptors.error.use((error, response) => {
   let message = 'An unexpected error occurred';

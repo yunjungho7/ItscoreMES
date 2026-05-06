@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from typing import List, Optional
 from models.system.user import UserCreate, UserUpdate, UserResponse
 from services.system.user import UserService
+from core.auth_dependency import get_current_user
 
 router = APIRouter(
     prefix="/system/users",
@@ -17,6 +18,7 @@ def get_users(
     name: Optional[str] = Query(None, description="이름"),
     deptcd: Optional[str] = Query(None, description="부서"),
     showyn: Optional[bool] = Query(None, description="사용여부"),
+    current_user: str = Depends(get_current_user), # Added authentication
     service: UserService = Depends(get_user_service)
 ):
     return service.get_users(plant, name, deptcd, showyn)

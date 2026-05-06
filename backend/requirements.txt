@@ -20,3 +20,6 @@ loguru==0.7.2
 asgi-correlation-id==4.3.4
 sqlalchemy==2.0.29
 defusedxml==0.7.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+gunicorn==21.2.0

@@ -6,7 +6,7 @@
         <p>생산 및 물류 관리 시스템</p>
       </div>
       
-      <form class="login-form" @submit.prevent="handleLogin">
+      <form v-if="!showOtpStep" class="login-form" @submit.prevent="handleLogin">
         <div class="form-group">
           <label for="empid">아이디</label>
           <input 
@@ -39,6 +39,34 @@
           {{ loading ? '로그인 중...' : '로그인' }}
         </button>
       </form>
+
+      <!-- OTP Step -->
+      <form v-else class="login-form" @submit.prevent="handleVerifyOtp">
+        <div class="form-group">
+          <label for="otp">인증 번호</label>
+          <input 
+            type="text" 
+            id="otp" 
+            v-model="otpCode" 
+            placeholder="메일로 발송된 6자리 번호"
+            required
+            maxlength="6"
+          />
+          <p class="help-text">등록된 이메일로 인증 번호를 발송했습니다.</p>
+        </div>
+
+        <div v-if="errorMessage" class="error-msg">
+          {{ errorMessage }}
+        </div>
+        
+        <button type="submit" class="btn-login" :disabled="loading">
+          {{ loading ? '인증 확인 중...' : '인증 완료' }}
+        </button>
+        
+        <button type="button" class="btn-back" @click="showOtpStep = false">
+          뒤로 가기
+        </button>
+      </form>
     </div>
   </div>
 </template>
@@ -51,6 +79,9 @@ import api from '../api';
 const router = useRouter();
 const empid = ref('');
 const password = ref('');
+const otpCode = ref('');
+const sessionId = ref('');
+const showOtpStep = ref(false);
 const errorMessage = ref('');
 const loading = ref(false);
 
@@ -67,16 +98,46 @@ async function handleLogin() {
     });
     
     if (res.data.success) {
-      // Store user info in localStorage
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      // Redirect to main page
-      router.push('/select-mode');
+      if (res.data.requires_2fa) {
+        sessionId.value = res.data.session_id;
+        showOtpStep.value = true;
+      } else {
+        localStorage.setItem('access_token', res.data.access_token);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+        router.push('/select-mode');
+      }
     } else {
       errorMessage.value = res.data.message || '로그인에 실패했습니다.';
     }
   } catch (error: any) {
-    errorMessage.value = '서버와 통신 중 오류가 발생했습니다.';
+    errorMessage.value = error.response?.data?.detail || '서버와 통신 중 오류가 발생했습니다.';
     console.error('Login error:', error);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleVerifyOtp() {
+  if (!otpCode.value || !sessionId.value) return;
+
+  loading.value = true;
+  errorMessage.value = '';
+
+  try {
+    const res = await api.post('/api/auth/verify-otp', {
+      session_id: sessionId.value,
+      otp_code: otpCode.value
+    });
+
+    if (res.data.success) {
+      localStorage.setItem('access_token', res.data.access_token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      router.push('/select-mode');
+    } else {
+      errorMessage.value = res.data.message || '인증 번호가 일치하지 않습니다.';
+    }
+  } catch (error: any) {
+    errorMessage.value = error.response?.data?.detail || '인증 확인 중 오류가 발생했습니다.';
   } finally {
     loading.value = false;
   }
@@ -155,6 +216,12 @@ async function handleLogin() {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+.help-text {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+}
+
 .error-msg {
   color: #ef4444;
   font-size: 0.85rem;
@@ -184,5 +251,20 @@ async function handleLogin() {
 .btn-login:disabled {
   background: #93c5fd;
   cursor: not-allowed;
+}
+
+.btn-back {
+  background: transparent;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-top: 5px;
+}
+
+.btn-back:hover {
+  background: #f8fafc;
 }
 </style>
