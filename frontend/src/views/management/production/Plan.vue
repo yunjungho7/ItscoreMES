@@ -12,73 +12,70 @@
           <option v-for="p in plants" :key="p.PLANTCD" :value="p.PLANTCD">{{ p.PLANTNM }}</option>
         </select>
         <label>품번/품명</label>
-        <div class="input-search-wrap" style="display:inline-flex; align-items:stretch;">
-          <input type="text" v-model="searchText" placeholder="품번 또는 품명" @keyup.enter="fetchData" style="border-radius: 3px 0 0 3px;" />
-          <button class="btn-s" @click="openItemLookup" style="border-left:none; border:1px solid #bdc3c7; background:#f8fafc; cursor:pointer; padding:0 8px; border-radius:0 3px 3px 0;">🔍</button>
+        <div class="input-with-btn">
+          <input type="text" v-model="searchText" placeholder="품번 또는 품명" @keyup.enter="fetchData" />
+          <button class="btn-search-sm" @click="openItemLookup" title="검색">🔍</button>
         </div>
         <button class="btn-search" @click="fetchData">조회</button>
+        
         <div class="act-right">
-          <button class="btn-wo" @click="openWoModal" :disabled="!hasChecked">✅ 작업 지시서 생성</button>
+          <button class="btn-add" @click="openWoModal" :disabled="!hasChecked">✅ 작업 지시서 생성</button>
         </div>
       </div>
     </section>
 
-    <!-- ═══ 달력형 그리드 ═══ -->
-    <div class="plan-grid-wrap">
-      <table class="plan-grid" v-if="planData">
-        <thead>
-          <tr class="day-num-row">
-            <th class="freeze" style="width:40px"><input type="checkbox" v-model="allChecked" @change="toggleAll" /></th>
-            <th class="freeze" style="min-width:100px">수주번호</th>
-            <th class="freeze" style="min-width:100px">품번</th>
-            <th class="freeze" style="min-width:130px">품명</th>
-            <th class="freeze" style="min-width:70px">규격</th>
-            <th class="freeze" style="min-width:60px">재고수량</th>
-            <th class="freeze" style="min-width:60px">계획합계</th>
-            <th v-for="dt in dates" :key="dt"
-                :class="['day-col', isToday(dt) ? 'today' : '', isWeekend(dt) ? 'weekend' : '']"
-                style="min-width:52px">{{ formatDateLabel(dt) }}</th>
-          </tr>
-          <tr class="day-label-row">
-            <th class="freeze"></th><th class="freeze"></th><th class="freeze"></th><th class="freeze"></th>
-            <th class="freeze"></th><th class="freeze"></th><th class="freeze"></th>
-            <th v-for="dt in dates" :key="'l'+dt"
-                :class="['day-col', isToday(dt) ? 'today' : '', isWeekend(dt) ? 'weekend' : '']">
-              계획
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loading">
-            <td :colspan="7 + (dates?.length || 0)" class="empty">데이터를 불러오는 중...</td>
-          </tr>
-          <tr v-else-if="!planData || planData.data.length === 0">
-            <td :colspan="7 + (dates?.length || 0)" class="empty">조회된 생산계획이 없습니다.</td>
-          </tr>
-          <tr v-else v-for="(row, ri) in planData.data" :key="ri" 
-              :class="{'row-selected': row._checked}"
-              @click="row._checked = !row._checked">
-            <td class="freeze chk"><input type="checkbox" v-model="row._checked" @click.stop /></td>
-            <td class="freeze">{{ row.ORDERNUM }}</td>
-            <td class="freeze">{{ row.PARTNO }}</td>
-            <td class="freeze">{{ row.PARTNM }}</td>
-            <td class="freeze">{{ row.STANDARD }}</td>
-            <td class="freeze num">{{ row.STOCKQTY || 0 }}</td>
-            <td class="freeze num total-cell">{{ row.TOTAL || 0 }}</td>
-            <td v-for="dt in dates" :key="dt"
-                :class="[
-                  'day-col', 
-                  isToday(dt)?'today':'', 
-                  isWeekend(dt)?'weekend':'',
-                  (selectedCell?.ri === ri && selectedCell?.dt === dt) ? 'selected-cell' : ''
-                ]"
-                class="num"
-                @click.stop="onCellClick(row, ri as number, dt)">
-              {{ row[dt] || 0 }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- ═══ 메인 컨텐츠 영역 ═══ -->
+    <div class="split-grids">
+      <div class="grid-wrap">
+        <div class="dh">생산 계획 현황 <span v-if="planData?.data?.length"> - Total {{ planData.data.length }}건</span></div>
+        <div class="cal-grid-wrap">
+          <table class="cal-grid" v-if="planData">
+            <thead>
+              <tr>
+                <th class="fix center chk" style="padding:0"><input type="checkbox" v-model="allChecked" @change="toggleAll" /></th>
+                <th class="fix">수주번호</th>
+                <th class="fix">품번</th>
+                <th class="fix">품명</th>
+                <th class="fix center">규격</th>
+                <th class="fix num">재고수량</th>
+                <th class="fix num total-head">계획합계</th>
+                <th v-for="dt in dates" :key="dt" class="date-col">
+                  <div :class="[isToday(dt) ? 'today-text' : '', isWeekend(dt) ? 'weekend-text' : '']">{{ formatDateLabel(dt) }}</div>
+                  <div class="sub">계획</div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="loading">
+                <td :colspan="7 + (dates?.length || 0)" class="empty">데이터를 불러오는 중...</td>
+              </tr>
+              <tr v-else-if="!planData || planData.data.length === 0">
+                <td :colspan="7 + (dates?.length || 0)" class="empty">조회된 생산계획이 없습니다.</td>
+              </tr>
+              <tr v-else v-for="(row, ri) in planData.data" :key="ri" 
+                  :class="{'selected': row._checked}"
+                  @click="row._checked = !row._checked">
+                <td class="fix center chk"><input type="checkbox" v-model="row._checked" @click.stop /></td>
+                <td class="fix">{{ row.ORDERNUM }}</td>
+                <td class="fix font-bold">{{ row.PARTNO }}</td>
+                <td class="fix">{{ row.PARTNM }}</td>
+                <td class="fix center"><span class="badge-unit">{{ row.STANDARD }}</span></td>
+                <td class="fix num">{{ row.STOCKQTY?.toLocaleString() || 0 }}</td>
+                <td class="fix num total-cell">{{ row.TOTAL?.toLocaleString() || 0 }}</td>
+                <td v-for="dt in dates" :key="dt"
+                    :class="[
+                      'num', 
+                      row[dt] > 0 ? 'hasval' : '',
+                      (selectedCell?.ri === ri && selectedCell?.dt === dt) ? 'selected-cell' : ''
+                    ]"
+                    @click.stop="onCellClick(row, ri, dt)">
+                  {{ row[dt] > 0 ? row[dt].toLocaleString() : '' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- ═══ 작업지시서 생성 모달 연동 ═══ -->
@@ -375,41 +372,57 @@ onMounted(() => { fetchPlants(); fetchProcesses(); fetchLines(); fetchData(); })
 </script>
 
 <style scoped>
+/* 페이지 레이아웃 */
 .page-view{display:flex;flex-direction:column;gap:10px;height:100%}
 .search-section{background:#fff;border-radius:10px;padding:14px 18px;box-shadow:0 1px 6px rgba(0,0,0,.04)}
-.section-title{font-size:.82rem;font-weight:700;color:#2980b9;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #d6eaf8}
+.section-title{font-size:.82rem;font-weight:700;color:#667eea;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #f0f4ff}
 .search-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .search-row label{font-size:.85rem;font-weight:600;color:#636e72;white-space:nowrap}
 .search-row input,.search-row select{padding:7px 10px;border:1px solid #dfe6e9;border-radius:6px;font-size:.85rem}
-.btn-search{background:#2980b9;color:#fff;border:none;padding:7px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.85rem}
+.input-with-btn{display:flex;gap:4px;align-items:center}
+.btn-search-sm{background:#667eea;color:#fff;border:none;padding:0 10px;border-radius:6px;cursor:pointer;font-size:1rem;height:34px}
+.btn-search{background:#667eea;color:#fff;border:none;padding:7px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.85rem}
 .act-right{display:flex;gap:6px;margin-left:auto}
-.btn-wo{background:linear-gradient(135deg,#27ae60,#219a52);color:#fff;border:none;padding:8px 18px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.85rem}
-.btn-wo:disabled { background: #bdc3c7; cursor: not-allowed; opacity: 0.7; }
+.btn-add{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:7px 16px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.84rem}
+.btn-add:disabled { background: #bdc3c7; cursor: not-allowed; opacity: 0.7; }
+.btn-excel{background:#27ae60;color:#fff;border:none;padding:7px 14px;border-radius:6px;font-weight:600;cursor:pointer;font-size:.84rem}
 
-/* 달력 그리드 */
-.plan-grid-wrap{flex:1;overflow:auto;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
-.plan-grid{width:100%;border-collapse:collapse;font-size:.82rem}
-.plan-grid thead{position:sticky;top:0;z-index:5}
-.day-num-row th{background:linear-gradient(180deg,#d6eaf8,#aed6f1);color:#1a5276;font-weight:700;padding:8px 4px;text-align:center;border-bottom:1px solid #85c1e9;white-space:nowrap}
-.day-label-row th{background:#eaf2f8;color:#5d6d7e;font-size:.75rem;font-weight:600;padding:4px;text-align:center;border-bottom:2px solid #85c1e9}
-.plan-grid td{padding:2px 3px;border-bottom:1px solid #f0f2f5;text-align:center}
-.freeze{position:sticky;background:#fff;z-index:3}
-.freeze:nth-child(1){left:0;width:40px}.freeze:nth-child(2){left:40px;width:100px}.freeze:nth-child(3){left:140px;width:100px}
-.freeze:nth-child(4){left:240px;width:130px}.freeze:nth-child(5){left:370px;width:70px}
-.freeze:nth-child(6){left:440px;width:60px}.freeze:nth-child(7){left:500px;width:60px}
-thead .freeze{background:linear-gradient(180deg,#d6eaf8,#aed6f1)!important;z-index:6}
-.day-label-row .freeze{background:#eaf2f8!important}
-.num{text-align:right;padding-right:6px!important}
-.total-cell{font-weight:700;color:#2980b9}
-.today{background:#fff8e1!important}
-.weekend{background:#fef0f0!important}
-.cell-input{width:100%;min-width:46px;box-sizing:border-box;padding:4px;border:1px solid #e2e8f0;border-radius:4px;font-size:.82rem;text-align:right;background:#fafbfc}
-.cell-input:focus{border-color:#2980b9;outline:none;background:#fff}
-.empty{text-align:center;color:#b2bec3;padding:60px!important}
-.row-selected{background:#e8f4fd!important}
-.row-selected .freeze{background:#e8f4fd!important}
+/* 그리드 레이아웃 */
+.split-grids{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
+.grid-wrap{display:flex;flex-direction:column;background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.05);overflow:hidden;flex:1}
+.dh{padding:10px 16px;background:#f8f9fa;font-size:.85rem;font-weight:600;color:#3a4a6b;border-bottom:1px solid #e9ecef}
+.cal-grid-wrap{flex:1;overflow:auto}
+.cal-grid{width:100%;border-collapse:collapse;font-size:.82rem}
+.cal-grid thead{position:sticky;top:0;z-index:10}
+.cal-grid th{background:#f8fafc;color:#64748b;font-weight:700;padding:12px 10px;border-bottom:2px solid #f1f5f9;text-align:left}
+.cal-grid td{padding:10px;border-bottom:1px solid #f1f5f9;color:#334155}
+.cal-grid .fix{position:sticky;background:#f8fafc;z-index:11;border-right:1px solid #f1f5f9}
+.cal-grid tbody .fix{background:#fff}
+.cal-grid .fix:nth-child(1){left:0;width:40px;min-width:40px}
+.cal-grid .fix:nth-child(2){left:40px;width:110px;min-width:110px}
+.cal-grid .fix:nth-child(3){left:150px;width:110px;min-width:110px}
+.cal-grid .fix:nth-child(4){left:260px;width:160px;min-width:160px}
+.cal-grid .fix:nth-child(5){left:420px;width:90px;min-width:90px}
+.cal-grid .fix:nth-child(6){left:510px;width:80px;min-width:80px}
+.cal-grid .fix:nth-child(7){left:590px;width:80px;min-width:80px}
+.cal-grid th.fix, .cal-grid td.fix { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.cal-grid .num{text-align:right}
+.cal-grid .center{text-align:center}
+.cal-grid .total-head{background:#eff6ff!important;color:#1e40af}
+.cal-grid .total-cell{color:#2563eb;font-weight:800;background:#eff6ff}
+.date-col{min-width:70px;text-align:center;border-left:1px solid #f1f5f9}
+.date-col .sub{font-size:.7rem;color:#94a3b8;font-weight:600}
+.hasval{background:#f0fdf4;color:#166534;font-weight:700}
+.badge-unit{background:#f1f5f9;color:#475569;padding:1px 6px;border-radius:8px;font-size:.68rem;font-weight:700}
+.cal-grid tbody tr:hover td{background:#fbfcfe;cursor:pointer}
+.cal-grid tbody tr.selected td{background:#f1f5f9!important}
+.empty{text-align:center;padding:80px!important;color:#94a3b8;font-size:1rem}
+.font-bold { font-weight: 700; }
+.today-text { color: #d35400; font-weight: 800; }
+.weekend-text { color: #c0392b; }
 .selected-cell { background-color: #bbdefb !important; outline: 2px solid #2196f3; z-index: 4; }
 
-/* ═══ 작업지시 모달 (기존 스타일 제거됨) ═══ */
+/* Modal */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
 </style>
