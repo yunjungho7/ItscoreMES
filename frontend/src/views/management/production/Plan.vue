@@ -68,7 +68,7 @@
                       row[dt] > 0 ? 'hasval' : '',
                       (selectedCell?.ri === ri && selectedCell?.dt === dt) ? 'selected-cell' : ''
                     ]"
-                    @click.stop="onCellClick(row, ri, dt)">
+                    @click.stop="onCellClick(row, Number(ri), dt)">
                   {{ row[dt] > 0 ? row[dt].toLocaleString() : '' }}
                 </td>
               </tr>
